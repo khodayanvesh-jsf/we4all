@@ -5,7 +5,6 @@ export const GEO_ZONES = [
   { id: 'armoor', name: 'Armoor / Nizamabad', radiusKm: 12, active: true }
 ];
 
-// PRODUCT-ONLY CATEGORIES (For Merchant Portal)
 export const INITIAL_CATEGORIES = [
   {
     id: 'daily_needs',
@@ -64,6 +63,49 @@ export const INITIAL_CATEGORIES = [
   }
 ];
 
+export const SERVICE_CATEGORIES = [
+  {
+    id: 'srv_plumbing',
+    name: 'Plumbers & Water Tank Fix',
+    icon: '🚰',
+    startingVisitFee: 89,
+    badge: '40-Min Arrival',
+    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'srv_electrical',
+    name: 'Electricians & DB Setup',
+    icon: '⚡',
+    startingVisitFee: 99,
+    badge: 'Single-Phase / MCB Expert',
+    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'srv_carpentry',
+    name: 'Carpenters & Wood Works',
+    icon: '🪚',
+    startingVisitFee: 99,
+    badge: 'Own Power Tools',
+    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'srv_ac_repair',
+    name: 'AC, Fridge & Motor Repair',
+    icon: '❄️',
+    startingVisitFee: 149,
+    badge: 'Gas Refill & Winding',
+    image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'srv_loans_realestate',
+    name: 'Loans & Real Estate Desk',
+    icon: '🏠',
+    startingVisitFee: 0,
+    badge: '₹0 Brokerage • Free Visit',
+    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&auto=format&fit=crop&q=80'
+  }
+];
+
 export const CURATED_COLLECTIONS = [
   {
     id: 'col_morning',
@@ -85,7 +127,6 @@ export const CURATED_COLLECTIONS = [
   }
 ];
 
-// 1. PRODUCT MERCHANTS DIRECTORY
 export const INITIAL_MERCHANTS = [
   { id: 'm_1', businessName: 'Sri Laxmi Supermart', owner: 'Suresh Kumar', categoryId: 'daily_needs', phone: '9848011101', area: 'Subhash Nagar', status: 'Approved' },
   { id: 'm_2', businessName: 'Balaji Wholesale Kirana', owner: 'Ramesh Gupta', categoryId: 'daily_needs', phone: '9848011102', area: 'Gandhi Chowk', status: 'Approved' },
@@ -93,76 +134,89 @@ export const INITIAL_MERCHANTS = [
   { id: 'm_4', businessName: 'Apollo Town Medics', owner: 'Dr. Kiran', categoryId: 'medicines', phone: '9848011104', area: 'Hospital Road', status: 'Approved' }
 ];
 
-// 2. SERVICE PROVIDERS DIRECTORY (1-Hour Slot Home Services & Doorstep Advisors)
 export const INITIAL_SERVICE_PROVIDERS = [
   {
     id: 'sp_1',
+    serviceCategoryId: 'srv_plumbing',
     providerName: 'Ramesh & Team Master Plumbers',
-    serviceCategory: 'Plumbers',
+    maskedId: 'Verified Plumber #P1',
+    serviceCategory: 'Plumbers & Water Tank Fix',
     specialization: 'Tap, Tank, Motor & Pipeline Fix',
     visitingFee: 89,
     hourlyRate: 150,
     area: 'Gandhi Chowk',
     rating: 4.9,
     phone: '9848022201',
+    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30', '2026-11-05'],
     availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80'
   },
   {
     id: 'sp_2',
+    serviceCategoryId: 'srv_electrical',
     providerName: 'PowerCare Single-Phase & MCB Electricians',
-    serviceCategory: 'Electricians',
+    maskedId: 'Verified Electrician #E1',
+    serviceCategory: 'Electricians & DB Setup',
     specialization: '32-Way DB Setup, MCB/RCCB, Inverter & Wiring',
     visitingFee: 99,
     hourlyRate: 180,
     area: 'Subhash Nagar',
     rating: 4.9,
     phone: '9848022202',
-    availableSlots: ['09:00 AM - 10:00 AM', '11:00 AM - 12:00 PM', '03:00 PM - 04:00 PM', '05:00 PM - 06:00 PM'],
+    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30', '2026-11-05'],
+    availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '03:00 PM - 04:00 PM', '05:00 PM - 06:00 PM'],
     image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&auto=format&fit=crop&q=80'
   },
   {
     id: 'sp_3',
+    serviceCategoryId: 'srv_carpentry',
     providerName: 'Vishwakarma Wood Works & Carpenters',
-    serviceCategory: 'Carpenters',
+    maskedId: 'Verified Carpenter #C1',
+    serviceCategory: 'Carpenters & Wood Works',
     specialization: 'Door Locks, Windows, Cupboards & Modular Fix',
     visitingFee: 99,
     hourlyRate: 160,
     area: 'Old Bus Stand',
     rating: 4.8,
     phone: '9848022203',
-    availableSlots: ['10:00 AM - 11:00 AM', '12:00 PM - 01:00 PM', '04:00 PM - 05:00 PM'],
+    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30'],
+    availableSlots: ['10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=300&auto=format&fit=crop&q=80'
   },
   {
     id: 'sp_4',
+    serviceCategoryId: 'srv_ac_repair',
     providerName: 'CoolBreeze AC & Motor Repair Desk',
-    serviceCategory: 'AC & Appliances',
+    maskedId: 'Verified AC Tech #A1',
+    serviceCategory: 'AC, Fridge & Motor Repair',
     specialization: 'Split AC Gas Refill, Wet Service & Water Motor Winding',
     visitingFee: 149,
     hourlyRate: 220,
     area: 'Collectorate Chowk',
     rating: 4.9,
     phone: '9848022204',
-    availableSlots: ['09:00 AM - 10:00 AM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
+    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30'],
+    availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=300&auto=format&fit=crop&q=80'
   },
   {
     id: 'sp_5',
+    serviceCategoryId: 'srv_loans_realestate',
     providerName: 'Town Co-Operative Gold Loan & DTCP Plot Desk',
-    serviceCategory: 'Loans & Real Estate',
+    maskedId: 'Verified FinServ Advisor #F1',
+    serviceCategory: 'Loans & Real Estate Desk',
     specialization: '0.79% p.m. Gold Loan Callback & ₹0 Brokerage Plot Visits',
     visitingFee: 0,
     hourlyRate: 0,
     area: 'Mavala Bypass / Collectorate',
     rating: 4.9,
     phone: '9848022205',
+    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30'],
     availableSlots: ['10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&auto=format&fit=crop&q=80'
   }
 ];
 
-// 3. EVENT DECORATORS DIRECTORY
 export const INITIAL_DECORATORS = [
   {
     id: 'dec_p1',
@@ -182,7 +236,6 @@ export const INITIAL_DECORATORS = [
   }
 ];
 
-// PHYSICAL PRODUCTS CATALOG ONLY (For Merchant Portal & Customer Storefront)
 export const INITIAL_PRODUCTS = [
   {
     id: 'prod_1',
@@ -203,8 +256,7 @@ export const INITIAL_PRODUCTS = [
     ],
     merchantOffers: [
       { merchantId: 'm1', merchantName: 'Sri Laxmi Supermart', price: 58, area: 'Subhash Nagar', rating: 4.9 },
-      { merchantId: 'm2', merchantName: 'Balaji Wholesale Kirana', price: 61, area: 'Gandhi Chowk', rating: 4.8 },
-      { merchantId: 'm3', merchantName: 'Annapurna Traders', price: 64, area: 'Station Road', rating: 4.7 }
+      { merchantId: 'm2', merchantName: 'Balaji Wholesale Kirana', price: 61, area: 'Gandhi Chowk', rating: 4.8 }
     ]
   },
   {
@@ -221,8 +273,7 @@ export const INITIAL_PRODUCTS = [
     status: 'approved',
     variants: [
       { id: 'v21', label: '1 Litre Wood-Pressed Oil', price: 178, mrp: 205, weightGrams: 1000 },
-      { id: 'v22', label: '10 Kg Sona Masoori Bag', price: 540, mrp: 610, weightGrams: 10000 },
-      { id: 'v23', label: '25 Kg Wholesale Rice Sack', price: 1310, mrp: 1490, weightGrams: 25000 }
+      { id: 'v22', label: '10 Kg Sona Masoori Bag', price: 540, mrp: 610, weightGrams: 10000 }
     ],
     merchantOffers: [
       { merchantId: 'm2', merchantName: 'Balaji Wholesale Kirana', price: 178, area: 'Gandhi Chowk', rating: 4.9 },
@@ -246,8 +297,7 @@ export const INITIAL_PRODUCTS = [
       { id: 'v9', label: '1 Litre Farm Can', price: 66, mrp: 75, weightGrams: 1000 }
     ],
     merchantOffers: [
-      { merchantId: 'm6', merchantName: 'Sri Laxmi Dairy Parlour', price: 34, area: 'Main Bazar', rating: 4.9 },
-      { merchantId: 'm7', merchantName: 'Vijaya Milk Point', price: 37, area: 'Bus Stand', rating: 4.7 }
+      { merchantId: 'm6', merchantName: 'Sri Laxmi Dairy Parlour', price: 34, area: 'Main Bazar', rating: 4.9 }
     ]
   },
   {
@@ -264,12 +314,10 @@ export const INITIAL_PRODUCTS = [
     status: 'approved',
     variants: [
       { id: 'v4', label: 'Red Onions 1 kg', price: 32, mrp: 42, weightGrams: 1000 },
-      { id: 'v6', label: 'Red Onions 5 kg Bag', price: 150, mrp: 185, weightGrams: 5000 },
       { id: 'v7', label: 'Banganapalli Mangoes 1 kg', price: 105, mrp: 125, weightGrams: 1000 }
     ],
     merchantOffers: [
-      { merchantId: 'm8', merchantName: 'Adilabad Rytu Mandi', price: 32, area: 'Vegetable Market', rating: 4.9 },
-      { merchantId: 'm9', merchantName: 'Raju Fresh Farm Veg', price: 36, area: 'Gandhi Chowk', rating: 4.8 }
+      { merchantId: 'm8', merchantName: 'Adilabad Rytu Mandi', price: 32, area: 'Vegetable Market', rating: 4.9 }
     ]
   },
   {
@@ -286,12 +334,10 @@ export const INITIAL_PRODUCTS = [
     status: 'approved',
     variants: [
       { id: 'v30', label: 'Natu Kodi (Country Chicken) 1 Kg', price: 370, mrp: 410, weightGrams: 1000 },
-      { id: 'v31', label: 'Tender Goat Mutton Curry Cut 1 Kg', price: 740, mrp: 790, weightGrams: 1000 },
-      { id: 'v32', label: 'Live Rohu Fish Cleaned 1 Kg', price: 210, mrp: 240, weightGrams: 1000 }
+      { id: 'v31', label: 'Tender Goat Mutton Curry Cut 1 Kg', price: 740, mrp: 790, weightGrams: 1000 }
     ],
     merchantOffers: [
-      { merchantId: 'm13', merchantName: 'Deccan Fresh Meat Hub', price: 370, area: 'Old Town', rating: 4.9 },
-      { merchantId: 'm14', merchantName: 'Telangana Natu Kodi Center', price: 390, area: 'Bypass Road', rating: 4.8 }
+      { merchantId: 'm13', merchantName: 'Deccan Fresh Meat Hub', price: 370, area: 'Old Town', rating: 4.9 }
     ]
   },
   {
@@ -308,34 +354,10 @@ export const INITIAL_PRODUCTS = [
     status: 'approved',
     variants: [
       { id: 'v12', label: '1 Bag (50 kg)', price: 390, mrp: 420, weightGrams: 50000 },
-      { id: 'v13', label: '5 Bags (250 kg 3W Auto)', price: 1790, mrp: 2100, weightGrams: 250000 },
-      { id: 'v14', label: '20 Bags (1 Ton Heavy Transport)', price: 7500, mrp: 8200, weightGrams: 1000000 }
+      { id: 'v13', label: '5 Bags (250 kg 3W Auto)', price: 1790, mrp: 2100, weightGrams: 250000 }
     ],
     merchantOffers: [
-      { merchantId: 'm20', merchantName: 'Shri Ram Hardware & Steel', price: 390, area: 'Industrial Area', rating: 5.0 },
-      { merchantId: 'm21', merchantName: 'Bhavani Steel & Cement', price: 405, area: 'Bypass Chowk', rating: 4.8 }
-    ]
-  },
-  {
-    id: 'prod_7',
-    zoneId: 'adilabad',
-    categoryId: 'construction',
-    subCategoryBrand: 'Tata Tiscon 550SD TMT Steel & Kiln Red Bricks',
-    shopName: 'Shri Ram Hardware & Steel',
-    distanceKm: 1.9,
-    rating: 4.9,
-    buyersToday: 84,
-    curiosityTag: 'ISI Certified Lot • Direct Kiln',
-    image: 'https://images.unsplash.com/photo-1535813547-99c456a41d4a?w=300&auto=format&fit=crop&q=80',
-    status: 'approved',
-    variants: [
-      { id: 'v15', label: '8mm Rod Bundle (40 kg)', price: 2650, mrp: 2850, weightGrams: 40000 },
-      { id: 'v16', label: '12mm Rod Quintal (100 kg)', price: 6400, mrp: 6800, weightGrams: 100000 },
-      { id: 'v17', label: '500 Red Clay Bricks Load', price: 4150, mrp: 4500, weightGrams: 500000 }
-    ],
-    merchantOffers: [
-      { merchantId: 'm20', merchantName: 'Shri Ram Hardware & Steel', price: 2650, area: 'Industrial Area', rating: 4.9 },
-      { merchantId: 'm23', merchantName: 'Hanuman Brick & Steel Works', price: 2720, area: 'Mavala Kiln Zone', rating: 4.8 }
+      { merchantId: 'm20', merchantName: 'Shri Ram Hardware & Steel', price: 390, area: 'Industrial Area', rating: 5.0 }
     ]
   },
   {
@@ -352,12 +374,10 @@ export const INITIAL_PRODUCTS = [
     status: 'approved',
     variants: [
       { id: 'v18', label: '1 Strip (15 Tablets)', price: 32, mrp: 35, weightGrams: 50 },
-      { id: 'v19', label: '3 Strips Pack', price: 92, mrp: 105, weightGrams: 150 },
       { id: 'v20', label: 'Home First-Aid Box', price: 340, mrp: 399, weightGrams: 500 }
     ],
     merchantOffers: [
-      { merchantId: 'm24', merchantName: 'Apollo Town Medics', price: 32, area: 'Hospital Road', rating: 5.0 },
-      { merchantId: 'm25', merchantName: 'MedPlus Town Chemist', price: 34, area: 'Main Road', rating: 4.8 }
+      { merchantId: 'm24', merchantName: 'Apollo Town Medics', price: 32, area: 'Hospital Road', rating: 5.0 }
     ]
   }
 ];
@@ -378,7 +398,7 @@ export const INITIAL_FUNCTION_HALLS = [
     capacity: '1200 Guests',
     pricePerDay: 65000,
     collateralVerified: true,
-    bookedDates: [],
+    bookedDates: ['2026-11-02'],
     image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&auto=format&fit=crop&q=80'
   }
 ];
@@ -421,8 +441,7 @@ export const DECORATION_SERVICE_MODULES = [
 export const INITIAL_RIDERS = [
   { id: 'dp_1', name: 'Raju Local Rider', isPrimeCaptain: true, batteryPct: 92, vehicleType: '2W', vehicleName: 'Hero Splendor Bike', baseRate: 25, perKm: 5.5, rating: 4.9, trips: 418, badge: 'Prime Captain (15s Priority)', yesVotes: 412, noVotes: 4 },
   { id: 'dp_2', name: 'Kiran Express 2W', isPrimeCaptain: true, batteryPct: 84, vehicleType: '2W', vehicleName: 'TVS XL Heavy Duty', baseRate: 25, perKm: 6.5, rating: 4.8, trips: 690, badge: '45Kg Bag Capacity', yesVotes: 675, noVotes: 9 },
-  { id: 'dp_3', name: 'Srinivas Cargo Auto', isPrimeCaptain: false, batteryPct: 88, vehicleType: 'HEAVY', vehicleName: 'Piaggio Ape 3W Auto', baseRate: 100, perKm: 20, rating: 4.9, trips: 315, badge: 'Up to 3 Quintals (₹150 Cap)', yesVotes: 310, noVotes: 2 },
-  { id: 'dp_4', name: 'Bablu Mini-Truck', isPrimeCaptain: false, batteryPct: 95, vehicleType: 'HEAVY', vehicleName: 'Tata Ace (Chota Hathi)', baseRate: 140, perKm: 26, rating: 4.8, trips: 540, badge: '1.5 Ton Site Load', yesVotes: 530, noVotes: 6 }
+  { id: 'dp_3', name: 'Srinivas Cargo Auto', isPrimeCaptain: false, batteryPct: 88, vehicleType: 'HEAVY', vehicleName: 'Piaggio Ape 3W Auto', baseRate: 100, perKm: 20, rating: 4.9, trips: 315, badge: 'Up to 3 Quintals (₹150 Cap)', yesVotes: 310, noVotes: 2 }
 ];
 
 export const DELIVERY_REVIEW_QUESTIONS = [
