@@ -5,11 +5,13 @@ export const GEO_ZONES = [
   { id: 'armoor', name: 'Armoor / Nizamabad', radiusKm: 12, active: true }
 ];
 
+// PRODUCT-ONLY CATEGORIES (For Merchant Portal)
 export const INITIAL_CATEGORIES = [
   {
     id: 'daily_needs',
     name: 'Daily Home Needs',
     icon: '🛒',
+    partnerType: 'merchant',
     badge: '10-20m Express • 0% Markup',
     flow: 'instant_goods',
     minOrderValue: 99,
@@ -20,6 +22,7 @@ export const INITIAL_CATEGORIES = [
     id: 'veg_fruits',
     name: 'Fresh Veg & Fruits',
     icon: '🥬',
+    partnerType: 'merchant',
     badge: '5 AM Rytu Mandi Rate',
     flow: 'instant_goods',
     minOrderValue: 99,
@@ -30,6 +33,7 @@ export const INITIAL_CATEGORIES = [
     id: 'non_veg',
     name: 'Non-Veg: Meat & Fish',
     icon: '🍗',
+    partnerType: 'merchant',
     badge: 'Live Cut • 100% Halal',
     flow: 'instant_goods',
     minOrderValue: 150,
@@ -40,6 +44,7 @@ export const INITIAL_CATEGORIES = [
     id: 'construction',
     name: 'Construction & Steel',
     icon: '🏗️',
+    partnerType: 'merchant',
     badge: '3W Auto / Heavy Dispatch',
     flow: 'heavy_goods',
     minOrderValue: 500,
@@ -50,41 +55,12 @@ export const INITIAL_CATEGORIES = [
     id: 'medicines',
     name: 'Medicines & Rx',
     icon: '💊',
+    partnerType: 'merchant',
     badge: '10-Min Priority Pharmacy',
     flow: 'instant_goods',
     minOrderValue: 0,
     baseDeliveryFee: 20,
     image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'home_services',
-    name: 'Home Services',
-    icon: '🔧',
-    badge: 'Visit ₹89 • Plumbers & Elec',
-    flow: 'home_service',
-    minOrderValue: 0,
-    baseDeliveryFee: 89,
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'loans_realestate',
-    name: 'Loans & Real Estate',
-    icon: '🏠',
-    badge: '₹0 Brokerage • Free Visit',
-    flow: 'lead_inquiry',
-    minOrderValue: 0,
-    baseDeliveryFee: 0,
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&auto=format&fit=crop&q=80'
-  },
-  {
-    id: 'decorations',
-    name: 'Halls & Decor Bidding',
-    icon: '🎪',
-    badge: '35% / 85% Escrow',
-    flow: 'event_decor',
-    minOrderValue: 0,
-    baseDeliveryFee: 0,
-    image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=300&auto=format&fit=crop&q=80'
   }
 ];
 
@@ -109,6 +85,104 @@ export const CURATED_COLLECTIONS = [
   }
 ];
 
+// 1. PRODUCT MERCHANTS DIRECTORY
+export const INITIAL_MERCHANTS = [
+  { id: 'm_1', businessName: 'Sri Laxmi Supermart', owner: 'Suresh Kumar', categoryId: 'daily_needs', phone: '9848011101', area: 'Subhash Nagar', status: 'Approved' },
+  { id: 'm_2', businessName: 'Balaji Wholesale Kirana', owner: 'Ramesh Gupta', categoryId: 'daily_needs', phone: '9848011102', area: 'Gandhi Chowk', status: 'Approved' },
+  { id: 'm_3', businessName: 'Shri Ram Hardware & Steel', owner: 'Venkat Rao', categoryId: 'construction', phone: '9848011103', area: 'Industrial Area', status: 'Approved' },
+  { id: 'm_4', businessName: 'Apollo Town Medics', owner: 'Dr. Kiran', categoryId: 'medicines', phone: '9848011104', area: 'Hospital Road', status: 'Approved' }
+];
+
+// 2. SERVICE PROVIDERS DIRECTORY (1-Hour Slot Home Services & Doorstep Advisors)
+export const INITIAL_SERVICE_PROVIDERS = [
+  {
+    id: 'sp_1',
+    providerName: 'Ramesh & Team Master Plumbers',
+    serviceCategory: 'Plumbers',
+    specialization: 'Tap, Tank, Motor & Pipeline Fix',
+    visitingFee: 89,
+    hourlyRate: 150,
+    area: 'Gandhi Chowk',
+    rating: 4.9,
+    phone: '9848022201',
+    availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
+    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'sp_2',
+    providerName: 'PowerCare Single-Phase & MCB Electricians',
+    serviceCategory: 'Electricians',
+    specialization: '32-Way DB Setup, MCB/RCCB, Inverter & Wiring',
+    visitingFee: 99,
+    hourlyRate: 180,
+    area: 'Subhash Nagar',
+    rating: 4.9,
+    phone: '9848022202',
+    availableSlots: ['09:00 AM - 10:00 AM', '11:00 AM - 12:00 PM', '03:00 PM - 04:00 PM', '05:00 PM - 06:00 PM'],
+    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'sp_3',
+    providerName: 'Vishwakarma Wood Works & Carpenters',
+    serviceCategory: 'Carpenters',
+    specialization: 'Door Locks, Windows, Cupboards & Modular Fix',
+    visitingFee: 99,
+    hourlyRate: 160,
+    area: 'Old Bus Stand',
+    rating: 4.8,
+    phone: '9848022203',
+    availableSlots: ['10:00 AM - 11:00 AM', '12:00 PM - 01:00 PM', '04:00 PM - 05:00 PM'],
+    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'sp_4',
+    providerName: 'CoolBreeze AC & Motor Repair Desk',
+    serviceCategory: 'AC & Appliances',
+    specialization: 'Split AC Gas Refill, Wet Service & Water Motor Winding',
+    visitingFee: 149,
+    hourlyRate: 220,
+    area: 'Collectorate Chowk',
+    rating: 4.9,
+    phone: '9848022204',
+    availableSlots: ['09:00 AM - 10:00 AM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
+    image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'sp_5',
+    providerName: 'Town Co-Operative Gold Loan & DTCP Plot Desk',
+    serviceCategory: 'Loans & Real Estate',
+    specialization: '0.79% p.m. Gold Loan Callback & ₹0 Brokerage Plot Visits',
+    visitingFee: 0,
+    hourlyRate: 0,
+    area: 'Mavala Bypass / Collectorate',
+    rating: 4.9,
+    phone: '9848022205',
+    availableSlots: ['10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '04:00 PM - 05:00 PM'],
+    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&auto=format&fit=crop&q=80'
+  }
+];
+
+// 3. EVENT DECORATORS DIRECTORY
+export const INITIAL_DECORATORS = [
+  {
+    id: 'dec_p1',
+    name: 'Royal Event & Wedding Decorators',
+    expert: 'Grand Reception Stages & Imported Floral Arches',
+    status: 'Active',
+    phone: '9700112233',
+    image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'dec_p2',
+    name: 'Adilabad Marigold & Balloon Art Studio',
+    expert: 'Haldi, Mehndi Jhula, Birthday & Sangeet LED Walls',
+    status: 'Active',
+    phone: '9600334455',
+    image: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=400&auto=format&fit=crop&q=80'
+  }
+];
+
+// PHYSICAL PRODUCTS CATALOG ONLY (For Merchant Portal & Customer Storefront)
 export const INITIAL_PRODUCTS = [
   {
     id: 'prod_1',
@@ -137,7 +211,7 @@ export const INITIAL_PRODUCTS = [
     id: 'prod_2',
     zoneId: 'adilabad',
     categoryId: 'daily_needs',
-    subCategoryBrand: 'Sona Masoori Old Rice & Groundnut Oil Combo',
+    subCategoryBrand: 'Sona Masoori Old Rice & Groundnut Oil',
     shopName: 'Balaji Wholesale Kirana',
     distanceKm: 0.6,
     rating: 4.9,
@@ -152,8 +226,7 @@ export const INITIAL_PRODUCTS = [
     ],
     merchantOffers: [
       { merchantId: 'm2', merchantName: 'Balaji Wholesale Kirana', price: 178, area: 'Gandhi Chowk', rating: 4.9 },
-      { merchantId: 'm1', merchantName: 'Sri Laxmi Supermart', price: 185, area: 'Subhash Nagar', rating: 4.8 },
-      { merchantId: 'm5', merchantName: 'Rytu Oil Mill Depot', price: 192, area: 'Cinema Road', rating: 4.7 }
+      { merchantId: 'm1', merchantName: 'Sri Laxmi Supermart', price: 185, area: 'Subhash Nagar', rating: 4.8 }
     ]
   },
   {
@@ -286,50 +359,6 @@ export const INITIAL_PRODUCTS = [
       { merchantId: 'm24', merchantName: 'Apollo Town Medics', price: 32, area: 'Hospital Road', rating: 5.0 },
       { merchantId: 'm25', merchantName: 'MedPlus Town Chemist', price: 34, area: 'Main Road', rating: 4.8 }
     ]
-  },
-  {
-    id: 'prod_9',
-    zoneId: 'adilabad',
-    categoryId: 'home_services',
-    subCategoryBrand: 'Master Plumber, Electrician & Carpenter Visit',
-    shopName: 'Ramesh & Team Local Services',
-    distanceKm: 0.9,
-    rating: 4.9,
-    buyersToday: 29,
-    curiosityTag: 'Arrives in 40 Mins • Own Power Tools',
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80',
-    status: 'approved',
-    variants: [
-      { id: 'v40', label: 'Master Plumber Visit & Inspection', price: 89, mrp: 149, weightGrams: 100 },
-      { id: 'v41', label: 'Door/Cupboard Carpenter Visit', price: 99, mrp: 159, weightGrams: 100 },
-      { id: 'v42', label: 'Single-Phase / MCB Electrician Visit', price: 99, mrp: 159, weightGrams: 100 }
-    ],
-    merchantOffers: [
-      { merchantId: 'm26', merchantName: 'Ramesh & Team Local Services', price: 89, area: 'Gandhi Chowk', rating: 4.9 },
-      { merchantId: 'm27', merchantName: 'QuickFix Town Plumbing & Elec', price: 99, area: 'Subhash Nagar', rating: 4.8 }
-    ]
-  },
-  {
-    id: 'prod_10',
-    zoneId: 'adilabad',
-    categoryId: 'loans_realestate',
-    subCategoryBrand: 'DTCP Open Plots, 2BHK Rentals & Express Gold Loan',
-    shopName: 'Direct Owner & Town FinServ Desk',
-    distanceKm: 1.4,
-    rating: 4.9,
-    buyersToday: 19,
-    curiosityTag: '₹0 Brokerage • Free Site Visit',
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&auto=format&fit=crop&q=80',
-    status: 'approved',
-    variants: [
-      { id: 'v50', label: '0.79% p.m. Gold/MSME Loan Doorstep Callback', price: 0, mrp: 0, weightGrams: 0 },
-      { id: 'v51', label: '2BHK Independent Portion (Subhash Nagar) /Mo', price: 8000, mrp: 9000, weightGrams: 0 },
-      { id: 'v52', label: 'DTCP East-Facing 200 Sq.Yd Plot (Free Car Visit)', price: 1420000, mrp: 1490000, weightGrams: 0 }
-    ],
-    merchantOffers: [
-      { merchantId: 'm30', merchantName: 'Direct Plot/House Owner Desk', price: 0, area: 'Mavala Bypass / Subhash Nagar', rating: 4.9 },
-      { merchantId: 'm31', merchantName: 'Town Co-Operative & FinServ', price: 0, area: 'Collectorate Chowk', rating: 4.8 }
-    ]
   }
 ];
 
@@ -390,30 +419,30 @@ export const DECORATION_SERVICE_MODULES = [
 ];
 
 export const INITIAL_RIDERS = [
-  { id: 'dp_1', name: 'Raju Local Rider', vehicleType: '2W', vehicleName: 'Hero Splendor Bike', baseRate: 25, perKm: 5.5, rating: 4.9, trips: 418, badge: 'Lowest 2W Bid', yesVotes: 412, noVotes: 4 },
-  { id: 'dp_2', name: 'Kiran Express 2W', vehicleType: '2W', vehicleName: 'TVS XL Heavy Duty', baseRate: 25, perKm: 6.5, rating: 4.8, trips: 690, badge: '45Kg Bag Capacity', yesVotes: 675, noVotes: 9 },
-  { id: 'dp_3', name: 'Srinivas Cargo Auto', vehicleType: 'HEAVY', vehicleName: 'Piaggio Ape 3W Auto', baseRate: 100, perKm: 20, rating: 4.9, trips: 315, badge: 'Up to 3 Quintals (₹150 Cap)', yesVotes: 310, noVotes: 2 },
-  { id: 'dp_4', name: 'Bablu Mini-Truck', vehicleType: 'HEAVY', vehicleName: 'Tata Ace (Chota Hathi)', baseRate: 140, perKm: 26, rating: 4.8, trips: 540, badge: '1.5 Ton Site Load', yesVotes: 530, noVotes: 6 }
+  { id: 'dp_1', name: 'Raju Local Rider', isPrimeCaptain: true, batteryPct: 92, vehicleType: '2W', vehicleName: 'Hero Splendor Bike', baseRate: 25, perKm: 5.5, rating: 4.9, trips: 418, badge: 'Prime Captain (15s Priority)', yesVotes: 412, noVotes: 4 },
+  { id: 'dp_2', name: 'Kiran Express 2W', isPrimeCaptain: true, batteryPct: 84, vehicleType: '2W', vehicleName: 'TVS XL Heavy Duty', baseRate: 25, perKm: 6.5, rating: 4.8, trips: 690, badge: '45Kg Bag Capacity', yesVotes: 675, noVotes: 9 },
+  { id: 'dp_3', name: 'Srinivas Cargo Auto', isPrimeCaptain: false, batteryPct: 88, vehicleType: 'HEAVY', vehicleName: 'Piaggio Ape 3W Auto', baseRate: 100, perKm: 20, rating: 4.9, trips: 315, badge: 'Up to 3 Quintals (₹150 Cap)', yesVotes: 310, noVotes: 2 },
+  { id: 'dp_4', name: 'Bablu Mini-Truck', isPrimeCaptain: false, batteryPct: 95, vehicleType: 'HEAVY', vehicleName: 'Tata Ace (Chota Hathi)', baseRate: 140, perKm: 26, rating: 4.8, trips: 540, badge: '1.5 Ton Site Load', yesVotes: 530, noVotes: 6 }
 ];
 
 export const DELIVERY_REVIEW_QUESTIONS = [
   {
     id: 'q1',
-    question: 'Did the delivery captain arrive on time?',
-    subText: 'सही समय पर डिलीवरी मिली? • సమయానికి డెలివరీ జరిగిందా?',
-    voiceText: 'Question 1. Did the delivery captain arrive on time? Please tap Yes or No.'
+    question: 'Did the partner arrive on time?',
+    subText: 'सही समय पर सेवा मिली? • సమయానికి వచ్చారా?',
+    voiceText: 'Question 1. Did the partner arrive on time? Please tap Yes or No.'
   },
   {
     id: 'q2',
-    question: 'Were all items delivered safely without damage?',
-    subText: 'क्या सभी दुकानों का सामान सुरक्षित मिला? • వస్తువులన్నీ సురక్షితంగా అందాయా?',
-    voiceText: 'Question 2. Were all items delivered safely without any damage? Please tap Yes or No.'
+    question: 'Was the work or delivery completed safely without damage?',
+    subText: 'क्या काम और सामान सुरक्षित मिला? • పని లేదా వస్తువులు సురక్షితంగా ఉన్నాయా?',
+    voiceText: 'Question 2. Was the work or delivery completed safely without any damage? Please tap Yes or No.'
   },
   {
     id: 'q3',
-    question: 'Was the captain polite and charged zero extra money?',
-    subText: 'क्या राइडर का व्यवहार अच्छा था और ₹0 एक्स्ट्रा लिया? • అదనపు డబ్బు అడగకుండా మర్యాదగా ఉన్నారా?',
-    voiceText: 'Question 3. Was the delivery captain polite and charged zero extra money? Please tap Yes or No.'
+    question: 'Was the partner polite and charged zero extra money outside the app bill?',
+    subText: 'क्या व्यवहार अच्छा था और ₹0 एक्स्ट्रा लिया? • అదనపు డబ్బు అడగకుండా మర్యాదగా ఉన్నారా?',
+    voiceText: 'Question 3. Was the partner polite and charged zero extra money? Please tap Yes or No.'
   }
 ];
 
