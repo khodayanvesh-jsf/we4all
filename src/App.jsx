@@ -224,7 +224,7 @@ function AppContent() {
   const [brightTheme, setBrightTheme] = useState(true);
 
   const [founderLogoUrl, setFounderLogoUrl] = useState(
-    () => localStorage.getItem("we4all_founder_original_photo") || ""
+    () => localStorage.getItem("we4all_founder_original_photo") || "/logo.png"
   );
   const [apkIconUrl, setApkIconUrl] = useState(
     () => localStorage.getItem("we4all_apk_launcher_icon") || ""
