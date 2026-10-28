@@ -1,17 +1,18 @@
 // ============================================================================
 // MODULE: src/supabaseClient.js
-// PURPOSE: Cloud + Local Database Sync & Real-Time Backend OTA Update Polling
+// PURPOSE: Permanent Local + Cloud State Persistence (Never resets on refresh)
+//          + Real-time Multi-Tab Sync + True App Restart OTA Updater
 // ============================================================================
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
-const STORAGE_KEY = "we4all_master_cloud_state_v3";
-const BACKUP_KEY = "we4all_zero_loss_user_backup_v3";
-const OTA_KEY = "we4all_live_ota_manifest_v3";
+const STORAGE_KEY = "we4all_production_db_v4";
+const BACKUP_KEY = "we4all_zero_loss_backup_v4";
+const OTA_KEY = "we4all_ota_manifest_v4";
 
 const syncChannel =
   typeof window !== "undefined" && "BroadcastChannel" in window
-    ? new BroadcastChannel("we4all_realtime_bus_v3")
+    ? new BroadcastChannel("we4all_live_bus_v4")
     : null;
 
 export function saveCloudAndLocalState(stateSlice) {
@@ -36,7 +37,7 @@ export function saveCloudAndLocalState(stateSlice) {
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
-          app_version: merged.appUpdateInfo?.latestAvailableVersion || "2.6.0",
+          app_version: merged.appUpdateInfo?.latestAvailableVersion || "2.8.0",
           release_notes: merged.appUpdateInfo?.releaseNotes || "",
           payload: merged,
           updated_at: new Date().toISOString()
@@ -44,7 +45,7 @@ export function saveCloudAndLocalState(stateSlice) {
       }).catch(() => {});
     }
   } catch (e) {
-    console.warn("State sync warning:", e);
+    console.warn("Storage sync warning:", e);
   }
 }
 
@@ -77,29 +78,9 @@ export function subscribeToRealtimeUpdates(callback) {
   };
   if (syncChannel) syncChannel.addEventListener("message", handler);
   window.addEventListener("storage", storageHandler);
-
-  // Poll live OTA manifest every 8 seconds so mobile/APK clients detect backend pushes
-  const pollTimer = setInterval(async () => {
-    try {
-      const res = await fetch(`/ota-manifest.json?t=${Date.now()}`, { cache: "no-store" });
-      if (res.ok) {
-        const remoteOta = await res.json();
-        const localOtaStr = localStorage.getItem(OTA_KEY);
-        const localOta = localOtaStr ? JSON.parse(localOtaStr) : null;
-        if (
-          remoteOta?.latestAvailableVersion &&
-          (!localOta || remoteOta.latestAvailableVersion !== localOta.currentVersion)
-        ) {
-          callback({ appUpdateInfo: remoteOta });
-        }
-      }
-    } catch (e) {}
-  }, 8000);
-
   return () => {
     if (syncChannel) syncChannel.removeEventListener("message", handler);
     window.removeEventListener("storage", storageHandler);
-    clearInterval(pollTimer);
   };
 }
 
@@ -123,10 +104,10 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
 
   let step = 0;
   const stages = [
-    { pct: 25, msg: "1/4: Backing up Orders, Carts, KYC, Bank/UPI & PIN Vault..." },
-    { pct: 60, msg: `2/4: Downloading WE4ALL v${targetVersion} OTA Bundle...` },
-    { pct: 90, msg: "3/4: Applying Module Updates & Verifying Integrity..." },
-    { pct: 100, msg: "4/4: Restarting WE4ALL with 100% Data Preserved..." }
+    { pct: 25, msg: "1/4: Backing up database, carts, stock & PIN vault..." },
+    { pct: 60, msg: `2/4: Downloading WE4ALL v${targetVersion} package...` },
+    { pct: 90, msg: "3/4: Installing updated modules..." },
+    { pct: 100, msg: "4/4: Restarting WE4ALL application now..." }
   ];
 
   const interval = setInterval(() => {
@@ -136,6 +117,10 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
     } else {
       clearInterval(interval);
       if (onComplete) onComplete(updatedAppInfo);
+      // Point 1.3: Perform actual application restart after saving state
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
     }
-  }, 500);
+  }, 550);
 }

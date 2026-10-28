@@ -2,8 +2,7 @@ import React from "react";
 
 // ============================================================================
 // MODULE: src/modules/RoleFooterNav.jsx
-// PURPOSE: Dedicated 5-Button Bottom Navigation Footer tailored to each role
-//          Visible persistently from login to logout.
+// PURPOSE: Strictly Bound 5-Button Bottom Navigation Footer for Each Role
 // ============================================================================
 export default function RoleFooterNav({
   activePortal,
@@ -15,8 +14,8 @@ export default function RoleFooterNav({
 }) {
   const ROLE_TABS = {
     customer: [
-      { id: "home", icon: "\uD83C\uDFE0", label: "Stores" },
-      { id: "services", icon: "\uD83D\uDD27", label: "Services" },
+      { id: "home", icon: "\uD83C\uDFE0", label: "Stores & Taxi" },
+      { id: "services", icon: "\uD83D\uDD27", label: "1-Hr Services" },
       { id: "carts", icon: "\uD83D\uDED2", label: `Carts (${totalCartCount})` },
       { id: "orders", icon: "\uD83D\uDCE6", label: `Orders (${totalOrdersCount})` },
       { id: "account", icon: "\uD83D\uDC64", label: "Account" }
@@ -44,7 +43,7 @@ export default function RoleFooterNav({
     ],
     rider: [
       { id: "home", icon: "\uD83D\uDEF5", label: `Radar (${totalOrdersCount})` },
-      { id: "map", icon: "\uD83D\uDDFA\uFE0F", label: "3-Pt Live Map" },
+      { id: "map", icon: "\uD83D\uDDFA\uFE0F", label: "Live Route" },
       { id: "batching", icon: "\u26A1", label: "Smart Batch" },
       { id: "orders", icon: "\u2B50", label: "Scorecard" },
       { id: "account", icon: "\uD83D\uDC64", label: "Account" }
@@ -66,6 +65,7 @@ export default function RoleFooterNav({
         return (
           <button
             key={tab.id}
+            type="button"
             onClick={() => setFooterTab(tab.id)}
             className={`flex flex-col items-center justify-center py-1 rounded-xl cursor-pointer transition ${
               isActive

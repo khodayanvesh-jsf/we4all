@@ -22,6 +22,7 @@ import UpiPaymentModal from "./modules/UpiPaymentModal";
 import OrdersHistoryAndInvoice from "./modules/OrdersHistoryAndInvoice";
 import OwnerAccountProfile from "./modules/OwnerAccountProfile";
 import FounderAdminSuite from "./modules/FounderAdminSuite";
+import LiveRouteMap from "./modules/LiveRouteMap";
 import {
   saveCloudAndLocalState,
   loadCloudAndLocalState,
@@ -30,16 +31,16 @@ import {
 } from "./supabaseClient";
 
 // ============================================================================
-// FOUNDER ORIGINAL PHOTO EMBLEM (ZERO LEAF EMOJIS)
+// POINT 28: READ-ONLY FOUNDER LOGO EMBLEM FOR USERS (ONLY ADMIN CAN CHANGE IT)
 // ============================================================================
-function FounderLogoBadge({ logoUrl, onUploadLogo }) {
+function FounderLogoBadge({ logoUrl }) {
   return (
-    <label
-      title="Click to upload original Founder photo"
-      className="relative w-11 h-11 rounded-full border-2 border-amber-400 ring-2 ring-emerald-500/50 bg-gradient-to-b from-[#07261e] to-[#04120e] flex flex-col items-center justify-center overflow-hidden shadow-lg cursor-pointer shrink-0"
+    <div
+      title="WE4ALL Official Emblem (Managed by Founder Admin)"
+      className="relative w-10 h-10 rounded-full border-2 border-amber-400 ring-2 ring-emerald-500/50 bg-gradient-to-b from-[#07261e] to-[#04120e] flex flex-col items-center justify-center overflow-hidden shadow-lg shrink-0 select-none"
     >
       {logoUrl ? (
-        <img src={logoUrl} alt="Khoday Anvesh" className="w-full h-full object-cover" />
+        <img src={logoUrl} alt="WE4ALL" className="w-full h-full object-cover" />
       ) : (
         <div className="flex flex-col items-center justify-center text-center leading-none">
           <span className="text-[7px] font-black text-amber-400">WE4ALL</span>
@@ -47,13 +48,47 @@ function FounderLogoBadge({ logoUrl, onUploadLogo }) {
           <span className="text-[5px] font-bold text-white">ANVESH</span>
         </div>
       )}
-      <input type="file" accept="image/*" onChange={onUploadLogo} className="hidden" />
-    </label>
+    </div>
   );
 }
 
 // ============================================================================
-// AUTO-RESPONSIVE NATIVE SMARTPHONE SHELL + OTA UPDATE NOTIFICATION BANNER
+// POINT 11: STRICT WEIGHT & DISTANCE DELIVERY LOGISTICS CALCULATOR
+//           Distance measured from Merchant 1 -> Additional Merchants -> Consumer
+// ============================================================================
+function calculateOrderLogistics(items = [], consumerDistanceKm = 1.8, heavyFee = 0, laborFee = 0) {
+  const totalWeightGrams = items.reduce(
+    (sum, it) => sum + (it.weightGrams || 1000) * (it.qty || 1),
+    0
+  );
+  const uniqueMerchantsCount = new Set(items.map((i) => i.merchantName)).size || 1;
+  const totalRouteKm = Number(
+    (consumerDistanceKm + Math.max(0, uniqueMerchantsCount - 1) * 1.1).toFixed(1)
+  );
+
+  let vehicle = "2W Bike Captain (Up to 45kg)";
+  let baseDelivery = 25;
+
+  if (totalWeightGrams <= 45000) {
+    vehicle = "2W Bike Captain (Up to 45kg)";
+    baseDelivery = 25;
+    if (totalRouteKm > 2.5) {
+      baseDelivery += Math.ceil((totalRouteKm - 2.5) * 5.5);
+    }
+  } else if (totalWeightGrams <= 300000) {
+    vehicle = "3W Cargo Auto (Up to 3 Quintals / 300kg)";
+    baseDelivery = 150 + Math.ceil(totalRouteKm * 18);
+  } else {
+    vehicle = "Merchant Heavy Transport / Mini-Truck (>300kg)";
+    baseDelivery = 350 + Math.ceil(totalRouteKm * 25);
+  }
+
+  const deliveryFee = baseDelivery + Number(heavyFee || 0) + Number(laborFee || 0);
+  return { totalWeightGrams, totalRouteKm, vehicle, deliveryFee };
+}
+
+// ============================================================================
+// AUTO-RESPONSIVE NATIVE SMARTPHONE SHELL
 // ============================================================================
 function MobilePhoneShell({
   title,
@@ -65,12 +100,14 @@ function MobilePhoneShell({
   totalOrdersCount,
   floatingLiveOrder,
   onOpenLiveOrderModal,
-  brightTheme = true,
+  brightTheme,
   setBrightTheme,
   lang,
   setLang,
   appUpdateInfo,
   onTriggerOtaUpdate,
+  personalShoppingFromPartner,
+  onReturnToPartnerDesk,
   showFooter = true,
   children
 }) {
@@ -82,7 +119,7 @@ function MobilePhoneShell({
           : "bg-[#071118] text-white sm:border-slate-800"
       }`}
     >
-      {/* Top Status & All-India 12-Language Bar */}
+      {/* Top Status & 12-Language Bar */}
       <div
         className={`px-3 py-2 flex justify-between items-center text-[11px] border-b shrink-0 ${
           brightTheme
@@ -106,34 +143,46 @@ function MobilePhoneShell({
               </option>
             ))}
           </select>
-          <button
-            onClick={() => setBrightTheme(!brightTheme)}
-            className="bg-slate-800 text-white px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer"
-          >
-            {brightTheme ? "\u2600\uFE0F" : "\uD83C\uDF19"}
-          </button>
           <span className="bg-emerald-900/80 border border-emerald-500/40 text-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-semibold truncate max-w-[80px]">
             {badge}
           </span>
         </div>
       </div>
 
-      {/* LIVE OTA APP UPDATE NOTIFICATION BANNER ON MOBILES (PAGE 96 REQUIREMENT) */}
-      {appUpdateInfo?.updateAvailable && (
-        <div className="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 text-slate-950 px-3 py-1.5 flex items-center justify-between gap-2 text-[10px] font-black shadow shrink-0">
-          <div className="truncate">
-            \uD83D\uDCF2 Update v{appUpdateInfo.latestAvailableVersion} Available! (Zero Data Loss)
-          </div>
+      {/* Point 25: Return Banner when a Partner is shopping as a Consumer */}
+      {personalShoppingFromPartner && (
+        <div className="bg-indigo-600 text-white px-3 py-1.5 flex justify-between items-center text-[10px] font-black shrink-0">
+          <span>
+            Shopping Mode (Partner: {personalShoppingFromPartner.toUpperCase()})
+          </span>
           <button
-            onClick={onTriggerOtaUpdate}
-            className="bg-slate-950 text-amber-300 px-2.5 py-1 rounded-lg text-[9px] font-black shrink-0 cursor-pointer"
+            type="button"
+            onClick={onReturnToPartnerDesk}
+            className="bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-lg font-black cursor-pointer"
           >
-            Update & Restart
+            &larr; Return to Partner Desk
           </button>
         </div>
       )}
 
-      {/* Scrollable Mobile Viewport */}
+      {/* OTA Update Notification Banner */}
+      {appUpdateInfo?.updateAvailable &&
+        appUpdateInfo?.currentVersion !== appUpdateInfo?.latestAvailableVersion && (
+          <div className="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 text-slate-950 px-3 py-1.5 flex items-center justify-between gap-2 text-[10px] font-black shadow shrink-0">
+            <div className="truncate">
+              \uD83D\uDCF2 WE4ALL v{appUpdateInfo.latestAvailableVersion} Update Ready!
+            </div>
+            <button
+              type="button"
+              onClick={onTriggerOtaUpdate}
+              className="bg-slate-950 text-amber-300 px-2.5 py-1 rounded-lg text-[9px] font-black shrink-0 cursor-pointer"
+            >
+              Update & Restart
+            </button>
+          </div>
+        )}
+
+      {/* Scrollable Viewport */}
       <div
         className={`flex-1 overflow-y-auto p-3 space-y-3 pb-24 ${
           brightTheme
@@ -148,6 +197,7 @@ function MobilePhoneShell({
       {floatingLiveOrder && showFooter && (
         <div className="absolute bottom-14 left-3 right-3 z-30">
           <button
+            type="button"
             onClick={onOpenLiveOrderModal}
             className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-2.5 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-center justify-between cursor-pointer"
           >
@@ -156,7 +206,7 @@ function MobilePhoneShell({
                 LIVE ORDER #{floatingLiveOrder.id}: {floatingLiveOrder.status.replace(/_/g, " ")}
               </p>
               <p className="text-[9px] font-bold text-amber-200">
-                Captain: {floatingLiveOrder.riderName} | Tap for Live Map & OTP
+                Captain: {floatingLiveOrder.riderName} | Tap for Animated Route Map & OTP
               </p>
             </div>
             <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-1 rounded-xl">
@@ -190,16 +240,50 @@ function AppContent() {
     typeof window !== "undefined" && window.location.search.includes("admin=true");
 
   const [viewMode, setViewMode] = useState(isDirectAdminUrl ? "founder_web" : "mobile_app");
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminLoginForm, setAdminLoginForm] = useState({ username: "", password: "" });
+  const [adminLoginError, setAdminLoginError] = useState("");
   const [lang, setLang] = useState("EN");
   const t = getLangText(lang);
-  const [brightTheme, setBrightTheme] = useState(true);
 
-  const [founderLogoUrl, setFounderLogoUrl] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("we4all_founder_original_photo") || "";
+  // Point 24: Bind Dark / Bright Theme automatically to Phone OS Settings
+  const [brightTheme, setBrightTheme] = useState(() => {
+    if (typeof window !== "undefined" && window.matchMedia) {
+      return !window.matchMedia("(prefers-color-scheme: dark)").matches;
     }
-    return "";
+    return true;
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e) => setBrightTheme(!e.matches);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, []);
+
+  // Point 26: Intercept Accidental Back Button Press & Confirm Exit/Logout
+  const [exitConfirmModalOpen, setExitConfirmModalOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.history.pushState({ we4allGuard: true }, "");
+    const handlePopState = () => {
+      window.history.pushState({ we4allGuard: true }, "");
+      setExitConfirmModalOpen(true);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // Point 28 & 29: Founder Logo & APK Icon (Editable ONLY from Founder Admin Suite)
+  const [founderLogoUrl, setFounderLogoUrl] = useState(
+    () => localStorage.getItem("we4all_founder_original_photo") || ""
+  );
+  const [apkIconUrl, setApkIconUrl] = useState(
+    () => localStorage.getItem("we4all_apk_launcher_icon") || ""
+  );
 
   const handleUploadFounderPhoto = (e) => {
     const file = e.target.files?.[0];
@@ -207,37 +291,76 @@ function AppContent() {
     const reader = new FileReader();
     reader.onload = () => {
       setFounderLogoUrl(reader.result);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("we4all_founder_original_photo", reader.result);
-      }
-      triggerToast("Original Founder Photo saved to WE4ALL Emblem!");
+      localStorage.setItem("we4all_founder_original_photo", reader.result);
+      triggerToast("Official WE4ALL App Logo updated by Founder Admin!");
     };
     reader.readAsDataURL(file);
   };
 
-  // ==========================================================================
-  // ONBOARDING, PERMISSIONS GATEWAY & 3-STEP REGISTRATION / LOGIN VAULT STATE
-  // ==========================================================================
-  // Starts at "permissions" -> "auth" -> "app" so every user sees Login & Registration!
-  const [onboardingStep, setOnboardingStep] = useState("permissions");
-  const [authTab, setAuthTab] = useState("login"); // "login" | "register" | "pin_biometric"
-  const [regStep, setRegStep] = useState(1); // 1: Phone OTP, 2: Identity/KYC/Bank/UPI, 3: Password & PIN
-  const [selectedRole, setSelectedRole] = useState(savedCloud?.activePortal || "customer");
-  const [activePortal, setActivePortal] = useState(savedCloud?.activePortal || "customer");
+  const handleUploadApkIcon = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setApkIconUrl(reader.result);
+      localStorage.setItem("we4all_apk_launcher_icon", reader.result);
+      triggerToast("APK Launcher Icon updated by Founder Admin!");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Point 1.1 & Point 27: Permissions Gateway & Device-Bound PIN/Biometric Login
+  const [permissionsState, setPermissionsState] = useState(() => {
+    const saved = localStorage.getItem("we4all_permissions_granted_v4");
+    return saved
+      ? JSON.parse(saved)
+      : { location: false, notifications: false, camera: false, storage: false };
+  });
+  const allPermissionsGranted =
+    permissionsState.location &&
+    permissionsState.notifications &&
+    permissionsState.camera &&
+    permissionsState.storage;
+
+  const [deviceBoundUser, setDeviceBoundUser] = useState(() => {
+    const raw = localStorage.getItem("we4all_device_bound_user_v4");
+    return raw ? JSON.parse(raw) : null;
+  });
+
+  const [onboardingStep, setOnboardingStep] = useState(() => {
+    if (!localStorage.getItem("we4all_permissions_granted_v4")) return "permissions";
+    return "auth";
+  });
+
+  // Point 27: If device already has a registered/logged-in user, default to PIN/Biometric!
+  const [authTab, setAuthTab] = useState(() =>
+    localStorage.getItem("we4all_device_bound_user_v4") ? "pin_biometric" : "register"
+  );
+  const [changedPhoneOtpMode, setChangedPhoneOtpMode] = useState(false);
+  const [changedPhoneForm, setChangedPhoneForm] = useState({
+    phone: "",
+    generatedOtp: "",
+    otpInput: ""
+  });
+
+  const [regStep, setRegStep] = useState(1);
+  const [selectedRole, setSelectedRole] = useState(
+    deviceBoundUser?.role || savedCloud?.activePortal || "customer"
+  );
+  const [activePortal, setActivePortal] = useState(
+    deviceBoundUser?.role || savedCloud?.activePortal || "customer"
+  );
+  const [personalShoppingFromPartner, setPersonalShoppingFromPartner] = useState(null);
   const [footerTab, setFooterTab] = useState("home");
   const [authError, setAuthError] = useState("");
 
-  // OTA Update Engine State
+  // OTA Update Engine
   const [appUpdateInfo, setAppUpdateInfo] = useState(
-    savedCloud?.appUpdateInfo || {
-      ...INITIAL_APP_UPDATE_INFO,
-      apkDownloadUrl: "https://we-4-all-super-app.vercel.app/WE4ALL.apk"
-    }
+    savedCloud?.appUpdateInfo || INITIAL_APP_UPDATE_INFO
   );
   const [otaProgress, setOtaProgress] = useState(null);
 
   const handleRunOtaUpdate = () => {
-    triggerToast(`Starting OTA Update to WE4ALL v${appUpdateInfo.latestAvailableVersion}...`);
     performZeroLossOtaUpdate(
       appUpdateInfo.latestAvailableVersion,
       appUpdateInfo.releaseNotes,
@@ -252,44 +375,44 @@ function AppContent() {
     );
   };
 
-  // Account & Security State
+  // Account & Security State (Point 23: Clean Empty Registered Users DB by Default)
   const [accountSecurity, setAccountSecurity] = useState(
     savedCloud?.accountSecurity || {
       pinEnabled: true,
       biometricEnabled: true,
-      fastPin: "1234"
+      fastPin: deviceBoundUser?.fastPin || "1234"
     }
   );
   const [pinUnlockInput, setPinUnlockInput] = useState("");
-
   const [currentUser, setCurrentUser] = useState(
-    savedCloud?.currentUser || {
-      id: 1,
-      fullName: "Khoday Anvesh",
-      username: "anvesh_k",
-      phone: "9848011223",
-      password: "Password1",
-      govId: "[Verified]",
-      role: "customer",
-      bankName: "State Bank of India (Adilabad Main)",
-      accountNumber: "30984451209",
-      ifscCode: "SBIN0000801",
-      upiId: "khodayanvesh@ybl",
-      fastPin: "1234"
-    }
+    deviceBoundUser ||
+      savedCloud?.currentUser || {
+        id: 1,
+        fullName: "WE4ALL User",
+        username: "we4all_user",
+        phone: "",
+        role: "customer",
+        bankName: "State Bank of India",
+        accountNumber: "",
+        ifscCode: "SBIN0000801",
+        upiId: "",
+        fastPin: "1234"
+      }
   );
-
   const [registeredUsers, setRegisteredUsers] = useState(
-    savedCloud?.registeredUsers || [currentUser]
+    savedCloud?.registeredUsers || []
   );
 
+  // Point 23: Empty Login Form (No Pre-Existing Passwords)
   const [loginForm, setLoginForm] = useState({
-    usernameOrPhone: "9848011223",
-    password: "Password1"
+    usernameOrPhone: "",
+    password: ""
   });
 
   const [regForm, setRegForm] = useState({
     role: "customer",
+    categoryId: "daily_needs",
+    specialization: "",
     phone: "",
     generatedOtp: "",
     otpInput: "",
@@ -303,8 +426,7 @@ function AppContent() {
     ifscCode: "SBIN0000801",
     password: "",
     confirmPassword: "",
-    fastPin: "1234",
-    eSignAccepted: true
+    fastPin: ""
   });
 
   // Payment & Toast State
@@ -312,13 +434,7 @@ function AppContent() {
   const [isPrimeCustomer, setIsPrimeCustomer] = useState(true);
   const [mobileToast, setMobileToast] = useState("");
   const [notificationBellOpen, setNotificationBellOpen] = useState(false);
-  const [notificationsList, setNotificationsList] = useState([
-    {
-      id: 1,
-      text: "WE4ALL Multi-Portal Cloud Sync & OTA Auto-Update Active.",
-      time: "Just now"
-    }
-  ]);
+  const [notificationsList, setNotificationsList] = useState([]);
 
   const triggerToast = (msg) => {
     setMobileToast(msg);
@@ -326,7 +442,7 @@ function AppContent() {
     setTimeout(() => setMobileToast(""), 3800);
   };
 
-  // Master Data State
+  // Master Data Registries
   const [selectedZoneFilter, setSelectedZoneFilter] = useState("ALL_INDIA");
   const [killedCategoriesByZone, setKilledCategoriesByZone] = useState({});
   const [geoAds, setGeoAds] = useState(savedCloud?.geoAds || INITIAL_GEO_ADS);
@@ -341,29 +457,15 @@ function AppContent() {
   const [functionHalls, setFunctionHalls] = useState(
     savedCloud?.functionHalls || INITIAL_FUNCTION_HALLS
   );
-  const [riders] = useState(INITIAL_RIDERS);
+  const [riders, setRiders] = useState(savedCloud?.riders || INITIAL_RIDERS);
 
-  const [pendingMerchants, setPendingMerchants] = useState([
-    {
-      id: 901,
-      businessName: "Balaji Steel & Cement Traders",
-      owner: "Mahesh",
-      phone: "9848099111",
-      categoryId: "construction"
-    }
-  ]);
-  const [pendingSubCategories, setPendingSubCategories] = useState([
-    {
-      id: 902,
-      categoryId: "daily_needs",
-      subCategoryBrand: "Amul Taaza Homogenised Milk",
-      shopName: "Adilabad Dairy Parlour",
-      distanceKm: 1.1,
-      rating: 4.8,
-      variants: [{ id: "v1", label: "500ml Pack", price: 28, mrp: 30, weightGrams: 500 }]
-    }
-  ]);
-  const [rejectedItems, setRejectedItems] = useState([]);
+  const [pendingMerchants, setPendingMerchants] = useState(
+    savedCloud?.pendingMerchants || []
+  );
+  const [pendingSubCategories, setPendingSubCategories] = useState(
+    savedCloud?.pendingSubCategories || []
+  );
+  const [rejectedItems, setRejectedItems] = useState(savedCloud?.rejectedItems || []);
   const [merchantCommissionPct, setMerchantCommissionPct] = useState(0);
   const [consumerFeePct, setConsumerFeePct] = useState(0);
   const [monetizationConfig, setMonetizationConfig] = useState(
@@ -382,7 +484,7 @@ function AppContent() {
     { id: 5, role: "rider" }
   ]);
 
-  // Address Book with Consumer OTP Verification
+  // Consumer Address Book with OTP Verification
   const [addressBook, setAddressBook] = useState(
     savedCloud?.addressBook || [
       {
@@ -425,56 +527,156 @@ function AppContent() {
   const [serviceFilterDate, setServiceFilterDate] = useState("2026-10-28");
   const [serviceFilterSlot, setServiceFilterSlot] = useState("10:00 AM - 11:00 AM");
 
-  // Strictly Isolated Carts per Category & Module
-  const [categoryCarts, setCategoryCarts] = useState(
-    savedCloud?.categoryCarts || {
-      daily_needs: [],
-      veg_fruits: [],
-      non_veg: [],
-      construction: [],
-      medicines: []
-    }
-  );
+  // ==========================================================================
+  // POINT 3: SINGLE UNIFIED MERCHANT PRODUCT CART (`merchantCart`)
+  // ==========================================================================
+  const [merchantCart, setMerchantCart] = useState(savedCloud?.merchantCart || []);
   const [serviceCart, setServiceCart] = useState(savedCloud?.serviceCart || []);
   const [decorCart, setDecorCart] = useState(savedCloud?.decorCart || []);
   const [taxiCart, setTaxiCart] = useState(savedCloud?.taxiCart || []);
   const [activeCartViewTab, setActiveCartViewTab] = useState("merchant_cart");
 
-  // Orders & Service Bookings State
-  const [orders, setOrders] = useState(
-    savedCloud?.orders || [
-      {
-        id: "VFL-1024",
-        dateStr: "2026-10-28",
-        createdAt: "01:30 PM",
-        periodTag: "TODAY",
-        categoryId: "daily_needs",
-        categoryName: "Groceries & Kirana",
-        customerName: "Khoday Anvesh",
-        address: "Subhash Nagar, Adilabad",
-        distanceKm: 1.8,
-        shopName: "Sri Laxmi Supermart",
-        items: [{ name: "Aashirvaad Select Sharbati Atta (5 kg Pack)", qty: 1, price: 245 }],
-        itemsTotal: 245,
-        deliveryFee: 25,
-        gst: 13.5,
-        grandTotal: 283.5,
-        paidViaApp: "PhonePe",
-        vehicle: "2W Bike Captain",
-        riderName: "Raju Local Rider",
-        status: "PAID_PACKING_STARTED",
-        secretOtp: "4829"
-      }
-    ]
-  );
-  const [activeOrderId, setActiveOrderId] = useState("VFL-1024");
+  // ==========================================================================
+  // POINT 4 & 12: COMPLETE TAXI, 3W AUTO & P2P PARCEL DROP-IN / DROP-OUT STATE
+  // ==========================================================================
+  const [taxiBookingForm, setTaxiBookingForm] = useState({
+    mode: "P2P_PARCEL",
+    pickupPin: "Subhash Nagar, Adilabad (19.6641, 78.5320)",
+    dropPin: "Collectorate Chowk, Adilabad (19.6710, 78.5390)",
+    distanceKm: 2.8,
+    parcelWeightKg: 5,
+    receiverName: "",
+    receiverPhone: "",
+    parcelContents: "Documents / Household Parcel"
+  });
+
+  // ==========================================================================
+  // POINT 23: CLEAN EMPTY ORDERS QUEUE BY DEFAULT
+  // ==========================================================================
+  const [orders, setOrders] = useState(savedCloud?.orders || []);
+  const [activeOrderId, setActiveOrderId] = useState(null);
   const [liveOrderDrawerOpen, setLiveOrderDrawerOpen] = useState(false);
   const [serviceBookings, setServiceBookings] = useState(savedCloud?.serviceBookings || []);
 
-  // Event & Reverse-Bidding State
+  // ==========================================================================
+  // POINT 8, 9 & 10: 3-MINUTE (180s) MULTI-MERCHANT AUTO-FAILOVER ENGINE
+  // ==========================================================================
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setOrders((prevOrders) =>
+        prevOrders.map((ord) => {
+          if (ord.status !== "AWAITING_MERCHANT_APPROVAL") return ord;
+          let changed = false;
+          const updatedItems = (ord.items || []).map((it) => {
+            if (it.approvalStatus === "APPROVED") return it;
+            if (now >= (it.approvalDeadline || 0)) {
+              const prod = products.find((p) => p.id === it.productId);
+              const offers = prod?.merchantOffers || [];
+              const nextIdx = ((it.offerIndex || 0) + 1) % Math.max(offers.length, 1);
+              const nextOffer = offers[nextIdx] || {
+                merchantId: 2,
+                merchantName: "Balaji Wholesale Kirana",
+                price: it.price
+              };
+              changed = true;
+              return {
+                ...it,
+                offerIndex: nextIdx,
+                merchantId: nextOffer.merchantId,
+                merchantName: nextOffer.merchantName,
+                approvalStatus: "APPROVED",
+                failoverNote: `Auto-switched to ${nextOffer.merchantName} after 3-min timeout`
+              };
+            }
+            return it;
+          });
+          if (!changed) return ord;
+          const allApproved = updatedItems.every((i) => i.approvalStatus === "APPROVED");
+          return {
+            ...ord,
+            items: updatedItems,
+            status: allApproved
+              ? "MERCHANT_APPROVED_AWAITING_PAYMENT"
+              : "AWAITING_MERCHANT_APPROVAL"
+          };
+        })
+      );
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [products]);
+
+  const handleForceFailoverMerchant = (orderId, itemIdx) => {
+    setOrders(
+      orders.map((ord) => {
+        if (ord.id !== orderId) return ord;
+        const updatedItems = ord.items.map((it, idx) => {
+          if (idx !== itemIdx) return it;
+          const prod = products.find((p) => p.id === it.productId);
+          const offers = prod?.merchantOffers || [];
+          const nextIdx = ((it.offerIndex || 0) + 1) % Math.max(offers.length, 1);
+          const nextOffer = offers[nextIdx] || {
+            merchantId: 2,
+            merchantName: "Balaji Wholesale Kirana",
+            price: it.price
+          };
+          return {
+            ...it,
+            offerIndex: nextIdx,
+            merchantId: nextOffer.merchantId,
+            merchantName: nextOffer.merchantName,
+            approvalStatus: "APPROVED",
+            failoverNote: `Switched to ${nextOffer.merchantName} (3m Timeout)`
+          };
+        });
+        const allApproved = updatedItems.every((i) => i.approvalStatus === "APPROVED");
+        return {
+          ...ord,
+          items: updatedItems,
+          status: allApproved
+            ? "MERCHANT_APPROVED_AWAITING_PAYMENT"
+            : "AWAITING_MERCHANT_APPROVAL"
+        };
+      })
+    );
+    triggerToast(
+      "3-Min Timeout: Item automatically reassigned to next available Merchant & Approved!"
+    );
+  };
+
+  // Point 14 & 15: Merchant Add Brand / Stock Form State
+  const [newBrandForm, setNewBrandForm] = useState({
+    categoryId: "daily_needs",
+    subCategoryBrand: "",
+    variantLabel: "1 kg Pack",
+    price: "",
+    mrp: "",
+    weightGrams: 1000
+  });
+  const [merchantHeavyFeeInput, setMerchantHeavyFeeInput] = useState(0);
+  const [merchantLaborFeeInput, setMerchantLaborFeeInput] = useState(0);
+
+  // Point 19: Service Provider New Offering & On-Site Spare Parts Bill Builder State
+  const [newServiceForm, setNewServiceForm] = useState({
+    serviceCategoryId: "srv_plumbing",
+    providerName: "",
+    specialization: "",
+    visitingFee: 99,
+    hourlyRate: 150
+  });
+  const [sparePartsForm, setSparePartsForm] = useState({
+    extraHours: 0,
+    sparePartsDesc: "",
+    sparePartsCost: 0,
+    repairLaborFee: 0
+  });
+  const [providerInsideGeoFence, setProviderInsideGeoFence] = useState(true);
+  const [providerHappyCodeInput, setProviderHappyCodeInput] = useState("");
+
+  // Point 20: Decorator Reverse-Bidding, Escrow & Portfolio State
   const [eventDate, setEventDate] = useState("2026-11-05");
   const [decorStep, setDecorStep] = useState("cart");
-  const [decorBids] = useState([
+  const [decorBids, setDecorBids] = useState([
     {
       id: "bid_1",
       maskedVendor: "Decorator Partner #A",
@@ -488,17 +690,21 @@ function AppContent() {
       features: "Full Stage Setup + Grand Welcome Arch"
     }
   ]);
+  const [myBidAmount, setMyBidAmount] = useState("");
+  const [myBidFeatures, setMyBidFeatures] = useState("");
+  const [newPortfolioForm, setNewPortfolioForm] = useState({
+    name: "",
+    expert: ""
+  });
   const [hallScheduleDateInput, setHallScheduleDateInput] = useState("2026-11-05");
 
-  // Service Provider Geo-Fence & Happy Code State
-  const [providerInsideGeoFence, setProviderInsideGeoFence] = useState(true);
-  const [providerHappyCodeInput, setProviderHappyCodeInput] = useState("");
-
-  // Captain Doorstep OTP & Trilingual Voice Review Gate State
+  // Point 21: Captain Smart Batching & Competitive Per-KM Rate Slider State
+  const [smartBatchingEnabled, setSmartBatchingEnabled] = useState(true);
+  const [captainPerKmRate, setCaptainPerKmRate] = useState(5.5);
   const [captainOtpInput, setCaptainOtpInput] = useState("");
   const [reviewAnswers, setReviewAnswers] = useState({});
 
-  // Sync changes to Cloud & LocalStorage automatically
+  // Sync all data permanently
   useEffect(() => {
     saveCloudAndLocalState({
       activePortal,
@@ -513,9 +719,13 @@ function AppContent() {
       registeredUsers,
       products,
       functionHalls,
+      riders,
+      pendingMerchants,
+      pendingSubCategories,
+      rejectedItems,
       monetizationConfig,
       addressBook,
-      categoryCarts,
+      merchantCart,
       serviceCart,
       decorCart,
       taxiCart,
@@ -535,9 +745,13 @@ function AppContent() {
     registeredUsers,
     products,
     functionHalls,
+    riders,
+    pendingMerchants,
+    pendingSubCategories,
+    rejectedItems,
     monetizationConfig,
     addressBook,
-    categoryCarts,
+    merchantCart,
     serviceCart,
     decorCart,
     taxiCart,
@@ -545,23 +759,23 @@ function AppContent() {
     serviceBookings
   ]);
 
-  // Listen for real-time cross-tab / backend OTA updates
   useEffect(() => {
     return subscribeToRealtimeUpdates((remoteState) => {
       if (remoteState.orders) setOrders(remoteState.orders);
       if (remoteState.serviceBookings) setServiceBookings(remoteState.serviceBookings);
-      if (remoteState.functionHalls) setFunctionHalls(remoteState.functionHalls);
+      if (remoteState.products) setProducts(remoteState.products);
+      if (remoteState.merchants) setMerchants(remoteState.merchants);
+      if (remoteState.serviceProviders) setServiceProviders(remoteState.serviceProviders);
       if (remoteState.appUpdateInfo) setAppUpdateInfo(remoteState.appUpdateInfo);
     });
   }, []);
 
-  const currentCategoryCart = categoryCarts[selectedCategory] || [];
-  const allMerchantCartItemsCount = Object.values(categoryCarts).reduce(
-    (sum, arr) => sum + arr.reduce((s, i) => s + i.qty, 0),
-    0
-  );
   const totalCartCount =
-    allMerchantCartItemsCount + serviceCart.length + decorCart.length + taxiCart.length;
+    merchantCart.reduce((s, i) => s + i.qty, 0) +
+    serviceCart.length +
+    decorCart.length +
+    taxiCart.length;
+
   const activeOrder =
     orders.find((o) => o.id === activeOrderId && !o.status.includes("CANCELLED")) ||
     orders[0] ||
@@ -577,7 +791,8 @@ function AppContent() {
               merchantId: 1,
               merchantName: product.shopName,
               price: product.variants[0]?.price || 100,
-              area: "Adilabad"
+              area: "Adilabad",
+              distanceKm: product.distanceKm || 1.2
             }
           ];
     const chosenId = selectedMerchantByProduct[product.id];
@@ -585,107 +800,125 @@ function AppContent() {
     return { offers, bestOffer: offers[0], activeOffer };
   };
 
-  const handleAddToProductCart = (product) => {
+  // Point 3: Add any Merchant Product into the Single Unified Merchant Cart
+  const handleAddToUnifiedMerchantCart = (product) => {
     const chosenVarId = selectedVariantMap[product.id] || product.variants[0].id;
     const variant =
       product.variants.find((v) => v.id === chosenVarId) || product.variants[0];
-    const { activeOffer } = getProductBestOffer(product);
-
-    const packingOrder = orders.find(
-      (o) => o.categoryId === product.categoryId && o.status === "PAID_PACKING_STARTED"
+    const { activeOffer, offers } = getProductBestOffer(product);
+    const offerIndex = Math.max(
+      0,
+      offers.findIndex((o) => o.merchantId === activeOffer.merchantId)
     );
-    if (isPrimeCustomer && packingOrder) {
-      const updatedOrders = orders.map((o) => {
-        if (o.id !== packingOrder.id) return o;
-        const nextItems = [
-          ...o.items,
-          {
-            name: `${product.subCategoryBrand} (${variant.label}) [Prime Merged +Rs.5]`,
-            qty: 1,
-            price: variant.price + 5
-          }
-        ];
-        const nextSubtotal = o.itemsTotal + variant.price + 5;
-        return {
-          ...o,
-          items: nextItems,
-          itemsTotal: nextSubtotal,
-          grandTotal: Number((nextSubtotal + o.deliveryFee + o.gst).toFixed(2))
-        };
-      });
-      setOrders(updatedOrders);
-      triggerToast(
-        `Prime Order Merge (+Rs.5): Added ${product.subCategoryBrand} into active packing order #${packingOrder.id}!`
-      );
-      return;
-    }
 
-    const currentCart = categoryCarts[product.categoryId] || [];
-    const existing = currentCart.find(
-      (i) => i.productId === product.id && i.variantId === variant.id
+    const existing = merchantCart.find(
+      (i) =>
+        i.productId === product.id &&
+        i.variantId === variant.id &&
+        i.merchantId === activeOffer.merchantId
     );
     const updated = existing
-      ? currentCart.map((i) =>
-          i.productId === product.id && i.variantId === variant.id
+      ? merchantCart.map((i) =>
+          i.productId === product.id &&
+          i.variantId === variant.id &&
+          i.merchantId === activeOffer.merchantId
             ? { ...i, qty: i.qty + 1 }
             : i
         )
       : [
-          ...currentCart,
+          ...merchantCart,
           {
             productId: product.id,
+            categoryId: product.categoryId,
             variantId: variant.id,
             name: `${product.subCategoryBrand} (${variant.label})`,
-            shopName: activeOffer.merchantName || product.shopName,
+            merchantId: activeOffer.merchantId,
+            merchantName: activeOffer.merchantName || product.shopName,
+            offerIndex,
             price: activeOffer.price || variant.price,
-            weightGrams: variant.weightGrams,
+            weightGrams: variant.weightGrams || 1000,
             qty: 1
           }
         ];
-    setCategoryCarts({ ...categoryCarts, [product.categoryId]: updated });
-    triggerToast(`Added ${product.subCategoryBrand} from ${activeOffer.merchantName}`);
+    setMerchantCart(updated);
+    triggerToast(
+      `Added ${product.subCategoryBrand} (${activeOffer.merchantName}) to Unified Merchant Cart!`
+    );
+  };
+
+  // Point 8 & 9: Submit Unified Merchant Cart for Pre-Payment Merchant Approval (3-Min Timer)
+  const handlePlaceOrderForMerchantApproval = () => {
+    if (merchantCart.length === 0) return;
+    const itemsTotal = merchantCart.reduce((s, i) => s + i.price * i.qty, 0);
+    const { totalWeightGrams, totalRouteKm, vehicle, deliveryFee } =
+      calculateOrderLogistics(merchantCart, activeAddressObj.distanceKm, 0, 0);
+    const silentFee = Number(monetizationConfig.globalPlatformFee || 0);
+    const gst = Number(((itemsTotal + deliveryFee + silentFee) * 0.05).toFixed(2));
+    const grandTotal = Number((itemsTotal + deliveryFee + silentFee + gst).toFixed(2));
+
+    const newOrder = {
+      id: `VFL-${Math.floor(1000 + Math.random() * 9000)}`,
+      dateStr: "2026-10-28",
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      periodTag: "TODAY",
+      customerName: currentUser.fullName,
+      address: activeAddressObj.fullAddress,
+      distanceKm: totalRouteKm,
+      totalWeightGrams,
+      vehicle,
+      shopName: Array.from(new Set(merchantCart.map((i) => i.merchantName))).join(" + "),
+      items: merchantCart.map((it) => ({
+        ...it,
+        approvalStatus: "PENDING_MERCHANT",
+        approvalDeadline: Date.now() + 180000 // 3 Minutes (180s)
+      })),
+      itemsTotal,
+      deliveryFee,
+      heavyTransportFee: 0,
+      laborFee: 0,
+      gst,
+      grandTotal,
+      riderName: riders[0].name,
+      status: "AWAITING_MERCHANT_APPROVAL",
+      secretOtp: String(Math.floor(1000 + Math.random() * 9000))
+    };
+
+    setOrders([newOrder, ...orders]);
+    setActiveOrderId(newOrder.id);
+    setMerchantCart([]);
+    setFooterTab("orders");
+    triggerToast(
+      `Order #${newOrder.id} sent to Merchant(s) for Pre-Payment Approval (3-Min Auto-Failover Active)!`
+    );
   };
 
   const handleCompleteUpiPayment = (chosenUpiAppName) => {
     if (!pendingUpiPayment) return;
-    if (pendingUpiPayment.type === "PRODUCT_ORDER") {
-      const newOrder = {
-        id: `VFL-${Math.floor(1000 + Math.random() * 9000)}`,
-        dateStr: "2026-10-28",
-        createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        periodTag: "TODAY",
-        categoryId: pendingUpiPayment.catId,
-        categoryName: pendingUpiPayment.title,
-        customerName: currentUser.fullName,
-        address: activeAddressObj.fullAddress,
-        distanceKm: activeAddressObj.distanceKm,
-        shopName: pendingUpiPayment.items[0]?.shopName || "Sri Laxmi Supermart",
-        items: pendingUpiPayment.items,
-        itemsTotal: pendingUpiPayment.itemsTotal,
-        deliveryFee: pendingUpiPayment.deliveryFee,
-        gst: pendingUpiPayment.gst,
-        grandTotal: pendingUpiPayment.amount,
-        paidViaApp: chosenUpiAppName,
-        vehicle: "2W Bike Captain",
-        riderName: riders[0].name,
-        status: "PAID_PACKING_STARTED",
-        secretOtp: String(Math.floor(1000 + Math.random() * 9000))
-      };
-      setOrders([newOrder, ...orders]);
-      setActiveOrderId(newOrder.id);
-      setCategoryCarts({ ...categoryCarts, [pendingUpiPayment.catId]: [] });
+    if (pendingUpiPayment.type === "APPROVED_MERCHANT_ORDER") {
+      setOrders(
+        orders.map((o) =>
+          o.id === pendingUpiPayment.orderId
+            ? {
+                ...o,
+                paidViaApp: chosenUpiAppName,
+                status: "PAID_PACKING_STARTED"
+              }
+            : o
+        )
+      );
       setPendingUpiPayment(null);
       setFooterTab("orders");
       setLiveOrderDrawerOpen(true);
       triggerToast(
-        `Paid via ${chosenUpiAppName}! Order #${newOrder.id} sent straight to Merchant Packing.`
+        `Paid via ${chosenUpiAppName}! Merchant(s) notified to verify payment & pack order.`
       );
     } else if (pendingUpiPayment.type === "SERVICE_ESCROW") {
       const created = serviceCart.map((sc) => ({
         ...sc,
         id: `SRV-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: currentUser.fullName,
-        escrowVisitingAmount: sc.visitingFee + (monetizationConfig.serviceBookingSurcharge || 0),
+        escrowVisitingAmount:
+          sc.visitingFee + (monetizationConfig.serviceBookingSurcharge || 0),
         paidViaApp: chosenUpiAppName,
         happyCode: String(Math.floor(1000 + Math.random() * 9000)),
         escrowStatus: "VISITING_FEE_HELD_IN_ESCROW",
@@ -698,6 +931,57 @@ function AppContent() {
       triggerToast(
         `Paid via ${chosenUpiAppName}! Visiting Fee held in Escrow & Provider Unmasked.`
       );
+    } else if (pendingUpiPayment.type === "SERVICE_FINAL_BILL") {
+      setServiceBookings(
+        serviceBookings.map((sb) =>
+          sb.id === pendingUpiPayment.bookingId
+            ? {
+                ...sb,
+                paidViaApp: chosenUpiAppName,
+                status: "SERVICE_PAID_COMPLETED"
+              }
+            : sb
+        )
+      );
+      setPendingUpiPayment(null);
+      triggerToast(`Service & Spare Parts Final Bill paid via ${chosenUpiAppName}!`);
+    } else if (pendingUpiPayment.type === "TAXI_PARCEL_ORDER") {
+      const newParcelOrder = {
+        id: `TXP-${Math.floor(1000 + Math.random() * 9000)}`,
+        dateStr: "2026-10-28",
+        createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        periodTag: "TODAY",
+        customerName: currentUser.fullName,
+        address: pendingUpiPayment.dropPin,
+        distanceKm: pendingUpiPayment.distanceKm,
+        totalWeightGrams: (pendingUpiPayment.parcelWeightKg || 1) * 1000,
+        vehicle: pendingUpiPayment.title,
+        shopName: `Pickup: ${pendingUpiPayment.pickupPin.slice(0, 20)}`,
+        items: [
+          {
+            name: pendingUpiPayment.title,
+            qty: 1,
+            price: pendingUpiPayment.amount,
+            merchantName: "Direct P2P / Taxi",
+            approvalStatus: "APPROVED"
+          }
+        ],
+        itemsTotal: pendingUpiPayment.amount,
+        deliveryFee: 0,
+        gst: 0,
+        grandTotal: pendingUpiPayment.amount,
+        paidViaApp: chosenUpiAppName,
+        riderName: riders[0].name,
+        status: "READY_FOR_PICKUP_AGENT_ALERTED",
+        secretOtp: String(Math.floor(1000 + Math.random() * 9000))
+      };
+      setOrders([newParcelOrder, ...orders]);
+      setActiveOrderId(newParcelOrder.id);
+      setTaxiCart([]);
+      setPendingUpiPayment(null);
+      setFooterTab("orders");
+      setLiveOrderDrawerOpen(true);
+      triggerToast(`Dispatched ${pendingUpiPayment.title} to Delivery Captain Radar!`);
     }
   };
 
@@ -714,11 +998,11 @@ function AppContent() {
   };
 
   // ==========================================================================
-  // SCREEN 1: PEACE-OF-MIND PERMISSIONS GATEWAY (PAGE 1 & 9 REQUIREMENT)
+  // POINT 1.1: INTERACTIVE PERMISSIONS GATEWAY (CLICK TO ALLOW + AUTO ALLOW)
   // ==========================================================================
   const renderPermissionsGateway = () => (
     <MobilePhoneShell
-      title="Setup & Permissions"
+      title="Permissions Gateway"
       badge="Step 1 of 2"
       activePortal={activePortal}
       footerTab={footerTab}
@@ -736,65 +1020,123 @@ function AppContent() {
       <div className="space-y-4 text-xs py-2">
         <div className="bg-slate-900 text-white border border-emerald-500/40 rounded-3xl p-4 space-y-3 text-center shadow-lg">
           <div className="flex justify-center">
-            <FounderLogoBadge
-              logoUrl={founderLogoUrl}
-              onUploadLogo={handleUploadFounderPhoto}
-            />
+            <FounderLogoBadge logoUrl={founderLogoUrl} />
           </div>
           <h2 className="text-base font-black text-amber-400">
-            WE4ALL VOCALFORLOCAL ADILABAD
+            WE4ALL PERMISSIONS GATEWAY
           </h2>
           <p className="text-[11px] text-slate-300">
-            Peace-of-Mind Permissions Gateway for Customers, Product Merchants, 1-Hr Service
-            Providers, Event Decorators & Delivery Captains
+            Tap each permission below to allow access or use the Auto-Allow toggle, then click
+            Continue at the bottom.
           </p>
+
+          <div className="flex justify-between items-center bg-emerald-950/60 border border-emerald-500/40 px-3 py-2 rounded-2xl">
+            <span className="font-bold text-emerald-300 text-[11px]">
+              Auto-Allow All Required Permissions
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const next = {
+                  location: true,
+                  notifications: true,
+                  camera: true,
+                  storage: true
+                };
+                setPermissionsState(next);
+                localStorage.setItem("we4all_permissions_granted_v4", JSON.stringify(next));
+              }}
+              className="bg-amber-400 text-slate-950 font-black px-3 py-1 rounded-xl text-[10px] cursor-pointer"
+            >
+              Auto-Allow All
+            </button>
+          </div>
 
           <div className="space-y-2 text-left">
             {[
               {
+                key: "location",
                 icon: "\uD83D\uDCCD",
                 title: "Live GPS Location & Geo-Fence",
-                desc: "For 3-Point Captain Live Route Map, Local Geo Ads & Service Happy Code verification"
+                desc: "For Animated Captain Route Map, Local Geo Ads & Happy Code check"
               },
               {
+                key: "notifications",
                 icon: "\uD83D\uDD14",
-                title: "Instant Order & OTA App Update Alerts",
-                desc: "Real-time dispatch notifications & 1-click zero-data-loss app updates"
+                title: "Order & OTA App Update Notifications",
+                desc: "3-Min Merchant Approval alerts & zero-data-loss OTA updates"
               },
               {
+                key: "camera",
                 icon: "\uD83D\uDCF7",
-                title: "Camera & Selfie KYC Vault",
-                desc: "Anti-fraud partner verification & product stock photos"
+                title: "Camera & Selfie KYC Verification",
+                desc: "Partner onboarding & stock catalog images"
               },
               {
+                key: "storage",
                 icon: "\uD83D\uDCBE",
-                title: "Offline Local & Cloud Sync Storage",
-                desc: "Preserves carts, invoices, Bank/UPI & PIN settings across updates"
+                title: "Permanent Device & Cloud Storage",
+                desc: "Saves your device lock, orders, stock & PDF tax invoices"
               }
-            ].map((perm, idx) => (
-              <div
-                key={idx}
-                className="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 flex items-center justify-between gap-2"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">{perm.icon}</span>
-                  <div>
-                    <p className="font-bold text-white text-[11px]">{perm.title}</p>
-                    <p className="text-[9px] text-slate-400">{perm.desc}</p>
+            ].map((perm) => {
+              const isAllowed = permissionsState[perm.key];
+              return (
+                <div
+                  key={perm.key}
+                  onClick={() => {
+                    const next = { ...permissionsState, [perm.key]: !isAllowed };
+                    setPermissionsState(next);
+                    localStorage.setItem(
+                      "we4all_permissions_granted_v4",
+                      JSON.stringify(next)
+                    );
+                  }}
+                  className={`p-2.5 rounded-2xl border flex items-center justify-between gap-2 cursor-pointer transition ${
+                    isAllowed
+                      ? "bg-emerald-950/40 border-emerald-400"
+                      : "bg-slate-950 border-slate-800"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg">{perm.icon}</span>
+                    <div>
+                      <p className="font-bold text-white text-[11px]">{perm.title}</p>
+                      <p className="text-[9px] text-slate-400">{perm.desc}</p>
+                    </div>
                   </div>
+                  <span
+                    className={`font-black px-2.5 py-1 rounded-full text-[9px] shrink-0 ${
+                      isAllowed
+                        ? "bg-emerald-400 text-slate-950"
+                        : "bg-slate-800 text-amber-300 border border-amber-400/40"
+                    }`}
+                  >
+                    {isAllowed ? "ALLOWED \u2713" : "TAP TO ALLOW"}
+                  </span>
                 </div>
-                <span className="bg-emerald-500 text-slate-950 font-black px-2 py-0.5 rounded-full text-[9px] shrink-0">
-                  ALLOW
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <button
-            onClick={() => setOnboardingStep("auth")}
-            className="w-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black py-3 rounded-2xl text-xs cursor-pointer shadow-lg"
+            type="button"
+            disabled={!allPermissionsGranted}
+            onClick={() => {
+              localStorage.setItem(
+                "we4all_permissions_granted_v4",
+                JSON.stringify(permissionsState)
+              );
+              setOnboardingStep("auth");
+            }}
+            className={`w-full font-black py-3 rounded-2xl text-xs shadow-lg ${
+              allPermissionsGranted
+                ? "bg-emerald-400 hover:bg-emerald-300 text-slate-950 cursor-pointer"
+                : "bg-slate-800 text-slate-500 cursor-not-allowed"
+            }`}
           >
-            Grant Permissions & Continue to Login / Register &rarr;
+            {allPermissionsGranted
+              ? "Continue to WE4ALL Security Vault \u2192"
+              : "Allow All 4 Permissions Above to Continue"}
           </button>
         </div>
       </div>
@@ -802,7 +1144,7 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // SCREEN 2: SECURITY VAULT (LOGIN + 3-STEP ANTI-FRAUD REGISTRATION + PIN/BIOMETRIC)
+  // SCREEN 2: DEVICE-BOUND SECURITY VAULT (Points 1.2, 5, 16, 22, 23, 27)
   // ==========================================================================
   const renderAuthVault = () => (
     <MobilePhoneShell
@@ -822,71 +1164,57 @@ function AppContent() {
       showFooter={false}
     >
       <div className="space-y-3 text-xs">
-        {/* Role Selector Header */}
         <div className="bg-slate-900 text-white border border-emerald-500/40 rounded-2xl p-3 space-y-2">
-          <div className="flex items-center gap-2.5">
-            <FounderLogoBadge
-              logoUrl={founderLogoUrl}
-              onUploadLogo={handleUploadFounderPhoto}
-            />
-            <div>
-              <h2 className="font-black text-amber-400 text-xs">
-                WE4ALL MULTI-PORTAL AUTH VAULT
-              </h2>
-              <p className="text-[10px] text-slate-300">
-                Select your Portal Role to Sign In, Register, or Unlock via PIN/Biometric
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FounderLogoBadge logoUrl={founderLogoUrl} />
+              <div>
+                <h2 className="font-black text-amber-400 text-xs">
+                  WE4ALL SECURITY & ROLE VAULT
+                </h2>
+                <p className="text-[10px] text-slate-300">
+                  {deviceBoundUser
+                    ? `Bound Role: ${deviceBoundUser.role.toUpperCase()} (${deviceBoundUser.fullName})`
+                    : "Select your role to Register or Sign In"}
+                </p>
+              </div>
             </div>
+            {/* Point 22: Founder Admin Login Button (Requires KhodayAnvesh / 22061969s!) */}
+            <button
+              type="button"
+              onClick={() => setViewMode("founder_web")}
+              className="bg-slate-800 border border-amber-400/40 text-amber-300 px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer"
+            >
+              Admin Login
+            </button>
           </div>
 
-          <label className="block text-[10px] font-bold text-emerald-300 pt-1">
-            Select Dedicated Account Portal Role:
-          </label>
-          <select
-            value={selectedRole}
-            onChange={(e) => {
-              setSelectedRole(e.target.value);
-              setRegForm({ ...regForm, role: e.target.value });
-            }}
-            className="w-full bg-slate-950 border border-emerald-500/50 rounded-xl p-2 text-white font-bold text-xs"
-          >
-            <option value="customer">1. Customer Super-App (Shop, Services, Decor, Taxi)</option>
-            <option value="merchant">2. Product Merchant Portal (Kirana, Veg, Meat, Cement, Meds)</option>
-            <option value="service_provider">3. Service Provider Portal (1-Hr Slots & Happy Code)</option>
-            <option value="decorator">4. Event Decorator & Function Hall Portal (Escrow & Calendar)</option>
-            <option value="rider">5. Delivery Captain Radar (3-Point Live GPS Map)</option>
-          </select>
+          {/* Role Selector (Only selectable if not yet device-bound) */}
+          {!deviceBoundUser && (
+            <div>
+              <label className="block text-[10px] font-bold text-emerald-300 mb-1">
+                Select Account Portal Role (Locked after registration):
+              </label>
+              <select
+                value={selectedRole}
+                onChange={(e) => {
+                  setSelectedRole(e.target.value);
+                  setRegForm({ ...regForm, role: e.target.value });
+                }}
+                className="w-full bg-slate-950 border border-emerald-500/50 rounded-xl p-2 text-white font-bold text-xs"
+              >
+                <option value="customer">1. Customer Super-App</option>
+                <option value="merchant">2. Product Merchant Portal</option>
+                <option value="service_provider">3. Service Provider Portal (1-Hr Slots)</option>
+                <option value="decorator">4. Event Decorator & Function Hall Portal</option>
+                <option value="rider">5. Delivery Captain & Taxi Radar</option>
+              </select>
+            </div>
+          )}
 
-          {/* 3-Mode Auth Switcher */}
-          <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl pt-1">
+          <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl">
             <button
-              onClick={() => {
-                setAuthTab("login");
-                setAuthError("");
-              }}
-              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
-                authTab === "login"
-                  ? "bg-emerald-400 text-slate-950"
-                  : "text-slate-400"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => {
-                setAuthTab("register");
-                setRegStep(1);
-                setAuthError("");
-              }}
-              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
-                authTab === "register"
-                  ? "bg-amber-400 text-slate-950"
-                  : "text-slate-400"
-              }`}
-            >
-              Register (3-Step)
-            </button>
-            <button
+              type="button"
               onClick={() => {
                 setAuthTab("pin_biometric");
                 setAuthError("");
@@ -899,6 +1227,35 @@ function AppContent() {
             >
               PIN / Biometric
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab("login");
+                setAuthError("");
+              }}
+              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
+                authTab === "login"
+                  ? "bg-emerald-400 text-slate-950"
+                  : "text-slate-400"
+              }`}
+            >
+              Sign In / OTP
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab("register");
+                setRegStep(1);
+                setAuthError("");
+              }}
+              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
+                authTab === "register"
+                  ? "bg-amber-400 text-slate-950"
+                  : "text-slate-400"
+              }`}
+            >
+              New Register
+            </button>
           </div>
         </div>
 
@@ -908,66 +1265,241 @@ function AppContent() {
           </div>
         )}
 
-        {/* MODE 1: PASSWORD SIGN IN */}
-        {authTab === "login" && (
-          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
-            <h3 className="font-black text-emerald-400 text-xs">
-              Sign In to {selectedRole.replace(/_/g, " ").toUpperCase()} Portal
+        {/* TAB 1: PIN / BIOMETRIC UNLOCK (Point 27: Primary login for registered device) */}
+        {authTab === "pin_biometric" && (
+          <div className="bg-slate-900 text-white border border-teal-500/40 rounded-2xl p-4 space-y-3 text-center">
+            <h3 className="font-black text-teal-300 text-xs">
+              Instant PIN & Biometric Unlock ({currentUser.fullName})
             </h3>
-            <input
-              type="text"
-              value={loginForm.usernameOrPhone}
-              onChange={(e) =>
-                setLoginForm({ ...loginForm, usernameOrPhone: e.target.value })
-              }
-              placeholder="Username or 10-Digit Mobile (e.g. 9848011223)"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-            <input
-              type="password"
-              value={loginForm.password}
-              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-              placeholder="Password (Default: Password1)"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-            <button
-              onClick={() => {
-                const q = loginForm.usernameOrPhone.trim().toLowerCase();
-                const found = registeredUsers.find(
-                  (u) =>
-                    u.phone === q ||
-                    (u.username && u.username.toLowerCase() === q) ||
-                    u.fullName.toLowerCase().includes(q)
-                );
-                if (found) {
-                  setCurrentUser({ ...found, role: selectedRole });
-                }
-                setActivePortal(selectedRole);
-                setOnboardingStep("app");
-                triggerToast(
-                  `Signed in & routed to ${selectedRole.replace(/_/g, " ").toUpperCase()} Portal!`
-                );
-              }}
-              className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
-            >
-              Verify & Open {selectedRole.replace(/_/g, " ").toUpperCase()} Portal &rarr;
-            </button>
+            {accountSecurity.biometricEnabled && (
+              <button
+                type="button"
+                onClick={() => {
+                  const targetRole = deviceBoundUser?.role || selectedRole;
+                  setActivePortal(targetRole);
+                  setFooterTab("home"); // Point 1.2: Always land on "home", never "account"
+                  setOnboardingStep("app");
+                  triggerToast("Biometric Verified! Opened Home Desk.");
+                }}
+                className="w-full bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+              >
+                1-Tap Biometric Login (Fingerprint / Face ID)
+              </button>
+            )}
+            <div className="flex gap-2 pt-2 border-t border-slate-800">
+              <input
+                type="password"
+                maxLength={4}
+                value={pinUnlockInput}
+                onChange={(e) => setPinUnlockInput(e.target.value)}
+                placeholder="Enter 4-Digit PIN"
+                className="w-32 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  // Point 22: No 9999 PIN shortcut for Admin!
+                  if (pinUnlockInput === accountSecurity.fastPin) {
+                    setPinUnlockInput("");
+                    const targetRole = deviceBoundUser?.role || selectedRole;
+                    setActivePortal(targetRole);
+                    setFooterTab("home");
+                    setOnboardingStep("app");
+                    triggerToast("4-Digit Quick PIN Verified! Opened Home Desk.");
+                  } else {
+                    setAuthError("Incorrect 4-Digit Quick PIN.");
+                  }
+                }}
+                className="flex-1 bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer"
+              >
+                Unlock with PIN
+              </button>
+            </div>
+            {deviceBoundUser && (
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem("we4all_device_bound_user_v4");
+                  setDeviceBoundUser(null);
+                  setAuthTab("login");
+                  triggerToast("Device unbound. You can now switch role or sign in via OTP.");
+                }}
+                className="text-[10px] text-slate-400 underline cursor-pointer pt-1"
+              >
+                Changed Phone or Switch Registered Account? Verify via OTP &rarr;
+              </button>
+            )}
           </div>
         )}
 
-        {/* MODE 2: 3-STEP ANTI-FRAUD REGISTRATION + BANK & UPI SETUP (PAGES 1, 10, 48, 57) */}
+        {/* TAB 2: SIGN IN OR CHANGED PHONE OTP RECOVERY (Point 23 & 27) */}
+        {authTab === "login" && (
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+            <div className="flex justify-between items-center">
+              <h3 className="font-black text-emerald-400 text-xs">
+                {changedPhoneOtpMode
+                  ? "Changed Phone / New Device OTP Login"
+                  : `Sign In to ${selectedRole.replace(/_/g, " ").toUpperCase()}`}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setChangedPhoneOtpMode(!changedPhoneOtpMode)}
+                className="text-[10px] text-amber-300 underline font-bold cursor-pointer"
+              >
+                {changedPhoneOtpMode ? "Use Password" : "Login via Mobile OTP"}
+              </button>
+            </div>
+
+            {!changedPhoneOtpMode ? (
+              <>
+                <input
+                  type="text"
+                  value={loginForm.usernameOrPhone}
+                  onChange={(e) =>
+                    setLoginForm({ ...loginForm, usernameOrPhone: e.target.value })
+                  }
+                  placeholder="Enter Registered Username or 10-Digit Mobile"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <input
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                  placeholder="Enter Password"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!loginForm.usernameOrPhone.trim() || !loginForm.password.trim()) {
+                      setAuthError("Please enter your username/mobile and password.");
+                      return;
+                    }
+                    const q = loginForm.usernameOrPhone.trim().toLowerCase();
+                    const found = registeredUsers.find(
+                      (u) =>
+                        u.phone === q ||
+                        (u.username && u.username.toLowerCase() === q)
+                    );
+                    if (!found || found.password !== loginForm.password) {
+                      setAuthError(
+                        "Account not found or password mismatch. Please Register first in the 'New Register' tab."
+                      );
+                      return;
+                    }
+                    setCurrentUser(found);
+                    setDeviceBoundUser(found);
+                    localStorage.setItem(
+                      "we4all_device_bound_user_v4",
+                      JSON.stringify(found)
+                    );
+                    setActivePortal(found.role || selectedRole);
+                    setFooterTab("home");
+                    setOnboardingStep("app");
+                    triggerToast(`Welcome back, ${found.fullName}!`);
+                  }}
+                  className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+                >
+                  Verify & Open Home Portal &rarr;
+                </button>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-1.5">
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    value={changedPhoneForm.phone}
+                    onChange={(e) =>
+                      setChangedPhoneForm({ ...changedPhoneForm, phone: e.target.value })
+                    }
+                    placeholder="Registered 10-Digit Mobile"
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (changedPhoneForm.phone.trim().length < 10) {
+                        setAuthError("Enter valid 10-digit mobile number.");
+                        return;
+                      }
+                      const otp = String(Math.floor(1000 + Math.random() * 9000));
+                      setChangedPhoneForm({
+                        ...changedPhoneForm,
+                        generatedOtp: otp,
+                        otpInput: otp
+                      });
+                      setAuthError("");
+                      triggerToast(`Device Recovery OTP Sent: ${otp}`);
+                    }}
+                    className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
+                  >
+                    Send OTP
+                  </button>
+                </div>
+                {changedPhoneForm.generatedOtp && (
+                  <>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={changedPhoneForm.otpInput}
+                      onChange={(e) =>
+                        setChangedPhoneForm({
+                          ...changedPhoneForm,
+                          otpInput: e.target.value
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-emerald-400 rounded-xl p-2 text-center font-mono text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (changedPhoneForm.otpInput !== changedPhoneForm.generatedOtp) {
+                          setAuthError("Invalid OTP.");
+                          return;
+                        }
+                        const found =
+                          registeredUsers.find(
+                            (u) => u.phone === changedPhoneForm.phone.trim()
+                          ) || {
+                            ...currentUser,
+                            phone: changedPhoneForm.phone.trim(),
+                            role: selectedRole
+                          };
+                        setCurrentUser(found);
+                        setDeviceBoundUser(found);
+                        localStorage.setItem(
+                          "we4all_device_bound_user_v4",
+                          JSON.stringify(found)
+                        );
+                        setActivePortal(found.role || selectedRole);
+                        setFooterTab("home");
+                        setOnboardingStep("app");
+                        triggerToast("OTP Verified! Device bound to your account.");
+                      }}
+                      className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                    >
+                      Verify OTP ({changedPhoneForm.generatedOtp}) & Bind Device
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: 3-STEP ANTI-FRAUD REGISTRATION (Points 5 & 16: Syncs to Catalog & Admin DB) */}
         {authTab === "register" && (
           <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <span className="font-black text-amber-400 text-xs">
-                3-Step Anti-Fraud KYC & Bank Registration
+                3-Step Registration ({selectedRole.replace(/_/g, " ").toUpperCase()})
               </span>
               <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
                 Step {regStep} of 3
               </span>
             </div>
 
-            {/* STEP 1: MOBILE OTP VERIFICATION */}
             {regStep === 1 && (
               <div className="space-y-2.5">
                 <p className="text-[11px] text-slate-300 font-bold">
@@ -983,6 +1515,7 @@ function AppContent() {
                     className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                   />
                   <button
+                    type="button"
                     onClick={() => {
                       if (regForm.phone.trim().length < 10) {
                         setAuthError("Please enter a valid 10-digit mobile number.");
@@ -995,25 +1528,24 @@ function AppContent() {
                         otpInput: otp
                       });
                       setAuthError("");
-                      triggerToast(`Registration Security OTP Sent: ${otp}`);
+                      triggerToast(`Registration OTP Sent: ${otp}`);
                     }}
                     className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
                   >
                     Send OTP
                   </button>
                 </div>
-
                 {regForm.generatedOtp && (
-                  <div className="space-y-2 pt-1">
+                  <div className="space-y-2">
                     <input
                       type="text"
                       maxLength={4}
                       value={regForm.otpInput}
                       onChange={(e) => setRegForm({ ...regForm, otpInput: e.target.value })}
-                      placeholder="Enter 4-Digit OTP"
-                      className="w-full bg-slate-950 border border-emerald-400 rounded-xl p-2 text-center font-mono text-base text-white"
+                      className="w-full bg-slate-950 border border-emerald-400 rounded-xl p-2 text-center font-mono text-white"
                     />
                     <button
+                      type="button"
                       onClick={() => {
                         if (regForm.otpInput !== regForm.generatedOtp) {
                           setAuthError("Invalid 4-digit OTP.");
@@ -1025,39 +1557,62 @@ function AppContent() {
                       }}
                       className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
                     >
-                      Verify OTP ({regForm.generatedOtp}) & Continue to Step 2 &rarr;
+                      Verify OTP ({regForm.generatedOtp}) & Continue &rarr;
                     </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* STEP 2: IDENTITY, 12-CHAR GOV ID & BANK/UPI ACCOUNT SETUP */}
             {regStep === 2 && (
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-300 font-bold">
-                  Step 2/3: Legal Identity, 12-Digit Gov ID & Bank/UPI Details
+                  Step 2/3: Identity, Category Specialization & Bank/UPI Setup
                 </p>
                 <input
                   type="text"
                   value={regForm.fullName}
                   onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
-                  placeholder="Full Legal Name / Business Name"
+                  placeholder="Full Legal Name / Shop / Business Name"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
                 <input
                   type="text"
                   value={regForm.username}
                   onChange={(e) => setRegForm({ ...regForm, username: e.target.value })}
-                  placeholder="Unique Username (e.g. anvesh_adilabad)"
+                  placeholder="Unique Username (e.g. sri_laxmi_store)"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
+                {selectedRole === "merchant" && (
+                  <select
+                    value={regForm.categoryId}
+                    onChange={(e) => setRegForm({ ...regForm, categoryId: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        Merchant Category: {c.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {selectedRole === "service_provider" && (
+                  <input
+                    type="text"
+                    value={regForm.specialization}
+                    onChange={(e) =>
+                      setRegForm({ ...regForm, specialization: e.target.value })
+                    }
+                    placeholder="Service Specialization (e.g. Plumbing, AC Repair)"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                  />
+                )}
                 <input
                   type="text"
                   maxLength={12}
                   value={regForm.govId}
                   onChange={(e) => setRegForm({ ...regForm, govId: e.target.value })}
-                  placeholder="12-Character Gov ID Proof (Redacted as [Verified])"
+                  placeholder="12-Character Gov ID Proof (Saved as [Verified])"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
                 <div className="bg-slate-950 p-2.5 rounded-xl border border-emerald-500/30 space-y-1.5">
@@ -1068,7 +1623,7 @@ function AppContent() {
                     type="text"
                     value={regForm.upiId}
                     onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
-                    placeholder="Primary UPI ID (e.g. name@ybl)"
+                    placeholder="Primary UPI ID (e.g. shop@ybl)"
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
                   />
                   <div className="grid grid-cols-2 gap-1.5">
@@ -1092,15 +1647,17 @@ function AppContent() {
                 </div>
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() => setRegStep(1)}
                     className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
                   >
                     &larr; Back
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       if (!regForm.fullName.trim()) {
-                        setAuthError("Please enter your Full Legal Name / Business Name.");
+                        setAuthError("Please enter Full Name / Business Name.");
                         return;
                       }
                       setAuthError("");
@@ -1108,17 +1665,16 @@ function AppContent() {
                     }}
                     className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
                   >
-                    Continue to Step 3 (Security & PIN) &rarr;
+                    Continue to Step 3 &rarr;
                   </button>
                 </div>
               </div>
             )}
 
-            {/* STEP 3: PASSWORD, 4-DIGIT QUICK PIN & DIGITAL E-SIGN */}
             {regStep === 3 && (
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-300 font-bold">
-                  Step 3/3: Password, 4-Digit Quick PIN & Digital E-Sign
+                  Step 3/3: Password & 4-Digit Quick PIN (Binds to This Phone)
                 </p>
                 <input
                   type="password"
@@ -1136,123 +1692,140 @@ function AppContent() {
                   placeholder="Confirm Password"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
-                <div>
-                  <label className="block text-[10px] text-amber-300 font-bold mb-1">
-                    Set 4-Digit Quick Unlock PIN:
-                  </label>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    value={regForm.fastPin}
-                    onChange={(e) => setRegForm({ ...regForm, fastPin: e.target.value })}
-                    placeholder="4-Digit PIN (e.g. 1234)"
-                    className="w-32 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
-                  />
-                </div>
+                <input
+                  type="password"
+                  maxLength={4}
+                  value={regForm.fastPin}
+                  onChange={(e) => setRegForm({ ...regForm, fastPin: e.target.value })}
+                  placeholder="Set 4-Digit Quick PIN (e.g. 1234)"
+                  className="w-full bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
+                />
                 <div className="flex gap-2 pt-1">
                   <button
+                    type="button"
                     onClick={() => setRegStep(2)}
                     className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
                   >
                     &larr; Back
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
-                      if (
-                        regForm.password &&
-                        regForm.confirmPassword &&
-                        regForm.password !== regForm.confirmPassword
-                      ) {
-                        setAuthError("Passwords do not match.");
+                      if (!regForm.password || regForm.password !== regForm.confirmPassword) {
+                        setAuthError("Passwords must match and cannot be empty.");
                         return;
                       }
+                      const pinToSave = regForm.fastPin.trim() || "1234";
                       const newUser = {
                         id: Date.now(),
                         fullName: regForm.fullName.trim(),
                         username:
                           regForm.username.trim() ||
                           regForm.fullName.trim().toLowerCase().replace(/\s+/g, "_"),
-                        phone: regForm.phone || "9848011223",
+                        phone: regForm.phone.trim(),
+                        password: regForm.password,
                         govId: "[Verified]",
                         role: selectedRole,
                         upiId: regForm.upiId || "partner@ybl",
                         bankName: regForm.bankName || "State Bank of India",
                         accountNumber: regForm.accountNumber || "30984451209",
                         ifscCode: regForm.ifscCode || "SBIN0000801",
-                        fastPin: regForm.fastPin || "1234"
+                        fastPin: pinToSave
                       };
+
+                      // Point 5 & 16: Sync new partner into live directories & Admin DB!
+                      if (selectedRole === "merchant") {
+                        const newMerch = {
+                          id: newUser.id,
+                          businessName: newUser.fullName,
+                          owner: newUser.username,
+                          categoryId: regForm.categoryId || "daily_needs",
+                          phone: newUser.phone,
+                          area: "Adilabad Town",
+                          status: "Approved"
+                        };
+                        setMerchants([newMerch, ...merchants]);
+                      } else if (selectedRole === "service_provider") {
+                        const newSp = {
+                          id: `sp_${newUser.id}`,
+                          serviceCategoryId: "srv_plumbing",
+                          providerName: newUser.fullName,
+                          maskedId: `Verified Pro #${String(newUser.id).slice(-3)}`,
+                          serviceCategory: "Home Service Specialist",
+                          specialization:
+                            regForm.specialization || "Verified Doorstep Technician",
+                          visitingFee: 99,
+                          hourlyRate: 150,
+                          area: "Adilabad Town",
+                          rating: 5.0,
+                          phone: newUser.phone,
+                          availableSlots: [
+                            "09:00 AM - 10:00 AM",
+                            "10:00 AM - 11:00 AM",
+                            "02:00 PM - 03:00 PM"
+                          ],
+                          image:
+                            "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80"
+                        };
+                        setServiceProviders([newSp, ...serviceProviders]);
+                      } else if (selectedRole === "decorator") {
+                        setDecorators([
+                          {
+                            id: `dec_${newUser.id}`,
+                            name: newUser.fullName,
+                            expert: "Wedding Stages & Floral Events",
+                            status: "Active",
+                            phone: newUser.phone
+                          },
+                          ...decorators
+                        ]);
+                      } else if (selectedRole === "rider") {
+                        setRiders([
+                          {
+                            id: `r_${newUser.id}`,
+                            name: newUser.fullName,
+                            isPrimeCaptain: true,
+                            batteryPct: 100,
+                            vehicleType: "2W",
+                            vehicleName: "2W Express Bike",
+                            baseRate: 25,
+                            perKm: 5.5,
+                            rating: 5.0,
+                            trips: 1,
+                            badge: "Verified Captain",
+                            yesVotes: 1,
+                            noVotes: 0
+                          },
+                          ...riders
+                        ]);
+                      }
+
                       setCurrentUser(newUser);
-                      setRegisteredUsers([...registeredUsers, newUser]);
+                      setRegisteredUsers([newUser, ...registeredUsers]);
+                      setDeviceBoundUser(newUser);
+                      localStorage.setItem(
+                        "we4all_device_bound_user_v4",
+                        JSON.stringify(newUser)
+                      );
                       setAccountSecurity({
-                        ...accountSecurity,
-                        fastPin: newUser.fastPin,
                         pinEnabled: true,
-                        biometricEnabled: true
+                        biometricEnabled: true,
+                        fastPin: pinToSave
                       });
                       setActivePortal(selectedRole);
+                      setFooterTab("home"); // Point 1.2: Always land on Home!
                       setOnboardingStep("app");
                       triggerToast(
-                        `Registration Complete! Routed to ${selectedRole.toUpperCase()} Portal.`
+                        `Registered ${newUser.fullName} & bound to this phone (${selectedRole.toUpperCase()})!`
                       );
                     }}
                     className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
                   >
-                    Complete Registration & Open Portal &rarr;
+                    Complete & Open Home Portal &rarr;
                   </button>
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* MODE 3: 4-DIGIT QUICK PIN & BIOMETRIC UNLOCK (SECRET PIN 9999 -> FOUNDER ADMIN) */}
-        {authTab === "pin_biometric" && (
-          <div className="bg-slate-900 text-white border border-teal-500/40 rounded-2xl p-4 space-y-3 text-center">
-            <h3 className="font-black text-teal-300 text-xs">
-              Quick PIN & Biometric Vault ({currentUser.fullName})
-            </h3>
-            {accountSecurity.biometricEnabled && (
-              <button
-                onClick={() => {
-                  setActivePortal(selectedRole);
-                  setOnboardingStep("app");
-                  triggerToast("Biometric Fingerprint / Face ID Verified!");
-                }}
-                className="w-full bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
-              >
-                1-Tap Biometric Login (Fingerprint / Face ID)
-              </button>
-            )}
-            <div className="flex gap-2 pt-2 border-t border-slate-800">
-              <input
-                type="password"
-                maxLength={4}
-                value={pinUnlockInput}
-                onChange={(e) => setPinUnlockInput(e.target.value)}
-                placeholder={`PIN (${accountSecurity.fastPin})`}
-                className="w-28 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
-              />
-              <button
-                onClick={() => {
-                  if (pinUnlockInput === "9999") {
-                    setPinUnlockInput("");
-                    setViewMode("founder_web");
-                    return;
-                  }
-                  if (pinUnlockInput === accountSecurity.fastPin) {
-                    setPinUnlockInput("");
-                    setActivePortal(selectedRole);
-                    setOnboardingStep("app");
-                    triggerToast("4-Digit Quick PIN Verified!");
-                  } else {
-                    setAuthError(`Incorrect PIN. Default PIN is ${accountSecurity.fastPin}`);
-                  }
-                }}
-                className="flex-1 bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer"
-              >
-                Unlock with 4-Digit PIN
-              </button>
-            </div>
           </div>
         )}
       </div>
@@ -1260,7 +1833,7 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // PORTAL 1: CUSTOMER SUPER-APP
+  // PORTAL 1: CUSTOMER SUPER-APP (Points 2, 3, 4, 8, 9, 10, 11, 12, 28)
   // ==========================================================================
   const renderCustomerPortal = () => {
     const approvedProducts = products.filter(
@@ -1286,23 +1859,30 @@ function AppContent() {
         setLang={setLang}
         appUpdateInfo={appUpdateInfo}
         onTriggerOtaUpdate={handleRunOtaUpdate}
+        personalShoppingFromPartner={personalShoppingFromPartner}
+        onReturnToPartnerDesk={() => {
+          setActivePortal(personalShoppingFromPartner);
+          setPersonalShoppingFromPartner(null);
+          setFooterTab("home");
+        }}
       >
         {mobileToast && (
           <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
             <span>{mobileToast}</span>
-            <button onClick={() => setMobileToast("")} className="font-black">
+            <button
+              type="button"
+              onClick={() => setMobileToast("")}
+              className="font-black"
+            >
               X
             </button>
           </div>
         )}
 
-        {/* Top Bar: Founder Badge, OTP Address Selector, Prime, Bell & Logout/Lock */}
+        {/* Top Bar: Read-Only Founder Emblem, OTP Address Selector, Prime, Bell & Lock */}
         <div className="flex justify-between items-center pb-2 border-b border-slate-300">
           <div className="flex items-center gap-1.5">
-            <FounderLogoBadge
-              logoUrl={founderLogoUrl}
-              onUploadLogo={handleUploadFounderPhoto}
-            />
+            <FounderLogoBadge logoUrl={founderLogoUrl} />
             <select
               value={selectedAddressId}
               onChange={(e) => {
@@ -1321,6 +1901,7 @@ function AppContent() {
           </div>
           <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={() => setIsPrimeCustomer(!isPrimeCustomer)}
               className={`text-[9px] px-2 py-1 rounded-lg font-black cursor-pointer ${
                 isPrimeCustomer
@@ -1331,27 +1912,33 @@ function AppContent() {
               PRIME
             </button>
             <button
+              type="button"
               onClick={() => setNotificationBellOpen(!notificationBellOpen)}
               className="bg-slate-900 text-amber-300 px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer"
             >
               \uD83D\uDD14 {notificationsList.length}
             </button>
             <button
+              type="button"
               onClick={() => setOnboardingStep("auth")}
               className="bg-rose-600 text-white px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer"
             >
-              Login/Role
+              Lock
             </button>
           </div>
         </div>
 
         {notificationBellOpen && (
           <div className="bg-slate-900 border border-amber-400/50 rounded-2xl p-2.5 space-y-1 text-[10px] text-white">
-            {notificationsList.slice(0, 4).map((n) => (
-              <p key={n.id} className="text-slate-300">
-                &bull; {n.text}
-              </p>
-            ))}
+            {notificationsList.length === 0 ? (
+              <p className="text-slate-400">No notifications yet.</p>
+            ) : (
+              notificationsList.slice(0, 4).map((n) => (
+                <p key={n.id} className="text-slate-300">
+                  &bull; {n.text}
+                </p>
+              ))
+            )}
           </div>
         )}
 
@@ -1367,17 +1954,39 @@ function AppContent() {
               }}
             />
 
-            <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-2.5 text-[10px] text-white space-y-1">
-              <p className="font-black text-amber-300">Curiosity Deal Collections</p>
-              {CURATED_COLLECTIONS.map((col) => (
-                <p key={col.id} className="text-slate-300">
-                  &bull; <strong className="text-emerald-300">{col.title}:</strong> {col.subtitle}
-                </p>
-              ))}
+            {/* Point 2: Clickable Curiosity Deal Collections (Filters & Opens Products!) */}
+            <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-2.5 text-[10px] text-white space-y-1.5">
+              <p className="font-black text-amber-300">
+                Curiosity Deal Collections (Tap Any Collection to Shop)
+              </p>
+              <div className="grid grid-cols-1 gap-1">
+                {CURATED_COLLECTIONS.map((col) => (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => {
+                      setCustomerHomeSubTab("stores");
+                      if (col.tag === "site_ready") setSelectedCategory("construction");
+                      else setSelectedCategory("daily_needs");
+                      triggerToast(`Opened ${col.title}!`);
+                    }}
+                    className="bg-slate-950 hover:border-emerald-400 border border-slate-800 p-2 rounded-xl text-left flex justify-between items-center cursor-pointer transition"
+                  >
+                    <div>
+                      <p className="font-bold text-emerald-300">{col.title}</p>
+                      <p className="text-[9px] text-slate-400">{col.subtitle}</p>
+                    </div>
+                    <span className="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded text-[9px] shrink-0">
+                      Shop &rarr;
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-1 text-[10px] bg-slate-900 p-1 rounded-xl">
               <button
+                type="button"
                 onClick={() => setCustomerHomeSubTab("stores")}
                 className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   customerHomeSubTab === "stores"
@@ -1388,6 +1997,7 @@ function AppContent() {
                 {t.stores}
               </button>
               <button
+                type="button"
                 onClick={() => setCustomerHomeSubTab("events")}
                 className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   customerHomeSubTab === "events"
@@ -1398,6 +2008,7 @@ function AppContent() {
                 {t.decor}
               </button>
               <button
+                type="button"
                 onClick={() => setCustomerHomeSubTab("taxi")}
                 className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   customerHomeSubTab === "taxi"
@@ -1423,6 +2034,7 @@ function AppContent() {
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
+                      type="button"
                       onClick={() => setSelectedCategory(cat.id)}
                       className={`p-1.5 rounded-xl border text-center cursor-pointer ${
                         selectedCategory === cat.id
@@ -1464,7 +2076,7 @@ function AppContent() {
                           />
                           <div className="flex-1 min-w-0">
                             <span className="text-[9px] text-amber-600 font-black">
-                              {prod.curiosityTag}
+                              {prod.curiosityTag} &bull; {prod.distanceKm || 1.2} km
                             </span>
                             <h4 className="text-xs font-bold truncate">
                               {prod.subCategoryBrand}
@@ -1475,27 +2087,30 @@ function AppContent() {
                                 {activeOffer.merchantId === bestOffer.merchantId &&
                                   " (Best Price)"}
                               </p>
-                              {offers.length > 1 && (
-                                <button
-                                  onClick={() =>
-                                    setExpandedCompareProdId(
-                                      isCompareOpen ? null : prod.id
-                                    )
-                                  }
-                                  className="text-[9px] text-indigo-600 underline font-black cursor-pointer"
-                                >
-                                  {t.compareShops} ({offers.length})
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedCompareProdId(
+                                    isCompareOpen ? null : prod.id
+                                  )
+                                }
+                                className="text-[9px] text-indigo-600 underline font-black cursor-pointer"
+                              >
+                                {t.compareShops} ({offers.length})
+                              </button>
                             </div>
                           </div>
                         </div>
 
                         {isCompareOpen && (
                           <div className="bg-slate-900 text-white p-2 rounded-xl space-y-1 text-[10px]">
+                            <p className="text-[9px] text-amber-300 font-bold">
+                              Select Preferred Local Shop (Auto-Failover if unapproved in 3m):
+                            </p>
                             {offers.map((off) => (
                               <button
                                 key={off.merchantId}
+                                type="button"
                                 onClick={() =>
                                   setSelectedMerchantByProduct({
                                     ...selectedMerchantByProduct,
@@ -1535,7 +2150,8 @@ function AppContent() {
                             ))}
                           </select>
                           <button
-                            onClick={() => handleAddToProductCart(prod)}
+                            type="button"
+                            onClick={() => handleAddToUnifiedMerchantCart(prod)}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3 py-1 rounded-lg text-[10px] cursor-pointer"
                           >
                             {t.addToCart}
@@ -1593,6 +2209,7 @@ function AppContent() {
                       {mod.title} (Rs.{mod.baseEstimate})
                     </span>
                     <button
+                      type="button"
                       onClick={() => {
                         setDecorCart([...decorCart, mod]);
                         triggerToast(`Added ${mod.title} to Isolated Decor Cart!`);
@@ -1606,32 +2223,151 @@ function AppContent() {
               </div>
             )}
 
+            {/* POINT 4 & 12: COMPLETE TAXI, 3W AUTO & P2P PARCEL DROP-IN / DROP-OUT MODULE */}
             {customerHomeSubTab === "taxi" && (
-              <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2 text-xs text-white">
-                <h3 className="font-bold text-teal-300">
-                  Bike Taxi, 3W Auto & P2P Parcel Dispatch
+              <div className="bg-slate-900 p-3 rounded-2xl border border-teal-500/40 space-y-2.5 text-xs text-white">
+                <h3 className="font-black text-teal-300">
+                  Instant Bike Taxi, 3W Auto & P2P Parcel Drop-In / Drop-Out
                 </h3>
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
-                    { title: "Bike Taxi", price: 35 },
-                    { title: "3W Auto", price: 65 },
-                    { title: "P2P Parcel", price: 45 }
-                  ].map((ride) => (
+                    { id: "BIKE_TAXI", label: "Bike Taxi", base: 25, perKm: 6 },
+                    { id: "AUTO_3W", label: "3W Auto", base: 45, perKm: 12 },
+                    { id: "P2P_PARCEL", label: "P2P Parcel", base: 35, perKm: 8 }
+                  ].map((m) => (
                     <button
-                      key={ride.title}
-                      onClick={() => {
-                        setTaxiCart([...taxiCart, ride]);
-                        setFooterTab("carts");
-                        setActiveCartViewTab("taxi_cart");
-                        triggerToast(`Added ${ride.title} to Isolated Taxi Cart!`);
-                      }}
-                      className="bg-slate-950 border border-slate-800 hover:border-teal-400 p-2 rounded-xl text-center cursor-pointer"
+                      key={m.id}
+                      type="button"
+                      onClick={() => setTaxiBookingForm({ ...taxiBookingForm, mode: m.id })}
+                      className={`p-2 rounded-xl border text-center font-bold cursor-pointer ${
+                        taxiBookingForm.mode === m.id
+                          ? "border-teal-400 bg-teal-500/20 text-teal-300"
+                          : "border-slate-800 bg-slate-950 text-slate-400"
+                      }`}
                     >
-                      <p className="font-bold text-[11px]">{ride.title}</p>
-                      <p className="text-teal-300 text-[10px]">Rs.{ride.price}</p>
+                      <p className="text-[11px]">{m.label}</p>
+                      <p className="text-[9px]">Rs.{m.base} + Rs.{m.perKm}/km</p>
                     </button>
                   ))}
                 </div>
+
+                <div className="space-y-1.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  <label className="block text-[10px] text-slate-400">
+                    Pickup Location (Drop-In Pin):
+                  </label>
+                  <input
+                    type="text"
+                    value={taxiBookingForm.pickupPin}
+                    onChange={(e) =>
+                      setTaxiBookingForm({ ...taxiBookingForm, pickupPin: e.target.value })
+                    }
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-[11px]"
+                  />
+                  <label className="block text-[10px] text-slate-400">
+                    Drop Location (Drop-Out Pin):
+                  </label>
+                  <input
+                    type="text"
+                    value={taxiBookingForm.dropPin}
+                    onChange={(e) =>
+                      setTaxiBookingForm({ ...taxiBookingForm, dropPin: e.target.value })
+                    }
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-[11px]"
+                  />
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <label className="block text-[10px] text-slate-400">Distance (km):</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={taxiBookingForm.distanceKm}
+                        onChange={(e) =>
+                          setTaxiBookingForm({
+                            ...taxiBookingForm,
+                            distanceKm: Number(e.target.value) || 1
+                          })
+                        }
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400">
+                        Parcel Weight (kg):
+                      </label>
+                      <input
+                        type="number"
+                        value={taxiBookingForm.parcelWeightKg}
+                        onChange={(e) =>
+                          setTaxiBookingForm({
+                            ...taxiBookingForm,
+                            parcelWeightKg: Number(e.target.value) || 1
+                          })
+                        }
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
+                      />
+                    </div>
+                  </div>
+
+                  {taxiBookingForm.mode === "P2P_PARCEL" && (
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      <input
+                        type="text"
+                        value={taxiBookingForm.receiverName}
+                        onChange={(e) =>
+                          setTaxiBookingForm({
+                            ...taxiBookingForm,
+                            receiverName: e.target.value
+                          })
+                        }
+                        placeholder="Receiver Name"
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
+                      />
+                      <input
+                        type="tel"
+                        maxLength={10}
+                        value={taxiBookingForm.receiverPhone}
+                        onChange={(e) =>
+                          setTaxiBookingForm({
+                            ...taxiBookingForm,
+                            receiverPhone: e.target.value
+                          })
+                        }
+                        placeholder="Receiver Phone"
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const isHeavy = taxiBookingForm.parcelWeightKg > 45;
+                    const ratePerKm =
+                      taxiBookingForm.mode === "AUTO_3W" || isHeavy ? 14 : 7;
+                    const base =
+                      taxiBookingForm.mode === "AUTO_3W" || isHeavy ? 60 : 30;
+                    const fare = Math.round(base + taxiBookingForm.distanceKm * ratePerKm);
+                    const rideItem = {
+                      id: `tx_${Date.now()}`,
+                      title: `${taxiBookingForm.mode.replace(/_/g, " ")} (${
+                        taxiBookingForm.distanceKm
+                      }km, ${taxiBookingForm.parcelWeightKg}kg)`,
+                      pickupPin: taxiBookingForm.pickupPin,
+                      dropPin: taxiBookingForm.dropPin,
+                      distanceKm: taxiBookingForm.distanceKm,
+                      parcelWeightKg: taxiBookingForm.parcelWeightKg,
+                      price: fare
+                    };
+                    setTaxiCart([...taxiCart, rideItem]);
+                    setFooterTab("carts");
+                    setActiveCartViewTab("taxi_cart");
+                    triggerToast(`Added ${rideItem.title} (Rs.${fare}) to Taxi/Parcel Cart!`);
+                  }}
+                  className="w-full bg-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+                >
+                  Calculate Fare & Add to Taxi/Parcel Cart &rarr;
+                </button>
               </div>
             )}
           </div>
@@ -1644,6 +2380,7 @@ function AppContent() {
                 {serviceCategories.map((scat) => (
                   <button
                     key={scat.id}
+                    type="button"
                     onClick={() => setSelectedServiceCategoryObj(scat)}
                     className="bg-slate-900 text-white border border-slate-800 rounded-2xl overflow-hidden text-left cursor-pointer"
                   >
@@ -1669,6 +2406,7 @@ function AppContent() {
                     {selectedServiceCategoryObj.icon} {selectedServiceCategoryObj.name}
                   </span>
                   <button
+                    type="button"
                     onClick={() => setSelectedServiceCategoryObj(null)}
                     className="bg-slate-800 px-2 py-1 rounded text-[10px] cursor-pointer"
                   >
@@ -1707,6 +2445,7 @@ function AppContent() {
                       </p>
                       <p className="text-[10px] text-indigo-300">{sp.specialization}</p>
                       <button
+                        type="button"
                         onClick={() => {
                           setServiceCart([
                             ...serviceCart,
@@ -1733,10 +2472,12 @@ function AppContent() {
           </div>
         )}
 
+        {/* POINT 3, 8, 9 & 11: UNIFIED MERCHANT CART + MODULE CARTS */}
         {footerTab === "carts" && (
           <div className="space-y-3 text-xs text-white">
             <div className="grid grid-cols-4 gap-1 text-[10px] bg-slate-900 p-1 rounded-xl">
               <button
+                type="button"
                 onClick={() => setActiveCartViewTab("merchant_cart")}
                 className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   activeCartViewTab === "merchant_cart"
@@ -1744,9 +2485,10 @@ function AppContent() {
                     : ""
                 }`}
               >
-                Shop ({allMerchantCartItemsCount})
+                Shop ({merchantCart.reduce((s, i) => s + i.qty, 0)})
               </button>
               <button
+                type="button"
                 onClick={() => setActiveCartViewTab("service_cart")}
                 className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   activeCartViewTab === "service_cart" ? "bg-indigo-500 text-white" : ""
@@ -1755,6 +2497,7 @@ function AppContent() {
                 Service ({serviceCart.length})
               </button>
               <button
+                type="button"
                 onClick={() => setActiveCartViewTab("decor_cart")}
                 className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   activeCartViewTab === "decor_cart"
@@ -1765,6 +2508,7 @@ function AppContent() {
                 Decor ({decorCart.length})
               </button>
               <button
+                type="button"
                 onClick={() => setActiveCartViewTab("taxi_cart")}
                 className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   activeCartViewTab === "taxi_cart" ? "bg-teal-400 text-slate-950" : ""
@@ -1775,59 +2519,73 @@ function AppContent() {
             </div>
 
             {activeCartViewTab === "merchant_cart" && (
-              <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white font-bold"
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} Cart ({(categoryCarts[c.id] || []).length})
-                    </option>
-                  ))}
-                </select>
-                {currentCategoryCart.map((it, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between bg-slate-950 p-2 rounded-xl"
-                  >
-                    <span>
-                      {it.qty}x {it.name}
-                    </span>
-                    <span className="text-emerald-400">Rs.{it.price * it.qty}</span>
-                  </div>
-                ))}
-                {currentCategoryCart.length > 0 && (
-                  <button
-                    onClick={() => {
-                      const itemsTotal = currentCategoryCart.reduce(
-                        (s, i) => s + i.price * i.qty,
-                        0
+              <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2.5">
+                <h4 className="font-black text-emerald-400 text-xs">
+                  Unified Multi-Merchant Product Cart (All Categories Combined)
+                </h4>
+                {merchantCart.length === 0 ? (
+                  <p className="text-slate-400 text-center py-4 text-[11px]">
+                    Your Unified Merchant Cart is empty. Add products from any store category!
+                  </p>
+                ) : (
+                  <>
+                    {merchantCart.map((it, idx) => (
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center bg-slate-950 p-2 rounded-xl border border-slate-800"
+                      >
+                        <div>
+                          <p className="font-bold text-white text-[11px]">
+                            {it.qty}x {it.name}
+                          </p>
+                          <p className="text-[9px] text-emerald-300">
+                            Shop: {it.merchantName} | {(it.weightGrams * it.qty) / 1000} kg
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-amber-300 font-bold">
+                            Rs.{it.price * it.qty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMerchantCart(merchantCart.filter((_, i) => i !== idx))
+                            }
+                            className="bg-rose-950 text-rose-300 px-1.5 py-0.5 rounded text-[9px] cursor-pointer"
+                          >
+                            X
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {(() => {
+                      const { totalWeightGrams, totalRouteKm, vehicle, deliveryFee } =
+                        calculateOrderLogistics(
+                          merchantCart,
+                          activeAddressObj.distanceKm,
+                          0,
+                          0
+                        );
+                      return (
+                        <div className="bg-slate-950 p-2.5 rounded-xl border border-emerald-500/30 text-[10px] space-y-1">
+                          <p className="text-emerald-300 font-bold">
+                            Auto-Selected Vehicle: {vehicle}
+                          </p>
+                          <p className="text-slate-400">
+                            Total Weight: {(totalWeightGrams / 1000).toFixed(1)} kg | Multi-Stop
+                            Route: {totalRouteKm} km | Delivery Fee: Rs.{deliveryFee}
+                          </p>
+                        </div>
                       );
-                      const gst = Number(((itemsTotal + 25) * 0.05).toFixed(2));
-                      setPendingUpiPayment({
-                        type: "PRODUCT_ORDER",
-                        catId: selectedCategory,
-                        title: "Store Order",
-                        amount: Number(
-                          (
-                            itemsTotal +
-                            25 +
-                            gst +
-                            (monetizationConfig.globalPlatformFee || 0)
-                          ).toFixed(2)
-                        ),
-                        items: currentCategoryCart,
-                        itemsTotal,
-                        deliveryFee: 25,
-                        gst
-                      });
-                    }}
-                    className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-                  >
-                    {t.payUpi} &rarr;
-                  </button>
+                    })()}
+                    <button
+                      type="button"
+                      onClick={handlePlaceOrderForMerchantApproval}
+                      className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+                    >
+                      Submit Order for Merchant Approval (3-Min Auto-Failover) &rarr;
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -1841,6 +2599,7 @@ function AppContent() {
                 ))}
                 {serviceCart.length > 0 && (
                   <button
+                    type="button"
                     onClick={() =>
                       setPendingUpiPayment({
                         type: "SERVICE_ESCROW",
@@ -1869,6 +2628,7 @@ function AppContent() {
                 ))}
                 {decorCart.length > 0 && decorStep === "cart" && (
                   <button
+                    type="button"
                     onClick={() => {
                       setDecorStep("bidding");
                       triggerToast("Decor Cart broadcasted to Reverse-Bidding Desk!");
@@ -1890,27 +2650,41 @@ function AppContent() {
                           <span className="text-emerald-400">Rs.{b.price}</span>
                         </div>
                         <button
+                          type="button"
                           onClick={() => {
-                            setPendingUpiPayment({
-                              type: "PRODUCT_ORDER",
-                              catId: "daily_needs",
-                              title: `35% Decor Escrow (${b.maskedVendor})`,
-                              amount: Math.round(b.price * 0.35),
+                            const newDecorOrd = {
+                              id: `DEC-${Math.floor(1000 + Math.random() * 9000)}`,
+                              dateStr: eventDate,
+                              createdAt: "Escrow Milestone",
+                              periodTag: "TODAY",
+                              customerName: currentUser.fullName,
+                              address: activeAddressObj.fullAddress,
+                              shopName: b.maskedVendor,
                               items: [
                                 {
-                                  name: `Decor Escrow (${b.maskedVendor})`,
+                                  name: `35% Event Escrow (${b.features})`,
                                   qty: 1,
-                                  price: Math.round(b.price * 0.35)
+                                  price: Math.round(b.price * 0.35),
+                                  merchantName: b.maskedVendor,
+                                  approvalStatus: "APPROVED"
                                 }
                               ],
                               itemsTotal: Math.round(b.price * 0.35),
                               deliveryFee: 0,
-                              gst: 0
-                            });
+                              gst: 0,
+                              grandTotal: Math.round(b.price * 0.35),
+                              riderName: "Event Escrow Desk",
+                              status: "MERCHANT_APPROVED_AWAITING_PAYMENT",
+                              secretOtp: String(Math.floor(1000 + Math.random() * 9000))
+                            };
+                            setOrders([newDecorOrd, ...orders]);
+                            setDecorCart([]);
+                            setFooterTab("orders");
+                            triggerToast("Quote Accepted! Proceed to UPI Escrow Payment.");
                           }}
                           className="w-full bg-emerald-400 text-slate-950 font-black py-1.5 rounded-lg text-[10px] cursor-pointer"
                         >
-                          Accept Quote & Pay 35% Escrow (Rs.{Math.round(b.price * 0.35)})
+                          Accept Quote & Lock 35% Escrow (Rs.{Math.round(b.price * 0.35)})
                         </button>
                       </div>
                     ))}
@@ -1924,54 +2698,166 @@ function AppContent() {
                 {taxiCart.map((ride, idx) => (
                   <div
                     key={idx}
-                    className="bg-slate-950 p-2 rounded-xl flex justify-between"
+                    className="bg-slate-950 p-2 rounded-xl space-y-1 border border-slate-800"
                   >
-                    <span>{ride.title}</span>
-                    <span className="text-teal-300">Rs.{ride.price}</span>
+                    <div className="flex justify-between font-bold">
+                      <span>{ride.title}</span>
+                      <span className="text-teal-300">Rs.{ride.price}</span>
+                    </div>
+                    <p className="text-[9px] text-slate-400">
+                      From: {ride.pickupPin} &rarr; To: {ride.dropPin}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPendingUpiPayment({
+                          type: "TAXI_PARCEL_ORDER",
+                          title: ride.title,
+                          amount: ride.price,
+                          pickupPin: ride.pickupPin,
+                          dropPin: ride.dropPin,
+                          distanceKm: ride.distanceKm,
+                          parcelWeightKg: ride.parcelWeightKg
+                        })
+                      }
+                      className="w-full bg-teal-400 text-slate-950 font-black py-1.5 rounded-lg text-[10px] cursor-pointer"
+                    >
+                      Pay Rs.{ride.price} via UPI & Dispatch Captain
+                    </button>
                   </div>
                 ))}
-                {taxiCart.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setTaxiCart([]);
-                      triggerToast(
-                        "Prime Captain alerted (15s Priority Window)! Live tracking active."
-                      );
-                    }}
-                    className="w-full bg-teal-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                  >
-                    Confirm & Dispatch Captain
-                  </button>
-                )}
               </div>
             )}
           </div>
         )}
 
+        {/* POINT 8, 9, 10 & 17: ORDERS TAB WITH PRE-PAYMENT MERCHANT APPROVAL & 3-MIN FAILOVER */}
         {footerTab === "orders" && (
-          <OrdersHistoryAndInvoice
-            orders={orders}
-            serviceBookings={serviceBookings}
-            onCancelOrder={(id) =>
-              setOrders(
-                orders.map((o) =>
-                  o.id === id ? { ...o, status: "CANCELLED_BY_USER" } : o
-                )
+          <div className="space-y-3">
+            {orders
+              .filter(
+                (o) =>
+                  o.status === "AWAITING_MERCHANT_APPROVAL" ||
+                  o.status === "MERCHANT_APPROVED_AWAITING_PAYMENT"
               )
-            }
-            onReturnOrder={(id) =>
-              setOrders(
-                orders.map((o) =>
-                  o.id === id ? { ...o, status: "RETURN_REQUESTED" } : o
+              .map((ord) => (
+                <div
+                  key={ord.id}
+                  className="bg-slate-900 border-2 border-amber-400 rounded-2xl p-3 space-y-2 text-xs text-white"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="font-black text-amber-300">
+                      #{ord.id} - {ord.status.replace(/_/g, " ")}
+                    </span>
+                    <span className="font-black text-emerald-400">Rs.{ord.grandTotal}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {(ord.items || []).map((it, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex justify-between items-center text-[10px]"
+                      >
+                        <div>
+                          <p className="font-bold text-white">
+                            {it.qty}x {it.name}
+                          </p>
+                          <p className="text-emerald-300">
+                            Merchant: {it.merchantName} ({it.approvalStatus})
+                          </p>
+                          {it.failoverNote && (
+                            <p className="text-amber-300 text-[9px]">{it.failoverNote}</p>
+                          )}
+                        </div>
+                        {it.approvalStatus !== "APPROVED" && (
+                          <button
+                            type="button"
+                            onClick={() => handleForceFailoverMerchant(ord.id, idx)}
+                            className="bg-amber-400 text-slate-950 font-black px-2 py-1 rounded text-[9px] cursor-pointer"
+                          >
+                            3m Failover &rarr; Next Shop
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {ord.status === "MERCHANT_APPROVED_AWAITING_PAYMENT" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPendingUpiPayment({
+                          type: "APPROVED_MERCHANT_ORDER",
+                          orderId: ord.id,
+                          title: `Approved Order #${ord.id}`,
+                          amount: ord.grandTotal
+                        })
+                      }
+                      className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer shadow"
+                    >
+                      Merchant Approved! Pay Rs.{ord.grandTotal} via UPI &rarr;
+                    </button>
+                  )}
+                </div>
+              ))}
+
+            {/* Point 19: Service Bookings Awaiting Final Spare Parts Payment */}
+            {serviceBookings
+              .filter((sb) => sb.status === "FINAL_BILL_SENT_WAIT_PAYMENT")
+              .map((sb) => (
+                <div
+                  key={sb.id}
+                  className="bg-slate-900 border-2 border-indigo-400 rounded-2xl p-3 space-y-2 text-xs text-white"
+                >
+                  <div className="flex justify-between font-bold">
+                    <span className="text-indigo-300">
+                      Final On-Site Bill #{sb.id} ({sb.providerName})
+                    </span>
+                    <span className="text-amber-300">Rs.{sb.finalServiceBill}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-300">
+                    Parts: {sb.sparePartsDesc} (Rs.{sb.sparePartsCost}) | Extra Hours:{" "}
+                    {sb.extraHours} | Labor: Rs.{sb.repairLaborFee}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPendingUpiPayment({
+                        type: "SERVICE_FINAL_BILL",
+                        bookingId: sb.id,
+                        title: `Service Final Bill #${sb.id}`,
+                        amount: sb.finalServiceBill
+                      })
+                    }
+                    className="w-full bg-indigo-500 text-white font-black py-2 rounded-xl cursor-pointer"
+                  >
+                    Pay Final Service Bill (Rs.{sb.finalServiceBill}) via UPI
+                  </button>
+                </div>
+              ))}
+
+            <OrdersHistoryAndInvoice
+              orders={orders}
+              serviceBookings={serviceBookings}
+              onCancelOrder={(id) =>
+                setOrders(
+                  orders.map((o) =>
+                    o.id === id ? { ...o, status: "CANCELLED_BY_USER" } : o
+                  )
                 )
-              )
-            }
-            onOpenLiveMap={(ord) => {
-              setActiveOrderId(ord.id);
-              setLiveOrderDrawerOpen(true);
-            }}
-            onTriggerToast={triggerToast}
-          />
+              }
+              onReturnOrder={(id) =>
+                setOrders(
+                  orders.map((o) =>
+                    o.id === id ? { ...o, status: "RETURN_REQUESTED" } : o
+                  )
+                )
+              }
+              onOpenLiveMap={(ord) => {
+                setActiveOrderId(ord.id);
+                setLiveOrderDrawerOpen(true);
+              }}
+              onTriggerToast={triggerToast}
+            />
+          </div>
         )}
 
         {footerTab === "account" && (
@@ -1979,7 +2865,13 @@ function AppContent() {
             currentUser={currentUser}
             setCurrentUser={setCurrentUser}
             activePortal={activePortal}
-            setActivePortal={setActivePortal}
+            setActivePortal={(nextPortal) => {
+              if (nextPortal === "customer" && activePortal !== "customer") {
+                setPersonalShoppingFromPartner(activePortal);
+              }
+              setActivePortal(nextPortal);
+              setFooterTab("home");
+            }}
             activeAddressObj={activeAddressObj}
             accountSecurity={accountSecurity}
             setAccountSecurity={setAccountSecurity}
@@ -1997,12 +2889,12 @@ function AppContent() {
   };
 
   // ==========================================================================
-  // PORTAL 2: PRODUCT MERCHANT PORTAL
+  // PORTAL 2: PRODUCT MERCHANT PORTAL (Points 14, 15, 17, 18, 25)
   // ==========================================================================
   const renderMerchantPortal = () => (
     <MobilePhoneShell
       title="2. Product Merchant"
-      badge="Zero-Popup Queue"
+      badge="Stock & Orders"
       activePortal="merchant"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -2015,12 +2907,329 @@ function AppContent() {
       appUpdateInfo={appUpdateInfo}
       onTriggerOtaUpdate={handleRunOtaUpdate}
     >
-      {footerTab === "account" ? (
+      <div className="bg-slate-900 text-white p-3 rounded-2xl border border-emerald-500/40 flex justify-between items-center text-xs">
+        <div>
+          <h3 className="font-black text-emerald-400">{currentUser.fullName} Desk</h3>
+          <p className="text-[10px] text-slate-400">
+            Approve Stock, Verify Payment, Pack Orders & Manage Catalog
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPersonalShoppingFromPartner("merchant");
+            setActivePortal("customer");
+            setFooterTab("home");
+            triggerToast("Switched to Personal Shopping Mode!");
+          }}
+          className="bg-emerald-400 text-slate-950 font-black px-2.5 py-1 rounded-xl text-[10px] cursor-pointer"
+        >
+          Personal Shop
+        </button>
+      </div>
+
+      {/* TAB 1: MERCHANT ORDERS QUEUE */}
+      {footerTab === "home" && (
+        <div className="space-y-2.5 text-xs text-white">
+          {orders.length === 0 ? (
+            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center text-slate-400">
+              No active orders in queue yet. Place an order from the Customer Portal to test
+              real-time arrival!
+            </div>
+          ) : (
+            orders.map((ord) => (
+              <div
+                key={ord.id}
+                className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2"
+              >
+                <div className="flex justify-between font-bold">
+                  <span className="text-emerald-400">#{ord.id} ({ord.vehicle})</span>
+                  <span className="text-amber-300">Rs.{ord.grandTotal}</span>
+                </div>
+                <p className="text-[10px] text-slate-300">
+                  Customer: {ord.customerName} | Status: {ord.status.replace(/_/g, " ")}
+                </p>
+                <div className="space-y-1 bg-slate-950 p-2 rounded-xl">
+                  {(ord.items || []).map((it, idx) => (
+                    <div key={idx} className="flex justify-between text-[10px]">
+                      <span>
+                        {it.qty}x {it.name} ({it.merchantName})
+                      </span>
+                      <span className="text-emerald-300">{it.approvalStatus}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {ord.status === "AWAITING_MERCHANT_APPROVAL" && (
+                  <div className="space-y-2 pt-1 border-t border-slate-800">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="number"
+                        placeholder="Heavy Transport (Rs.)"
+                        onChange={(e) =>
+                          setMerchantHeavyFeeInput(Number(e.target.value) || 0)
+                        }
+                        className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-white text-[10px]"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Hamali / Labor (Rs.)"
+                        onChange={(e) =>
+                          setMerchantLaborFeeInput(Number(e.target.value) || 0)
+                        }
+                        className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-white text-[10px]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrders(
+                          orders.map((o) => {
+                            if (o.id !== ord.id) return o;
+                            const extra =
+                              Number(merchantHeavyFeeInput || 0) +
+                              Number(merchantLaborFeeInput || 0);
+                            const nextDelivery = o.deliveryFee + extra;
+                            const nextGst = Number(
+                              ((o.itemsTotal + nextDelivery) * 0.05).toFixed(2)
+                            );
+                            return {
+                              ...o,
+                              deliveryFee: nextDelivery,
+                              heavyTransportFee: Number(merchantHeavyFeeInput || 0),
+                              laborFee: Number(merchantLaborFeeInput || 0),
+                              gst: nextGst,
+                              grandTotal: Number(
+                                (o.itemsTotal + nextDelivery + nextGst).toFixed(2)
+                              ),
+                              items: o.items.map((it) => ({
+                                ...it,
+                                approvalStatus: "APPROVED"
+                              })),
+                              status: "MERCHANT_APPROVED_AWAITING_PAYMENT"
+                            };
+                          })
+                        );
+                        triggerToast(
+                          `Order #${ord.id} Approved & Bill pushed to Customer for UPI Payment!`
+                        );
+                      }}
+                      className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                    >
+                      Approve Stock & Push Final Bill to Customer &rarr;
+                    </button>
+                  </div>
+                )}
+
+                {ord.status === "PAID_PACKING_STARTED" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrders(
+                        orders.map((o) =>
+                          o.id === ord.id
+                            ? { ...o, status: "READY_FOR_PICKUP_AGENT_ALERTED" }
+                            : o
+                        )
+                      );
+                      triggerToast(
+                        "Payment Verified & Packing Approved! Delivery Captain Alerted."
+                      );
+                    }}
+                    className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                  >
+                    Verify Payment, Complete Packing & Alert Captain &rarr;
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: INLINE STOCK MANUAL & PRICE EDITOR (Point 14 & 15) */}
+      {footerTab === "stock" && (
+        <div className="space-y-2.5 text-xs text-white">
+          <h4 className="font-black text-emerald-400">
+            Live Product Stock Manual & Price Editor (Syncs to Customer App)
+          </h4>
+          {products.map((prod) => (
+            <div
+              key={prod.id}
+              className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2"
+            >
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-white">{prod.subCategoryBrand}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProducts(products.filter((p) => p.id !== prod.id));
+                    triggerToast(`Removed ${prod.subCategoryBrand} from catalog.`);
+                  }}
+                  className="bg-rose-950 text-rose-300 px-2 py-0.5 rounded text-[9px] cursor-pointer"
+                >
+                  Delete
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400">
+                  {prod.variants[0]?.label} Price (Rs.):
+                </span>
+                <input
+                  type="number"
+                  value={prod.variants[0]?.price || 0}
+                  onChange={(e) => {
+                    const newPrice = Number(e.target.value) || 0;
+                    setProducts(
+                      products.map((p) =>
+                        p.id === prod.id
+                          ? {
+                              ...p,
+                              variants: p.variants.map((v, i) =>
+                                i === 0 ? { ...v, price: newPrice } : v
+                              ),
+                              merchantOffers: (p.merchantOffers || []).map((m, i) =>
+                                i === 0 ? { ...m, price: newPrice } : m
+                              )
+                            }
+                          : p
+                      )
+                    );
+                  }}
+                  className="w-24 bg-slate-950 border border-emerald-400 rounded-lg p-1 text-emerald-300 font-bold"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TAB 3: ADD NEW BRAND / PRODUCT TO CATALOG (Point 15) */}
+      {footerTab === "add_brand" && (
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-emerald-500/40 space-y-2.5 text-xs text-white">
+          <h4 className="font-black text-emerald-400">
+            Add New Product Brand to Customer Storefront & Admin Queue
+          </h4>
+          <select
+            value={newBrandForm.categoryId}
+            onChange={(e) =>
+              setNewBrandForm({ ...newBrandForm, categoryId: e.target.value })
+            }
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
+          >
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={newBrandForm.subCategoryBrand}
+            onChange={(e) =>
+              setNewBrandForm({ ...newBrandForm, subCategoryBrand: e.target.value })
+            }
+            placeholder="Product Brand Name (e.g. Fortune Sunflower Oil)"
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+          />
+          <div className="grid grid-cols-3 gap-1.5">
+            <input
+              type="text"
+              value={newBrandForm.variantLabel}
+              onChange={(e) =>
+                setNewBrandForm({ ...newBrandForm, variantLabel: e.target.value })
+              }
+              placeholder="1 Litre"
+              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+            />
+            <input
+              type="number"
+              value={newBrandForm.price}
+              onChange={(e) =>
+                setNewBrandForm({ ...newBrandForm, price: e.target.value })
+              }
+              placeholder="Price (Rs.)"
+              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+            />
+            <input
+              type="number"
+              value={newBrandForm.mrp}
+              onChange={(e) =>
+                setNewBrandForm({ ...newBrandForm, mrp: e.target.value })
+              }
+              placeholder="MRP (Rs.)"
+              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (!newBrandForm.subCategoryBrand.trim()) return;
+              const pPrice = Number(newBrandForm.price) || 120;
+              const pMrp = Number(newBrandForm.mrp) || pPrice + 20;
+              const newProd = {
+                id: Date.now(),
+                zoneId: "adilabad",
+                categoryId: newBrandForm.categoryId,
+                subCategoryBrand: newBrandForm.subCategoryBrand.trim(),
+                shopName: currentUser.fullName || "Sri Laxmi Supermart",
+                distanceKm: 1.2,
+                rating: 5.0,
+                curiosityTag: "New Town Arrival",
+                image:
+                  "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=80",
+                status: "approved",
+                variants: [
+                  {
+                    id: "v1",
+                    label: newBrandForm.variantLabel || "1 Pack",
+                    price: pPrice,
+                    mrp: pMrp,
+                    weightGrams: Number(newBrandForm.weightGrams) || 1000
+                  }
+                ],
+                merchantOffers: [
+                  {
+                    merchantId: currentUser.id || 1,
+                    merchantName: currentUser.fullName || "Sri Laxmi Supermart",
+                    price: pPrice,
+                    area: "Adilabad",
+                    rating: 5.0
+                  }
+                ]
+              };
+              setProducts([newProd, ...products]);
+              setPendingSubCategories([newProd, ...pendingSubCategories]);
+              setNewBrandForm({ ...newBrandForm, subCategoryBrand: "", price: "", mrp: "" });
+              triggerToast(
+                `Published ${newProd.subCategoryBrand} to Customer Storefront & Admin Catalog!`
+              );
+            }}
+            className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+          >
+            + Publish Product Brand to Storefront
+          </button>
+        </div>
+      )}
+
+      {footerTab === "orders" && (
+        <OrdersHistoryAndInvoice
+          orders={orders}
+          serviceBookings={[]}
+          onTriggerToast={triggerToast}
+        />
+      )}
+
+      {footerTab === "account" && (
         <OwnerAccountProfile
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
           activePortal={activePortal}
-          setActivePortal={setActivePortal}
+          setActivePortal={(nextPortal) => {
+            if (nextPortal === "customer") setPersonalShoppingFromPartner("merchant");
+            setActivePortal(nextPortal);
+            setFooterTab("home");
+          }}
           activeAddressObj={activeAddressObj}
           accountSecurity={accountSecurity}
           setAccountSecurity={setAccountSecurity}
@@ -2032,70 +3241,17 @@ function AppContent() {
           otaProgress={otaProgress}
           onTriggerToast={triggerToast}
         />
-      ) : (
-        <div className="space-y-3 text-xs text-white">
-          <div className="bg-slate-900 p-3 rounded-2xl border border-emerald-500/40 flex justify-between items-center">
-            <div>
-              <h3 className="font-black text-emerald-400">
-                Autonomous Product Packing Queue
-              </h3>
-              <p className="text-[10px] text-slate-400">
-                Zero manual confirmation popup delay. Approve packing to launch Captain
-                Live Map.
-              </p>
-            </div>
-            <button
-              onClick={() => setActivePortal("customer")}
-              className="bg-emerald-400 text-slate-950 font-black px-2.5 py-1 rounded-xl text-[10px] cursor-pointer"
-            >
-              Personal Shop
-            </button>
-          </div>
-          {orders.map((ord) => (
-            <div
-              key={ord.id}
-              className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2"
-            >
-              <div className="flex justify-between font-bold">
-                <span className="text-emerald-400">#{ord.id}</span>
-                <span className="text-amber-300">PAID Rs.{ord.grandTotal}</span>
-              </div>
-              <p className="text-[10px] text-slate-300">
-                Customer: {ord.customerName} | Status: {ord.status.replace(/_/g, " ")}
-              </p>
-              {ord.status === "PAID_PACKING_STARTED" && (
-                <button
-                  onClick={() => {
-                    setOrders(
-                      orders.map((o) =>
-                        o.id === ord.id
-                          ? { ...o, status: "READY_FOR_PICKUP_AGENT_ALERTED" }
-                          : o
-                      )
-                    );
-                    triggerToast(
-                      "Packing Approved! Delivery Captain alerted with Live 3-Point Route."
-                    );
-                  }}
-                  className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                >
-                  Approve Packing & Alert Delivery Captain &rarr;
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
       )}
     </MobilePhoneShell>
   );
 
   // ==========================================================================
-  // PORTAL 3: SERVICE PROVIDER PORTAL
+  // PORTAL 3: SERVICE PROVIDER PORTAL (Point 19: All 5 Footer Tabs Working)
   // ==========================================================================
   const renderServiceProviderPortal = () => (
     <MobilePhoneShell
       title="3. Service Provider"
-      badge="Geo Happy Code"
+      badge="1-Hr Slots & Parts"
       activePortal="service_provider"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -2108,12 +3264,330 @@ function AppContent() {
       appUpdateInfo={appUpdateInfo}
       onTriggerOtaUpdate={handleRunOtaUpdate}
     >
-      {footerTab === "account" ? (
+      <div className="bg-slate-900 text-white p-3 rounded-2xl border border-indigo-500/40 flex justify-between items-center text-xs">
+        <div>
+          <h3 className="font-black text-indigo-300">Service Provider Desk</h3>
+          <p className="text-[10px] text-slate-400">
+            Geo-Fenced Happy Code & On-Site Spare Parts Bill Builder
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPersonalShoppingFromPartner("service_provider");
+            setActivePortal("customer");
+            setFooterTab("home");
+            triggerToast("Switched to Personal Shopping Mode!");
+          }}
+          className="bg-indigo-400 text-slate-950 font-black px-2.5 py-1 rounded-xl text-[10px] cursor-pointer"
+        >
+          Personal Shop
+        </button>
+      </div>
+
+      {/* TAB 1: SCHEDULED VISITS, GEO HAPPY CODE & ON-SITE SPARE PARTS BILL BUILDER */}
+      {footerTab === "home" && (
+        <div className="space-y-3 text-xs text-white">
+          <div className="bg-slate-900 p-2.5 rounded-2xl border border-slate-800 flex justify-between items-center">
+            <span>GPS Geo-Fence Check:</span>
+            <button
+              type="button"
+              onClick={() => setProviderInsideGeoFence(!providerInsideGeoFence)}
+              className={`px-2.5 py-1 rounded-lg font-black text-[10px] cursor-pointer ${
+                providerInsideGeoFence
+                  ? "bg-emerald-400 text-slate-950"
+                  : "bg-rose-500 text-white"
+              }`}
+            >
+              {providerInsideGeoFence ? "INSIDE GEO-FENCE" : "OUTSIDE GEO-FENCE"}
+            </button>
+          </div>
+          {serviceBookings.length === 0 ? (
+            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center text-slate-400">
+              No scheduled service visits yet. Book a 1-Hr slot from the Customer App Services tab!
+            </div>
+          ) : (
+            serviceBookings.map((sb) => (
+              <div
+                key={sb.id}
+                className="bg-slate-900 p-3 rounded-2xl border border-indigo-500/40 space-y-2"
+              >
+                <p className="font-bold text-indigo-300">
+                  #{sb.id} - {sb.customerName} ({sb.bookedSlot})
+                </p>
+                <p className="text-[10px] text-slate-300">
+                  Address: {sb.address} | Escrow Status: {sb.escrowStatus}
+                </p>
+
+                {/* On-Site Spare Parts & Extra Hours Final Bill Generator */}
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                  <p className="text-[10px] font-bold text-amber-300">
+                    On-Site Spare Parts & Extra Hours Bill Builder:
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Spare Parts Used (e.g. Capacitor, PVC Pipe)"
+                    onChange={(e) =>
+                      setSparePartsForm({
+                        ...sparePartsForm,
+                        sparePartsDesc: e.target.value
+                      })
+                    }
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-[10px]"
+                  />
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <input
+                      type="number"
+                      placeholder="Extra Hrs"
+                      onChange={(e) =>
+                        setSparePartsForm({
+                          ...sparePartsForm,
+                          extraHours: Number(e.target.value) || 0
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-[10px]"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Parts (Rs.)"
+                      onChange={(e) =>
+                        setSparePartsForm({
+                          ...sparePartsForm,
+                          sparePartsCost: Number(e.target.value) || 0
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-[10px]"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Labor (Rs.)"
+                      onChange={(e) =>
+                        setSparePartsForm({
+                          ...sparePartsForm,
+                          repairLaborFee: Number(e.target.value) || 0
+                        })
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-[10px]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const totalBill =
+                        sb.escrowVisitingAmount +
+                        sparePartsForm.extraHours * (sb.hourlyRate || 150) +
+                        sparePartsForm.sparePartsCost +
+                        sparePartsForm.repairLaborFee;
+                      setServiceBookings(
+                        serviceBookings.map((b) =>
+                          b.id === sb.id
+                            ? {
+                                ...b,
+                                extraHours: sparePartsForm.extraHours,
+                                sparePartsDesc:
+                                  sparePartsForm.sparePartsDesc || "Standard Parts",
+                                sparePartsCost: sparePartsForm.sparePartsCost,
+                                repairLaborFee: sparePartsForm.repairLaborFee,
+                                finalServiceBill: totalBill,
+                                status: "FINAL_BILL_SENT_WAIT_PAYMENT"
+                              }
+                            : b
+                        )
+                      );
+                      triggerToast(
+                        `Pushed Final Service & Spare Parts Bill (Rs.${totalBill}) to Customer!`
+                      );
+                    }}
+                    className="w-full bg-indigo-500 text-white font-black py-1.5 rounded-lg text-[10px] cursor-pointer"
+                  >
+                    Generate & Push Spare Parts Bill to Customer
+                  </button>
+                </div>
+
+                <div className="flex gap-1.5 pt-1">
+                  <input
+                    type="text"
+                    placeholder={`Happy Code (${sb.happyCode})`}
+                    value={providerHappyCodeInput}
+                    onChange={(e) => setProviderHappyCodeInput(e.target.value)}
+                    className="w-36 bg-slate-950 border border-indigo-400 rounded-xl p-1.5 text-center font-mono text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!providerInsideGeoFence) {
+                        alert(
+                          "GEO-FENCE BLOCKED: Must be physically at Customer GPS location to validate Happy Code!"
+                        );
+                        return;
+                      }
+                      if (providerHappyCodeInput === sb.happyCode) {
+                        setServiceBookings(
+                          serviceBookings.map((b) =>
+                            b.id === sb.id
+                              ? { ...b, escrowStatus: "RELEASED_TO_PROVIDER_WALLET" }
+                              : b
+                          )
+                        );
+                        triggerToast("Geo-Fence & Happy Code Verified! Escrow Released.");
+                      } else {
+                        alert(`Enter Customer Happy Code: ${sb.happyCode}`);
+                      }
+                    }}
+                    className="flex-1 bg-emerald-400 text-slate-950 font-black rounded-xl text-[10px] cursor-pointer"
+                  >
+                    Verify Happy Code
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: 1-HR SLOTS AVAILABILITY MANAGER */}
+      {footerTab === "slots" && (
+        <div className="space-y-2.5 text-xs text-white">
+          <h4 className="font-black text-indigo-300">
+            Manage 1-Hour Interval Availability Slots
+          </h4>
+          {serviceProviders.map((sp) => (
+            <div
+              key={sp.id}
+              className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-1.5"
+            >
+              <p className="font-bold text-white">
+                {sp.providerName} (Visit: Rs.{sp.visitingFee} | Rs.{sp.hourlyRate}/hr)
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {(sp.availableSlots || []).map((slot) => (
+                  <span
+                    key={slot}
+                    className="bg-indigo-950 border border-indigo-500/40 text-indigo-300 px-2 py-0.5 rounded text-[9px] font-bold"
+                  >
+                    {slot}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TAB 3: RATE CARD & REGISTER NEW SERVICE OFFERING */}
+      {footerTab === "add_service" && (
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-indigo-500/40 space-y-2.5 text-xs text-white">
+          <h4 className="font-black text-indigo-300">
+            Publish New Service Offering to Customer Services Catalog
+          </h4>
+          <select
+            value={newServiceForm.serviceCategoryId}
+            onChange={(e) =>
+              setNewServiceForm({ ...newServiceForm, serviceCategoryId: e.target.value })
+            }
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
+          >
+            {serviceCategories.map((sc) => (
+              <option key={sc.id} value={sc.id}>
+                {sc.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={newServiceForm.providerName}
+            onChange={(e) =>
+              setNewServiceForm({ ...newServiceForm, providerName: e.target.value })
+            }
+            placeholder="Service Provider / Technician Name"
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+          />
+          <input
+            type="text"
+            value={newServiceForm.specialization}
+            onChange={(e) =>
+              setNewServiceForm({ ...newServiceForm, specialization: e.target.value })
+            }
+            placeholder="Specialization (e.g. RO Purifier, Geyser & Motor Fix)"
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+          />
+          <div className="grid grid-cols-2 gap-1.5">
+            <input
+              type="number"
+              value={newServiceForm.visitingFee}
+              onChange={(e) =>
+                setNewServiceForm({
+                  ...newServiceForm,
+                  visitingFee: Number(e.target.value) || 99
+                })
+              }
+              placeholder="Visiting Fee (Rs.)"
+              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+            />
+            <input
+              type="number"
+              value={newServiceForm.hourlyRate}
+              onChange={(e) =>
+                setNewServiceForm({
+                  ...newServiceForm,
+                  hourlyRate: Number(e.target.value) || 150
+                })
+              }
+              placeholder="Hourly Rate (Rs./hr)"
+              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (!newServiceForm.providerName.trim()) return;
+              const newSp = {
+                id: `sp_${Date.now()}`,
+                serviceCategoryId: newServiceForm.serviceCategoryId,
+                providerName: newServiceForm.providerName.trim(),
+                maskedId: `Verified Pro #${String(Date.now()).slice(-3)}`,
+                serviceCategory: "Verified Home Service",
+                specialization:
+                  newServiceForm.specialization || "Doorstep Repair Specialist",
+                visitingFee: newServiceForm.visitingFee,
+                hourlyRate: newServiceForm.hourlyRate,
+                area: "Adilabad",
+                rating: 5.0,
+                phone: currentUser.phone || "9848022209",
+                availableSlots: ["09:00 AM - 10:00 AM", "10:00 AM - 11:00 AM", "02:00 PM - 03:00 PM"],
+                image:
+                  "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80"
+              };
+              setServiceProviders([newSp, ...serviceProviders]);
+              setNewServiceForm({ ...newServiceForm, providerName: "", specialization: "" });
+              triggerToast("Published new Service Provider profile to Customer App!");
+            }}
+            className="w-full bg-indigo-500 text-white font-black py-2.5 rounded-xl cursor-pointer"
+          >
+            + Publish to Home Services Catalog
+          </button>
+        </div>
+      )}
+
+      {footerTab === "orders" && (
+        <OrdersHistoryAndInvoice
+          orders={[]}
+          serviceBookings={serviceBookings}
+          onTriggerToast={triggerToast}
+        />
+      )}
+
+      {footerTab === "account" && (
         <OwnerAccountProfile
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
           activePortal={activePortal}
-          setActivePortal={setActivePortal}
+          setActivePortal={(nextPortal) => {
+            if (nextPortal === "customer")
+              setPersonalShoppingFromPartner("service_provider");
+            setActivePortal(nextPortal);
+            setFooterTab("home");
+          }}
           activeAddressObj={activeAddressObj}
           accountSecurity={accountSecurity}
           setAccountSecurity={setAccountSecurity}
@@ -2125,72 +3599,12 @@ function AppContent() {
           otaProgress={otaProgress}
           onTriggerToast={triggerToast}
         />
-      ) : (
-        <div className="space-y-3 text-xs text-white">
-          <div className="bg-slate-900 p-2.5 rounded-2xl border border-slate-800 flex justify-between items-center">
-            <span>GPS Geo-Fence Check:</span>
-            <button
-              onClick={() => setProviderInsideGeoFence(!providerInsideGeoFence)}
-              className={`px-2.5 py-1 rounded-lg font-black text-[10px] cursor-pointer ${
-                providerInsideGeoFence
-                  ? "bg-emerald-400 text-slate-950"
-                  : "bg-rose-500 text-white"
-              }`}
-            >
-              {providerInsideGeoFence ? "INSIDE GEO-FENCE" : "OUTSIDE GEO-FENCE"}
-            </button>
-          </div>
-          {serviceBookings.map((sb) => (
-            <div
-              key={sb.id}
-              className="bg-slate-900 p-3 rounded-2xl border border-indigo-500/40 space-y-2"
-            >
-              <p className="font-bold text-indigo-300">
-                #{sb.id} - {sb.customerName} ({sb.bookedSlot})
-              </p>
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  placeholder={`Happy Code (${sb.happyCode})`}
-                  value={providerHappyCodeInput}
-                  onChange={(e) => setProviderHappyCodeInput(e.target.value)}
-                  className="w-36 bg-slate-950 border border-indigo-400 rounded-xl p-1.5 text-center font-mono text-white"
-                />
-                <button
-                  onClick={() => {
-                    if (!providerInsideGeoFence) {
-                      alert(
-                        "GEO-FENCE BLOCKED: Must be physically at Customer GPS location to validate Happy Code!"
-                      );
-                      return;
-                    }
-                    if (providerHappyCodeInput === sb.happyCode) {
-                      setServiceBookings(
-                        serviceBookings.map((b) =>
-                          b.id === sb.id
-                            ? { ...b, escrowStatus: "RELEASED_TO_PROVIDER_WALLET" }
-                            : b
-                        )
-                      );
-                      triggerToast("Geo-Fence & Happy Code Verified! Escrow Released.");
-                    } else {
-                      alert(`Enter Customer Happy Code: ${sb.happyCode}`);
-                    }
-                  }}
-                  className="flex-1 bg-emerald-400 text-slate-950 font-black rounded-xl text-[10px] cursor-pointer"
-                >
-                  Verify Happy Code
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
       )}
     </MobilePhoneShell>
   );
 
   // ==========================================================================
-  // PORTAL 4: DECORATOR & FUNCTION HALL PORTAL
+  // PORTAL 4: DECORATOR & FUNCTION HALL PORTAL (Point 20: All 5 Tabs Working)
   // ==========================================================================
   const renderDecoratorPortal = () => (
     <MobilePhoneShell
@@ -2208,12 +3622,230 @@ function AppContent() {
       appUpdateInfo={appUpdateInfo}
       onTriggerOtaUpdate={handleRunOtaUpdate}
     >
-      {footerTab === "account" ? (
+      <div className="bg-slate-900 text-white p-3 rounded-2xl border border-amber-500/40 flex justify-between items-center text-xs">
+        <div>
+          <h3 className="font-black text-amber-400">Decorator & Function Hall Desk</h3>
+          <p className="text-[10px] text-slate-400">
+            Hall Availability Calendar, Reverse Bids & 35%/85% Milestone Escrow
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPersonalShoppingFromPartner("decorator");
+            setActivePortal("customer");
+            setFooterTab("home");
+            triggerToast("Switched to Personal Shopping Mode!");
+          }}
+          className="bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-xl text-[10px] cursor-pointer"
+        >
+          Personal Shop
+        </button>
+      </div>
+
+      {/* TAB 1: FUNCTION HALL AVAILABILITY CALENDAR */}
+      {footerTab === "home" && (
+        <div className="bg-slate-900 p-3 rounded-2xl border border-amber-500/40 space-y-2 text-xs text-white">
+          <h3 className="font-bold text-amber-400">
+            Function Hall Schedule Calendar (Decorators Cannot Place Decor Orders Here)
+          </h3>
+          <input
+            type="date"
+            value={hallScheduleDateInput}
+            onChange={(e) => setHallScheduleDateInput(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white"
+          />
+          {functionHalls.map((hall) => {
+            const isBlocked = hall.bookedDates.includes(hallScheduleDateInput);
+            return (
+              <div
+                key={hall.id}
+                className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5"
+              >
+                <p className="font-bold">{hall.name}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFunctionHalls(
+                      functionHalls.map((h) =>
+                        h.id === hall.id
+                          ? {
+                              ...h,
+                              bookedDates: isBlocked
+                                ? h.bookedDates.filter(
+                                    (d) => d !== hallScheduleDateInput
+                                  )
+                                : [...h.bookedDates, hallScheduleDateInput]
+                            }
+                          : h
+                      )
+                    );
+                    triggerToast(`Updated schedule for ${hall.name}`);
+                  }}
+                  className={`w-full py-1.5 rounded-xl font-black text-[10px] cursor-pointer ${
+                    isBlocked
+                      ? "bg-emerald-500 text-slate-950"
+                      : "bg-rose-500 text-white"
+                  }`}
+                >
+                  {isBlocked
+                    ? `Mark ${hallScheduleDateInput} AVAILABLE`
+                    : `Mark ${hallScheduleDateInput} BOOKED`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* TAB 2: ANONYMOUS REVERSE-BIDDING DESK */}
+      {footerTab === "bidding" && (
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-amber-500/40 space-y-2.5 text-xs text-white">
+          <h4 className="font-black text-amber-400">
+            Anonymous Event Reverse-Bidding Desk
+          </h4>
+          <p className="text-[10px] text-slate-300">
+            Submit competing quotes for broadcasted customer event packages. Your vendor
+            identity stays masked until the customer locks the escrow advance.
+          </p>
+          <input
+            type="number"
+            value={myBidAmount}
+            onChange={(e) => setMyBidAmount(e.target.value)}
+            placeholder="Your Competing Quote in INR (e.g. 18500)"
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+          />
+          <input
+            type="text"
+            value={myBidFeatures}
+            onChange={(e) => setMyBidFeatures(e.target.value)}
+            placeholder="Included Inclusions (e.g. Fresh Orchids + LED Stage + Welcome Arch)"
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!myBidAmount) return;
+              setDecorBids([
+                {
+                  id: `bid_${Date.now()}`,
+                  maskedVendor: `Verified Decorator #${decorBids.length + 1}`,
+                  price: Number(myBidAmount),
+                  features:
+                    myBidFeatures || "Complete Royal Stage & Entrance Floral Arch"
+                },
+                ...decorBids
+              ]);
+              setMyBidAmount("");
+              setMyBidFeatures("");
+              triggerToast("Anonymous Reverse-Bid broadcasted to Customer Decor Cart!");
+            }}
+            className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+          >
+            Submit Anonymous Decorator Quote
+          </button>
+        </div>
+      )}
+
+      {/* TAB 3: 35% / 85% MILESTONE ESCROW LEDGER */}
+      {footerTab === "escrow" && (
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-emerald-500/40 space-y-2 text-xs text-white">
+          <h4 className="font-black text-emerald-400">
+            35% / 85% Milestone Escrow & 4-Hrs-Prior Settlement Ledger
+          </h4>
+          <p className="text-[10px] text-slate-300">
+            Events &gt;3 days away lock <strong>35% Advance</strong> in Escrow (remaining 65%
+            released 4 hrs prior to setup). Events &le;2 days away lock{" "}
+            <strong>85% Advance</strong> in Escrow.
+          </p>
+          {decorBids.map((b) => (
+            <div
+              key={b.id}
+              className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1"
+            >
+              <div className="flex justify-between font-bold">
+                <span>{b.maskedVendor}</span>
+                <span className="text-emerald-400">Total Quote: Rs.{b.price}</span>
+              </div>
+              <p className="text-[10px] text-amber-300">
+                35% Escrow Advance: Rs.{Math.round(b.price * 0.35)} | 65% Balance (4 hrs
+                prior): Rs.{b.price - Math.round(b.price * 0.35)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TAB 4: DECORATOR PORTFOLIO MANAGER */}
+      {footerTab === "portfolio" && (
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 space-y-2.5 text-xs text-white">
+          <h4 className="font-black text-amber-400">Publish Decoration Portfolio</h4>
+          <input
+            type="text"
+            value={newPortfolioForm.name}
+            onChange={(e) =>
+              setNewPortfolioForm({ ...newPortfolioForm, name: e.target.value })
+            }
+            placeholder="Decorator Studio Name"
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+          />
+          <input
+            type="text"
+            value={newPortfolioForm.expert}
+            onChange={(e) =>
+              setNewPortfolioForm({ ...newPortfolioForm, expert: e.target.value })
+            }
+            placeholder="Specialization (e.g. Grand Reception & Haldi Stages)"
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!newPortfolioForm.name.trim()) return;
+              setDecorators([
+                {
+                  id: `dec_${Date.now()}`,
+                  name: newPortfolioForm.name.trim(),
+                  expert: newPortfolioForm.expert || "Wedding & Event Styling",
+                  status: "Active",
+                  phone: currentUser.phone || "9848033309"
+                },
+                ...decorators
+              ]);
+              setNewPortfolioForm({ name: "", expert: "" });
+              triggerToast("Decorator Portfolio published!");
+            }}
+            className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+          >
+            + Publish Decor Portfolio
+          </button>
+          <div className="space-y-1.5 pt-2">
+            {decorators.map((d) => (
+              <div
+                key={d.id}
+                className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex justify-between"
+              >
+                <div>
+                  <p className="font-bold text-white">{d.name}</p>
+                  <p className="text-[10px] text-slate-400">{d.expert}</p>
+                </div>
+                <span className="text-emerald-400 text-[10px] font-bold">{d.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {footerTab === "account" && (
         <OwnerAccountProfile
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
           activePortal={activePortal}
-          setActivePortal={setActivePortal}
+          setActivePortal={(nextPortal) => {
+            if (nextPortal === "customer") setPersonalShoppingFromPartner("decorator");
+            setActivePortal(nextPortal);
+            setFooterTab("home");
+          }}
           activeAddressObj={activeAddressObj}
           accountSecurity={accountSecurity}
           setAccountSecurity={setAccountSecurity}
@@ -2225,65 +3857,12 @@ function AppContent() {
           otaProgress={otaProgress}
           onTriggerToast={triggerToast}
         />
-      ) : (
-        <div className="space-y-3 text-xs text-white">
-          <div className="bg-slate-900 p-3 rounded-2xl border border-amber-500/40 space-y-2">
-            <h3 className="font-bold text-amber-400">
-              Function Hall Schedule Calendar (Decorators Cannot Place Orders Here)
-            </h3>
-            <input
-              type="date"
-              value={hallScheduleDateInput}
-              onChange={(e) => setHallScheduleDateInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white"
-            />
-            {functionHalls.map((hall) => {
-              const isBlocked = hall.bookedDates.includes(hallScheduleDateInput);
-              return (
-                <div
-                  key={hall.id}
-                  className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5"
-                >
-                  <p className="font-bold">{hall.name}</p>
-                  <button
-                    onClick={() => {
-                      setFunctionHalls(
-                        functionHalls.map((h) =>
-                          h.id === hall.id
-                            ? {
-                                ...h,
-                                bookedDates: isBlocked
-                                  ? h.bookedDates.filter(
-                                      (d) => d !== hallScheduleDateInput
-                                    )
-                                  : [...h.bookedDates, hallScheduleDateInput]
-                              }
-                            : h
-                        )
-                      );
-                      triggerToast(`Updated schedule for ${hall.name}`);
-                    }}
-                    className={`w-full py-1.5 rounded-xl font-black text-[10px] cursor-pointer ${
-                      isBlocked
-                        ? "bg-emerald-500 text-slate-950"
-                        : "bg-rose-500 text-white"
-                    }`}
-                  >
-                    {isBlocked
-                      ? `Mark ${hallScheduleDateInput} AVAILABLE`
-                      : `Mark ${hallScheduleDateInput} BOOKED`}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       )}
     </MobilePhoneShell>
   );
 
   // ==========================================================================
-  // PORTAL 5: DELIVERY CAPTAIN RADAR
+  // PORTAL 5: DELIVERY CAPTAIN RADAR (Points 13, 21: All 5 Tabs + Animated Map)
   // ==========================================================================
   const renderRiderPortal = () => (
     <MobilePhoneShell
@@ -2301,12 +3880,250 @@ function AppContent() {
       appUpdateInfo={appUpdateInfo}
       onTriggerOtaUpdate={handleRunOtaUpdate}
     >
-      {footerTab === "account" ? (
+      <div className="bg-slate-900 text-white p-3 rounded-2xl border border-teal-500/40 flex justify-between items-center text-xs">
+        <div>
+          <h3 className="font-black text-teal-300">Captain Blind-Dispatch Radar</h3>
+          <p className="text-[10px] text-slate-400">
+            15s Prime Priority, Animated 3-Pt Route Map & Doorstep OTP
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPersonalShoppingFromPartner("rider");
+            setActivePortal("customer");
+            setFooterTab("home");
+            triggerToast("Switched to Personal Shopping Mode!");
+          }}
+          className="bg-teal-400 text-slate-950 font-black px-2.5 py-1 rounded-xl text-[10px] cursor-pointer"
+        >
+          Personal Shop
+        </button>
+      </div>
+
+      {/* TAB 1: DISPATCH RADAR & DOORSTEP OTP */}
+      {footerTab === "home" && (
+        <div className="space-y-3 text-xs text-white">
+          {orders.length === 0 ? (
+            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center text-slate-400">
+              Standing by in Adilabad for Merchant Packing Approvals or P2P Parcel dispatches...
+            </div>
+          ) : (
+            orders.map((ord) => (
+              <div
+                key={ord.id}
+                className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2"
+              >
+                <div className="flex justify-between font-bold">
+                  <span className="text-emerald-400">#{ord.id} ({ord.vehicle})</span>
+                  <span className="text-amber-300">
+                    Earn Rs.{ord.deliveryFee || 35} (100% Payout)
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-300">
+                  Route: Captain GPS &rarr; {ord.shopName} &rarr; {ord.address} (
+                  {ord.distanceKm || 1.8} km)
+                </p>
+                {ord.status === "READY_FOR_PICKUP_AGENT_ALERTED" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrders(
+                        orders.map((o) =>
+                          o.id === ord.id
+                            ? { ...o, status: "OUT_FOR_DELIVERY_LIVE_MAP" }
+                            : o
+                        )
+                      );
+                      triggerToast(
+                        "Captain Accepted! Animated 3-Point GPS Route Map Activated."
+                      );
+                    }}
+                    className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                  >
+                    Accept Pickup Token & Launch 3-Point Route Map &rarr;
+                  </button>
+                )}
+                {ord.status === "OUT_FOR_DELIVERY_LIVE_MAP" && (
+                  <div className="space-y-2">
+                    <LiveRouteMap
+                      pickupLabel={ord.shopName}
+                      dropLabel={ord.address}
+                      riderName={ord.riderName}
+                      vehicle={ord.vehicle}
+                      distanceKm={ord.distanceKm || 1.8}
+                      status={ord.status}
+                    />
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={captainOtpInput}
+                        onChange={(e) => setCaptainOtpInput(e.target.value)}
+                        placeholder={`Doorstep OTP (${ord.secretOtp})`}
+                        className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-center font-mono text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (captainOtpInput === ord.secretOtp) {
+                            setOrders(
+                              orders.map((o) =>
+                                o.id === ord.id
+                                  ? { ...o, status: "DELIVERED_REVIEW_GATE" }
+                                  : o
+                              )
+                            );
+                            setCaptainOtpInput("");
+                            triggerToast("Doorstep OTP Verified! Delivery Completed.");
+                          } else {
+                            alert(`Customer Doorstep OTP is ${ord.secretOtp}`);
+                          }
+                        }}
+                        className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
+                      >
+                        Verify OTP
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {ord.status === "DELIVERED_REVIEW_GATE" && (
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/50 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-amber-300">
+                        Mandatory YES/NO Delivery Review Gate
+                      </span>
+                      <button
+                        type="button"
+                        onClick={speakReviewQuestionsAloud}
+                        className="bg-emerald-500 text-slate-950 font-black px-2 py-0.5 rounded text-[9px] cursor-pointer"
+                      >
+                        \uD83D\uDD0A Read Aloud
+                      </button>
+                    </div>
+                    {DELIVERY_REVIEW_QUESTIONS.map((rq) => (
+                      <div
+                        key={rq.id}
+                        className="flex justify-between items-center text-[10px]"
+                      >
+                        <span>{rq.question}</span>
+                        <div className="flex gap-1">
+                          {["YES", "NO"].map((ans) => (
+                            <button
+                              key={ans}
+                              type="button"
+                              onClick={() =>
+                                setReviewAnswers({ ...reviewAnswers, [rq.id]: ans })
+                              }
+                              className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
+                                reviewAnswers[rq.id] === ans
+                                  ? "bg-emerald-400 text-slate-950"
+                                  : "bg-slate-800 text-slate-300"
+                              }`}
+                            >
+                              {ans}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: DEDICATED 3-POINT LIVE ROUTE MAP */}
+      {footerTab === "map" && (
+        <div className="space-y-2.5 text-xs text-white">
+          <LiveRouteMap
+            pickupLabel={activeOrder?.shopName || "Sri Laxmi Supermart"}
+            dropLabel={activeOrder?.address || "Subhash Nagar, Adilabad"}
+            riderName={currentUser.fullName}
+            vehicle={activeOrder?.vehicle || "2W Bike Captain"}
+            distanceKm={activeOrder?.distanceKm || 2.1}
+          />
+        </div>
+      )}
+
+      {/* TAB 3: SMART BATCHING & COMPETITIVE PER-KM RATE SLIDER */}
+      {footerTab === "batching" && (
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-3 text-xs text-white">
+          <div className="flex justify-between items-center">
+            <div>
+              <h4 className="font-black text-teal-300">
+                Smart Batching / Multi-Tasking Toggle
+              </h4>
+              <p className="text-[10px] text-slate-400">
+                Combine Store Delivery + Bike Taxi + P2P Parcel along the same route
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSmartBatchingEnabled(!smartBatchingEnabled)}
+              className={`px-3 py-1.5 rounded-xl font-black text-[10px] cursor-pointer ${
+                smartBatchingEnabled
+                  ? "bg-teal-400 text-slate-950"
+                  : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              {smartBatchingEnabled ? "BATCHING ON" : "OFF"}
+            </button>
+          </div>
+          <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+            <label className="block font-bold text-amber-300">
+              Captain Competitive Per-KM Rate Slider: Rs.{captainPerKmRate}/km
+            </label>
+            <input
+              type="range"
+              min="4"
+              max="12"
+              step="0.5"
+              value={captainPerKmRate}
+              onChange={(e) => setCaptainPerKmRate(Number(e.target.value))}
+              className="w-full accent-teal-400"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: CAPTAIN SCORECARD */}
+      {footerTab === "orders" && (
+        <div className="space-y-2.5 text-xs text-white">
+          <h4 className="font-black text-emerald-400">Captain YES/NO Scorecard & Fleet</h4>
+          {riders.map((r) => (
+            <div
+              key={r.id}
+              className="bg-slate-900 p-3 rounded-2xl border border-slate-800 flex justify-between items-center"
+            >
+              <div>
+                <p className="font-bold text-white">
+                  {r.name} ({r.vehicleName})
+                </p>
+                <p className="text-[10px] text-teal-300">
+                  {r.badge} | Battery: {r.batteryPct}%
+                </p>
+              </div>
+              <div className="text-right text-[10px] font-black">
+                <span className="text-emerald-400">YES: {r.yesVotes}</span> |{" "}
+                <span className="text-rose-400">NO: {r.noVotes}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {footerTab === "account" && (
         <OwnerAccountProfile
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
           activePortal={activePortal}
-          setActivePortal={setActivePortal}
+          setActivePortal={(nextPortal) => {
+            if (nextPortal === "customer") setPersonalShoppingFromPartner("rider");
+            setActivePortal(nextPortal);
+            setFooterTab("home");
+          }}
           activeAddressObj={activeAddressObj}
           accountSecurity={accountSecurity}
           setAccountSecurity={setAccountSecurity}
@@ -2318,125 +4135,78 @@ function AppContent() {
           otaProgress={otaProgress}
           onTriggerToast={triggerToast}
         />
-      ) : (
-        <div className="space-y-3 text-xs text-white">
-          {orders.map((ord) => (
-            <div
-              key={ord.id}
-              className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2"
-            >
-              <p className="font-bold text-emerald-400">
-                #{ord.id} | Route: Captain GPS &rarr; {ord.shopName} &rarr;{" "}
-                {ord.address}
-              </p>
-              {ord.status === "READY_FOR_PICKUP_AGENT_ALERTED" && (
-                <button
-                  onClick={() => {
-                    setOrders(
-                      orders.map((o) =>
-                        o.id === ord.id
-                          ? { ...o, status: "OUT_FOR_DELIVERY_LIVE_MAP" }
-                          : o
-                      )
-                    );
-                    triggerToast(
-                      "Captain Accepted! Live 3-Point GPS Map Activated."
-                    );
-                  }}
-                  className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                >
-                  Accept Delivery & Launch 3-Point Live Route Map &rarr;
-                </button>
-              )}
-              {ord.status === "OUT_FOR_DELIVERY_LIVE_MAP" && (
-                <div className="space-y-2">
-                  <div className="w-full h-36 rounded-xl overflow-hidden border border-emerald-400">
-                    <iframe
-                      title="Captain 3-Point Live Route"
-                      width="100%"
-                      height="100%"
-                      frameBorder="0"
-                      src="https://maps.google.com/maps?q=19.6641,78.5320&z=14&output=embed"
-                    />
-                  </div>
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={captainOtpInput}
-                      onChange={(e) => setCaptainOtpInput(e.target.value)}
-                      placeholder={`Doorstep OTP (${ord.secretOtp})`}
-                      className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-center font-mono text-white"
-                    />
-                    <button
-                      onClick={() => {
-                        if (captainOtpInput === ord.secretOtp) {
-                          setOrders(
-                            orders.map((o) =>
-                              o.id === ord.id
-                                ? { ...o, status: "DELIVERED_REVIEW_GATE" }
-                                : o
-                            )
-                          );
-                          setCaptainOtpInput("");
-                          triggerToast(
-                            "Doorstep OTP Verified! Delivery Completed."
-                          );
-                        } else {
-                          alert(`Customer Doorstep OTP is ${ord.secretOtp}`);
-                        }
-                      }}
-                      className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
-                    >
-                      Verify OTP
-                    </button>
-                  </div>
-                </div>
-              )}
-              {ord.status === "DELIVERED_REVIEW_GATE" && (
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/50 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-amber-300">
-                      Mandatory YES/NO Delivery Review Gate
-                    </span>
-                    <button
-                      onClick={speakReviewQuestionsAloud}
-                      className="bg-emerald-500 text-slate-950 font-black px-2 py-0.5 rounded text-[9px] cursor-pointer"
-                    >
-                      \uD83D\uDD0A Read Aloud
-                    </button>
-                  </div>
-                  {DELIVERY_REVIEW_QUESTIONS.map((rq) => (
-                    <div
-                      key={rq.id}
-                      className="flex justify-between items-center text-[10px]"
-                    >
-                      <span>{rq.question}</span>
-                      <div className="flex gap-1">
-                        {["YES", "NO"].map((ans) => (
-                          <button
-                            key={ans}
-                            onClick={() =>
-                              setReviewAnswers({ ...reviewAnswers, [rq.id]: ans })
-                            }
-                            className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
-                              reviewAnswers[rq.id] === ans
-                                ? "bg-emerald-400 text-slate-950"
-                                : "bg-slate-800 text-slate-300"
-                            }`}
-                          >
-                            {ans}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
       )}
     </MobilePhoneShell>
+  );
+
+  // ==========================================================================
+  // POINT 22: FOUNDER ADMIN CREDENTIAL GATE (`KhodayAnvesh` / `22061969s!`)
+  // ==========================================================================
+  const renderAdminAuthGate = () => (
+    <div className="min-h-screen bg-[#04090e] flex items-center justify-center p-4 text-white">
+      <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-5 space-y-3 shadow-2xl text-xs">
+        <div className="flex items-center gap-3">
+          <FounderLogoBadge logoUrl={founderLogoUrl} />
+          <div>
+            <h2 className="text-sm font-black text-amber-400">
+              WE4ALL FOUNDER ADMIN GATE
+            </h2>
+            <p className="text-[10px] text-slate-400">
+              Restricted Root Access (Khoday Anvesh Only)
+            </p>
+          </div>
+        </div>
+        {adminLoginError && (
+          <div className="bg-rose-950 border border-rose-500 text-rose-200 p-2 rounded-xl text-center font-bold">
+            {adminLoginError}
+          </div>
+        )}
+        <input
+          type="text"
+          value={adminLoginForm.username}
+          onChange={(e) =>
+            setAdminLoginForm({ ...adminLoginForm, username: e.target.value })
+          }
+          placeholder="Admin Username"
+          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+        />
+        <input
+          type="password"
+          value={adminLoginForm.password}
+          onChange={(e) =>
+            setAdminLoginForm({ ...adminLoginForm, password: e.target.value })
+          }
+          placeholder="Admin Password"
+          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+        />
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("mobile_app")}
+            className="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl font-bold cursor-pointer"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                adminLoginForm.username.trim() === "KhodayAnvesh" &&
+                adminLoginForm.password === "22061969s!"
+              ) {
+                setIsAdminAuthenticated(true);
+                setAdminLoginError("");
+              } else {
+                setAdminLoginError("Invalid Founder Admin Credentials.");
+              }
+            }}
+            className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+          >
+            Unlock Founder Admin Suite
+          </button>
+        </div>
+      </div>
+    </div>
   );
 
   // ==========================================================================
@@ -2445,102 +4215,103 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-[#071118] text-white flex flex-col relative">
       {viewMode === "founder_web" ? (
-        <FounderAdminSuite
-          founderLogoUrl={founderLogoUrl}
-          onUploadFounderPhoto={handleUploadFounderPhoto}
-          geoZones={GEO_ZONES}
-          selectedZoneFilter={selectedZoneFilter}
-          setSelectedZoneFilter={setSelectedZoneFilter}
-          killedCategoriesByZone={killedCategoriesByZone}
-          setKilledCategoriesByZone={setKilledCategoriesByZone}
-          geoAds={geoAds}
-          setGeoAds={setGeoAds}
-          categories={categories}
-          setCategories={setCategories}
-          categoryCarts={categoryCarts}
-          setCategoryCarts={setCategoryCarts}
-          merchants={merchants}
-          setMerchants={setMerchants}
-          serviceProviders={serviceProviders}
-          setServiceProviders={setServiceProviders}
-          decorators={decorators}
-          setDecorators={setDecorators}
-          registeredUsers={registeredUsers}
-          setRegisteredUsers={setRegisteredUsers}
-          products={products}
-          setProducts={setProducts}
-          functionHalls={functionHalls}
-          setFunctionHalls={setFunctionHalls}
-          orders={orders}
-          setOrders={setOrders}
-          serviceBookings={serviceBookings}
-          pendingMerchants={pendingMerchants}
-          setPendingMerchants={setPendingMerchants}
-          pendingSubCategories={pendingSubCategories}
-          setPendingSubCategories={setPendingSubCategories}
-          rejectedItems={rejectedItems}
-          setRejectedItems={setRejectedItems}
-          merchantCommissionPct={merchantCommissionPct}
-          setMerchantCommissionPct={setMerchantCommissionPct}
-          consumerFeePct={consumerFeePct}
-          setConsumerFeePct={setConsumerFeePct}
-          monetizationConfig={monetizationConfig}
-          setMonetizationConfig={setMonetizationConfig}
-          splitScreens={splitScreens}
-          setSplitScreens={setSplitScreens}
-          appUpdateInfo={appUpdateInfo}
-          setAppUpdateInfo={setAppUpdateInfo}
-          onLaunchMultiPhoneView={() => {
-            setOnboardingStep("app");
-            setActivePortal("split");
-            setViewMode("mobile_app");
-          }}
-          onTeleportToScreen={(flowId) => {
-            setViewMode("mobile_app");
-            if (flowId === "auth_vault") {
-              setOnboardingStep("auth");
-              return;
-            }
-            setOnboardingStep("app");
-            if (flowId === "cust_stores") {
-              setActivePortal("customer");
-              setFooterTab("home");
-              setCustomerHomeSubTab("stores");
-            } else if (flowId === "cust_services") {
-              setActivePortal("customer");
-              setFooterTab("services");
-            } else if (flowId === "cust_decor") {
-              setActivePortal("customer");
-              setFooterTab("home");
-              setCustomerHomeSubTab("events");
-            } else if (flowId === "cust_carts") {
-              setActivePortal("customer");
-              setFooterTab("carts");
-            } else if (flowId === "cust_orders") {
-              setActivePortal("customer");
-              setFooterTab("orders");
-            } else if (flowId === "cust_account") {
-              setActivePortal("customer");
-              setFooterTab("account");
-            } else if (flowId === "portal_merchant") {
-              setActivePortal("merchant");
-              setFooterTab("home");
-            } else if (flowId === "portal_service") {
-              setActivePortal("service_provider");
-              setFooterTab("home");
-            } else if (flowId === "portal_decorator") {
-              setActivePortal("decorator");
-              setFooterTab("home");
-            } else if (flowId === "portal_rider") {
-              setActivePortal("rider");
-              setFooterTab("home");
-            } else if (flowId === "portal_split") {
+        !isAdminAuthenticated ? (
+          renderAdminAuthGate()
+        ) : (
+          <FounderAdminSuite
+            founderLogoUrl={founderLogoUrl}
+            onUploadFounderPhoto={handleUploadFounderPhoto}
+            apkIconUrl={apkIconUrl}
+            onUploadApkIcon={handleUploadApkIcon}
+            geoZones={GEO_ZONES}
+            selectedZoneFilter={selectedZoneFilter}
+            setSelectedZoneFilter={setSelectedZoneFilter}
+            killedCategoriesByZone={killedCategoriesByZone}
+            setKilledCategoriesByZone={setKilledCategoriesByZone}
+            geoAds={geoAds}
+            setGeoAds={setGeoAds}
+            categories={categories}
+            setCategories={setCategories}
+            categoryCarts={{}}
+            setCategoryCarts={() => {}}
+            merchants={merchants}
+            setMerchants={setMerchants}
+            serviceProviders={serviceProviders}
+            setServiceProviders={setServiceProviders}
+            decorators={decorators}
+            setDecorators={setDecorators}
+            registeredUsers={registeredUsers}
+            setRegisteredUsers={setRegisteredUsers}
+            products={products}
+            setProducts={setProducts}
+            functionHalls={functionHalls}
+            setFunctionHalls={setFunctionHalls}
+            orders={orders}
+            setOrders={setOrders}
+            serviceBookings={serviceBookings}
+            pendingMerchants={pendingMerchants}
+            setPendingMerchants={setPendingMerchants}
+            pendingSubCategories={pendingSubCategories}
+            setPendingSubCategories={setPendingSubCategories}
+            rejectedItems={rejectedItems}
+            setRejectedItems={setRejectedItems}
+            merchantCommissionPct={merchantCommissionPct}
+            setMerchantCommissionPct={setMerchantCommissionPct}
+            consumerFeePct={consumerFeePct}
+            setConsumerFeePct={setConsumerFeePct}
+            monetizationConfig={monetizationConfig}
+            setMonetizationConfig={setMonetizationConfig}
+            splitScreens={splitScreens}
+            setSplitScreens={setSplitScreens}
+            appUpdateInfo={appUpdateInfo}
+            setAppUpdateInfo={setAppUpdateInfo}
+            onLaunchMultiPhoneView={() => {
+              setOnboardingStep("app");
               setActivePortal("split");
-            }
-          }}
-          onExitAdminToApp={() => setViewMode("mobile_app")}
-          onTriggerToast={triggerToast}
-        />
+              setViewMode("mobile_app");
+            }}
+            onTeleportToScreen={(flowId) => {
+              setViewMode("mobile_app");
+              if (flowId === "auth_vault") {
+                setOnboardingStep("auth");
+                return;
+              }
+              setOnboardingStep("app");
+              setFooterTab("home");
+              if (flowId === "cust_stores") {
+                setActivePortal("customer");
+                setCustomerHomeSubTab("stores");
+              } else if (flowId === "cust_services") {
+                setActivePortal("customer");
+                setFooterTab("services");
+              } else if (flowId === "cust_decor") {
+                setActivePortal("customer");
+                setCustomerHomeSubTab("events");
+              } else if (flowId === "cust_carts") {
+                setActivePortal("customer");
+                setFooterTab("carts");
+              } else if (flowId === "cust_orders") {
+                setActivePortal("customer");
+                setFooterTab("orders");
+              } else if (flowId === "cust_account") {
+                setActivePortal("customer");
+                setFooterTab("account");
+              } else if (flowId === "portal_merchant") {
+                setActivePortal("merchant");
+              } else if (flowId === "portal_service") {
+                setActivePortal("service_provider");
+              } else if (flowId === "portal_decorator") {
+                setActivePortal("decorator");
+              } else if (flowId === "portal_rider") {
+                setActivePortal("rider");
+              } else if (flowId === "portal_split") {
+                setActivePortal("split");
+              }
+            }}
+            onExitAdminToApp={() => setViewMode("mobile_app")}
+            onTriggerToast={triggerToast}
+          />
+        )
       ) : (
         <main className="flex-1 flex flex-col justify-center items-center">
           {onboardingStep === "permissions" && renderPermissionsGateway()}
@@ -2581,6 +4352,7 @@ function AppContent() {
         onPaymentSuccess={handleCompleteUpiPayment}
       />
 
+      {/* Point 13: Animated Live Route Map Drawer */}
       {liveOrderDrawerOpen && activeOrder && (
         <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs">
@@ -2589,21 +4361,21 @@ function AppContent() {
                 Live Order #{activeOrder.id}
               </h3>
               <button
+                type="button"
                 onClick={() => setLiveOrderDrawerOpen(false)}
                 className="bg-slate-800 px-2.5 py-1 rounded-xl"
               >
                 X
               </button>
             </div>
-            <div className="w-full h-44 rounded-2xl overflow-hidden border border-emerald-500/50">
-              <iframe
-                title="Live Order Map"
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                src="https://maps.google.com/maps?q=19.6641,78.5320&z=15&output=embed"
-              />
-            </div>
+            <LiveRouteMap
+              pickupLabel={activeOrder.shopName}
+              dropLabel={activeOrder.address}
+              riderName={activeOrder.riderName}
+              vehicle={activeOrder.vehicle}
+              distanceKm={activeOrder.distanceKm || 1.8}
+              status={activeOrder.status}
+            />
             <p className="text-center font-bold">
               Captain: {activeOrder.riderName} | Doorstep OTP:{" "}
               <strong className="text-amber-300 font-mono">
@@ -2614,12 +4386,46 @@ function AppContent() {
         </div>
       )}
 
+      {/* Point 26: Accidental Back Button / Exit Confirmation Modal */}
+      {exitConfirmModalOpen && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-xs w-full p-4 space-y-3 text-xs text-center">
+            <h3 className="font-black text-amber-400 text-sm">
+              Stay in WE4ALL or Lock Account?
+            </h3>
+            <p className="text-[11px] text-slate-300">
+              Back button press intercepted so your active session is not closed accidentally.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setExitConfirmModalOpen(false)}
+                className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+              >
+                Stay in App
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setExitConfirmModalOpen(false);
+                  setOnboardingStep("auth");
+                }}
+                className="flex-1 bg-rose-600 text-white font-black py-2 rounded-xl cursor-pointer"
+              >
+                Lock / Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddAddressModal && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-teal-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs">
             <div className="flex justify-between items-center">
               <h3 className="font-black text-teal-300">Add Address (OTP Verified)</h3>
               <button
+                type="button"
                 onClick={() => setShowAddAddressModal(false)}
                 className="bg-slate-800 px-2 py-1 rounded-lg"
               >
@@ -2636,6 +4442,7 @@ function AppContent() {
               className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
             />
             <button
+              type="button"
               onClick={() => {
                 const otp = String(Math.floor(1000 + Math.random() * 9000));
                 setNewAddressForm({
@@ -2651,6 +4458,7 @@ function AppContent() {
             </button>
             {newAddressForm.generatedOtp && (
               <button
+                type="button"
                 onClick={() => {
                   const addr = {
                     id: `addr_${Date.now()}`,
@@ -2695,6 +4503,7 @@ class GlobalErrorBoundary extends React.Component {
             <h2 className="text-lg font-black text-rose-400">Application Error Caught</h2>
             <p className="text-xs text-rose-200 mt-2">{this.state.error?.toString()}</p>
             <button
+              type="button"
               onClick={() => window.location.reload()}
               className="mt-4 w-full bg-emerald-500 text-slate-950 py-2.5 rounded-xl font-black"
             >

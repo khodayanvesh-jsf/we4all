@@ -3,22 +3,20 @@ import React, { useState } from "react";
 // ============================================================================
 // MODULE: src/modules/OwnerAccountProfile.jsx
 // PURPOSE:
-//   1. Owner Identity Card (Photo, Name, Role, Saved Location)
-//   2. Bank Account & UPI ID Editor (Modifiable Anytime)
-//   3. Basic Profile Info Editor (30-Day Once-a-Month Rule + Mandatory 4-Digit OTP)
-//   4. PIN & Biometric Security + Bright/Dark UI + "Shop as Consumer" Switch
-//   5. LAST OPTION IN ACCOUNT: WE4ALL In-App OTA Update Center (Auto-Download,
-//      Install & Restart with Zero Data Loss + Direct WE4ALL.apk Download)
+//   - Column 1: Owner Profile Identity & 30-Day OTP-Verified Basic Info Edit
+//   - Column 2: Bank Account & UPI ID Editor (Modify Anytime)
+//   - Column 3: PIN Change (Requires Previous PIN + New PIN), Biometric & UI Theme
+//               (Role Switcher strictly removed per Points 1.3, 7 & 16!)
+//   - Column 4: WE4ALL In-App OTA Update Center (Muted if currentVersion === latestAvailableVersion)
 // ============================================================================
 export default function OwnerAccountProfile({
   currentUser,
   setCurrentUser,
   activePortal,
-  setActivePortal,
   activeAddressObj,
   accountSecurity,
   setAccountSecurity,
-  onLockApp,
+  onRequestLogout,
   brightTheme,
   setBrightTheme,
   appUpdateInfo,
@@ -35,23 +33,31 @@ export default function OwnerAccountProfile({
   const [editingBank, setEditingBank] = useState(false);
 
   const [basicProfile, setBasicProfile] = useState({
-    fullName: currentUser?.fullName || "Khoday Anvesh",
+    fullName: currentUser?.fullName || "Verified WE4ALL Member",
     phone: currentUser?.phone || "9848011223",
     savedLocation: activeAddressObj?.fullAddress || "Subhash Nagar, Adilabad",
     profilePhoto:
       currentUser?.profilePhoto ||
       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    lastModifiedTimestamp: null
+    lastModifiedTimestamp: currentUser?.lastModifiedTimestamp || null
   });
   const [editingBasicInfo, setEditingBasicInfo] = useState(false);
   const [basicEditOtpSent, setBasicEditOtpSent] = useState("");
   const [basicEditOtpInput, setBasicEditOtpInput] = useState("");
-  const [pinInput, setPinInput] = useState(accountSecurity?.fastPin || "1234");
+
+  // Point 6: Previous PIN + New PIN state for changing 4-Digit Quick PIN
+  const [oldPinInput, setOldPinInput] = useState("");
+  const [newPinInput, setNewPinInput] = useState("");
 
   const daysSinceLastEdit = basicProfile.lastModifiedTimestamp
     ? Math.floor((Date.now() - basicProfile.lastModifiedTimestamp) / (1000 * 60 * 60 * 24))
     : 31;
   const canEditBasicThisMonth = daysSinceLastEdit >= 30;
+
+  // Point 1.3: Check if installed version and latest version are identical
+  const isUpToDate =
+    !appUpdateInfo?.updateAvailable &&
+    appUpdateInfo?.currentVersion === appUpdateInfo?.latestAvailableVersion;
 
   return (
     <div className="space-y-3 text-xs pb-4">
@@ -73,8 +79,13 @@ export default function OwnerAccountProfile({
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) {
-                  setBasicProfile({ ...basicProfile, profilePhoto: URL.createObjectURL(f) });
-                  if (onTriggerToast) onTriggerToast("Profile photo updated!");
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    setBasicProfile({ ...basicProfile, profilePhoto: reader.result });
+                    setCurrentUser({ ...currentUser, profilePhoto: reader.result });
+                    if (onTriggerToast) onTriggerToast("Profile photo saved!");
+                  };
+                  reader.readAsDataURL(f);
                 }
               }}
               className="hidden"
@@ -82,7 +93,7 @@ export default function OwnerAccountProfile({
           </label>
           <div className="flex-1 min-w-0">
             <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded text-[9px] font-black uppercase">
-              Verified {activePortal.replace(/_/g, " ")}
+              Locked Role: {activePortal.replace(/_/g, " ")}
             </span>
             <h3 className="text-sm font-black text-white truncate mt-0.5">
               {basicProfile.fullName}
@@ -102,6 +113,7 @@ export default function OwnerAccountProfile({
                   : `Locked for ${30 - daysSinceLastEdit} more days (Once-a-Month Rule)`}
               </span>
               <button
+                type="button"
                 onClick={() => {
                   if (!canEditBasicThisMonth) {
                     alert("Basic Profile Info can only be modified once every 30 days.");
@@ -145,6 +157,7 @@ export default function OwnerAccountProfile({
               />
               <div className="flex gap-1.5">
                 <button
+                  type="button"
                   onClick={() => {
                     const otp = String(Math.floor(1000 + Math.random() * 9000));
                     setBasicEditOtpSent(otp);
@@ -156,6 +169,7 @@ export default function OwnerAccountProfile({
                   Send OTP
                 </button>
                 <button
+                  type="button"
                   onClick={() => setEditingBasicInfo(false)}
                   className="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg cursor-pointer"
                 >
@@ -171,19 +185,22 @@ export default function OwnerAccountProfile({
                     className="w-full bg-slate-900 border border-emerald-400 rounded-lg p-1.5 text-center font-mono text-white"
                   />
                   <button
+                    type="button"
                     onClick={() => {
                       if (basicEditOtpInput !== basicEditOtpSent) {
                         alert("Invalid OTP!");
                         return;
                       }
+                      const nowTs = Date.now();
                       setBasicProfile({
                         ...basicProfile,
-                        lastModifiedTimestamp: Date.now()
+                        lastModifiedTimestamp: nowTs
                       });
                       setCurrentUser({
                         ...currentUser,
                         fullName: basicProfile.fullName,
-                        phone: basicProfile.phone
+                        phone: basicProfile.phone,
+                        lastModifiedTimestamp: nowTs
                       });
                       setEditingBasicInfo(false);
                       setBasicEditOtpSent("");
@@ -213,6 +230,7 @@ export default function OwnerAccountProfile({
             </p>
           </div>
           <button
+            type="button"
             onClick={() => setEditingBank(!editingBank)}
             className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-2.5 py-1 rounded-xl text-[10px] font-black cursor-pointer"
           >
@@ -265,10 +283,11 @@ export default function OwnerAccountProfile({
               />
             </div>
             <button
+              type="button"
               onClick={() => {
                 setCurrentUser({ ...currentUser, ...bankDetails });
                 setEditingBank(false);
-                if (onTriggerToast) onTriggerToast("Bank & UPI details updated immediately!");
+                if (onTriggerToast) onTriggerToast("Bank & UPI details saved immediately!");
               }}
               className="w-full bg-emerald-500 text-slate-950 font-black py-1.5 rounded-lg cursor-pointer"
             >
@@ -278,13 +297,24 @@ export default function OwnerAccountProfile({
         )}
       </div>
 
-      {/* 3. PIN, BIOMETRIC, BRIGHT THEME & CONSUMER SHOPPING INTEROPERABILITY */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2 text-white">
-        <h4 className="font-black text-teal-300 text-xs">
-          Security (PIN / Biometric), UI Theme & Role Switch
-        </h4>
+      {/* 3. PIN CHANGE (REQUIRES PREVIOUS PIN), BIOMETRIC & UI THEME (NO ROLE SWITCHER!) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2.5 text-white">
+        <div className="flex justify-between items-center">
+          <h4 className="font-black text-teal-300 text-xs">
+            Security PIN, Biometric & UI Theme
+          </h4>
+          <button
+            type="button"
+            onClick={() => setBrightTheme(!brightTheme)}
+            className="bg-slate-800 text-emerald-300 px-2.5 py-1 rounded-xl font-bold text-[10px] cursor-pointer"
+          >
+            Theme: {brightTheme ? "Bright Daylight" : "Dark Emerald"}
+          </button>
+        </div>
+
         <div className="grid grid-cols-2 gap-1.5">
           <button
+            type="button"
             onClick={() =>
               setAccountSecurity({
                 ...accountSecurity,
@@ -297,9 +327,10 @@ export default function OwnerAccountProfile({
                 : "bg-slate-800 text-slate-400"
             }`}
           >
-            4-Digit PIN: {accountSecurity.pinEnabled ? "ON" : "OFF"}
+            4-Digit PIN Lock: {accountSecurity.pinEnabled ? "MANDATORY ON" : "OFF"}
           </button>
           <button
+            type="button"
             onClick={() =>
               setAccountSecurity({
                 ...accountSecurity,
@@ -312,85 +343,67 @@ export default function OwnerAccountProfile({
                 : "bg-slate-800 text-slate-400"
             }`}
           >
-            Biometric: {accountSecurity.biometricEnabled ? "ON" : "OFF"}
+            Biometric Unlock: {accountSecurity.biometricEnabled ? "ENABLED" : "OFF"}
           </button>
         </div>
 
-        <div className="flex gap-1.5">
-          <input
-            type="password"
-            maxLength={4}
-            value={pinInput}
-            onChange={(e) => setPinInput(e.target.value)}
-            placeholder="4-Digit PIN"
-            className="w-24 bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-center font-mono text-white"
-          />
-          <button
-            onClick={() => {
-              setAccountSecurity({ ...accountSecurity, fastPin: pinInput });
-              if (onTriggerToast) onTriggerToast("4-Digit Quick PIN updated!");
-            }}
-            className="flex-1 bg-slate-800 text-amber-300 font-bold rounded-xl text-[10px] cursor-pointer"
-          >
-            Save PIN
-          </button>
-          <button
-            onClick={() => setBrightTheme(!brightTheme)}
-            className="bg-slate-800 text-emerald-300 px-2.5 rounded-xl font-bold text-[10px] cursor-pointer"
-          >
-            {brightTheme ? "Dark UI" : "Bright UI"}
-          </button>
-          <button
-            onClick={onLockApp}
-            className="bg-rose-600 text-white font-black px-2.5 rounded-xl text-[10px] cursor-pointer"
-          >
-            Lock
-          </button>
-        </div>
-
-        {activePortal !== "customer" && (
-          <button
-            onClick={() => {
-              setActivePortal("customer");
-              if (onTriggerToast)
-                onTriggerToast("Switched to Personal Consumer Shopping Mode!");
-            }}
-            className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl text-xs cursor-pointer shadow"
-          >
-            Shop as Consumer (Personal Shopping Mode)
-          </button>
-        )}
-
-        {/* Portal Switcher for Multi-Role Testing on Single APK */}
-        <div className="pt-1 border-t border-slate-800">
-          <p className="text-[10px] text-slate-400 mb-1 font-bold">
-            Switch Registered Module Portal (Single WE4ALL APK):
+        {/* Point 6: Enter Previous PIN to Register New PIN */}
+        <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+          <p className="text-[10px] text-amber-300 font-bold">
+            Change 4-Digit Quick PIN (Requires Previous PIN Verification):
           </p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {[
-              { id: "customer", label: "1. Customer App" },
-              { id: "merchant", label: "2. Product Merchant" },
-              { id: "service_provider", label: "3. Service Provider" },
-              { id: "decorator", label: "4. Decorator & Halls" },
-              { id: "rider", label: "5. Delivery Captain" }
-            ].map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setActivePortal(p.id)}
-                className={`p-1.5 rounded-xl font-bold border text-left text-[10px] cursor-pointer ${
-                  activePortal === p.id
-                    ? "border-emerald-400 bg-emerald-500/20 text-emerald-300"
-                    : "border-slate-800 bg-slate-950 text-slate-300"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+          <div className="grid grid-cols-3 gap-1.5">
+            <input
+              type="password"
+              maxLength={4}
+              value={oldPinInput}
+              onChange={(e) => setOldPinInput(e.target.value)}
+              placeholder="Previous PIN"
+              className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center font-mono text-white"
+            />
+            <input
+              type="password"
+              maxLength={4}
+              value={newPinInput}
+              onChange={(e) => setNewPinInput(e.target.value)}
+              placeholder="New 4-Digit PIN"
+              className="bg-slate-900 border border-emerald-500/50 rounded-lg p-1.5 text-center font-mono text-white"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (oldPinInput !== accountSecurity.fastPin) {
+                  alert("Previous PIN does not match your current registered PIN!");
+                  return;
+                }
+                if (!/^\d{4}$/.test(newPinInput)) {
+                  alert("New PIN must be exactly 4 digits.");
+                  return;
+                }
+                setAccountSecurity({ ...accountSecurity, fastPin: newPinInput });
+                setCurrentUser({ ...currentUser, fastPin: newPinInput });
+                setOldPinInput("");
+                setNewPinInput("");
+                if (onTriggerToast)
+                  onTriggerToast("Previous PIN verified! New 4-Digit PIN registered.");
+              }}
+              className="bg-amber-400 text-slate-950 font-black rounded-lg text-[10px] cursor-pointer"
+            >
+              Update PIN
+            </button>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={onRequestLogout}
+          className="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-2 rounded-xl text-[10px] cursor-pointer"
+        >
+          Lock / Logout of WE4ALL
+        </button>
       </div>
 
-      {/* 4. LAST OPTION IN ACCOUNT SECTION: WE4ALL IN-APP OTA UPDATE CENTER (PAGE 96 REQ) */}
+      {/* 4. LAST OPTION IN ACCOUNT: WE4ALL IN-APP OTA UPDATE CENTER (MUTED WHEN UP TO DATE) */}
       <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border-2 border-amber-400 rounded-2xl p-3 space-y-2 text-white shadow-lg">
         <div className="flex justify-between items-center">
           <div>
@@ -398,24 +411,23 @@ export default function OwnerAccountProfile({
               WE4ALL App Update Center (OTA)
             </span>
             <h4 className="font-black text-emerald-300 text-xs mt-1">
-              Installed: v{appUpdateInfo?.currentVersion || "2.5.0"} | Latest: v
-              {appUpdateInfo?.latestAvailableVersion || "2.6.0"}
+              Installed: v{appUpdateInfo?.currentVersion || "2.8.0"} | Latest: v
+              {appUpdateInfo?.latestAvailableVersion || "2.8.0"}
             </h4>
           </div>
-          {appUpdateInfo?.updateAvailable ? (
+          {!isUpToDate ? (
             <span className="bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse">
               UPDATE READY
             </span>
           ) : (
             <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-bold px-2 py-0.5 rounded-full">
-              UP TO DATE
+              VERIFIED UP TO DATE
             </span>
           )}
         </div>
 
         <p className="text-[10px] text-slate-300 leading-relaxed">
-          {appUpdateInfo?.releaseNotes ||
-            "Push & install live module updates directly inside WE4ALL. 100% of your orders, carts, bank details & PIN settings are preserved automatically."}
+          {appUpdateInfo?.releaseNotes}
         </p>
 
         {otaProgress && (
@@ -435,10 +447,20 @@ export default function OwnerAccountProfile({
 
         <div className="grid grid-cols-2 gap-1.5 pt-1">
           <button
-            onClick={onRunOtaUpdate}
-            className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2 rounded-xl text-[10px] cursor-pointer shadow"
+            type="button"
+            disabled={isUpToDate}
+            onClick={() => {
+              if (!isUpToDate && onRunOtaUpdate) onRunOtaUpdate();
+            }}
+            className={`font-black py-2 rounded-xl text-[10px] shadow ${
+              isUpToDate
+                ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                : "bg-amber-400 hover:bg-amber-300 text-slate-950 cursor-pointer"
+            }`}
           >
-            Download & Install Update (Restart)
+            {isUpToDate
+              ? "Up to Date (Muted)"
+              : "Download & Install Update (Restart)"}
           </button>
           <a
             href={appUpdateInfo?.apkDownloadUrl || "/WE4ALL.apk"}
@@ -449,7 +471,7 @@ export default function OwnerAccountProfile({
             }
             className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-2 rounded-xl text-[10px] text-center cursor-pointer shadow block"
           >
-            Download Local WE4ALL.apk
+            Download WE4ALL.apk
           </a>
         </div>
       </div>
