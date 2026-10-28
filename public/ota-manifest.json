@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.8.3",
-  "latestAvailableVersion": "2.8.4",
+  "currentVersion": "2.8.4",
+  "latestAvailableVersion": "2.8.5",
   "updateAvailable": true,
-  "publishedAt": "2026-10-28T22:30:00Z",
+  "publishedAt": "2026-10-28T22:50:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
   "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk",
-  "releaseNotes": "WE4ALL v2.8.4: Added Manual Update 'Check' Button and Active Live Push Notifications for updates."
+  "releaseNotes": "WE4ALL v2.8.5: Restored stable Admin Login Gate, fixed React syntax bugs, preserved Manual OTA Check."
 }
