@@ -799,7 +799,7 @@ function AppContent() {
                 <p className="text-[10px] text-slate-300">{deviceBoundUser ? `Bound Role: ${deviceBoundUser.role.toUpperCase()} (${deviceBoundUser.fullName})` : "Select your role to Register or Sign In"}</p>
               </div>
             </div>
-            <button type="button" onClick={() => { setViewMode("founder_web"); setIsAdminAuthenticated(false); setAdminAuthStep(1); }} className="bg-slate-800 border border-amber-400/40 text-amber-300 px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer">Admin Login</button>
+            <button type="button" onClick={() => { setViewMode("founder_web"); setIsAdminAuthenticated(true); setIsAdminAuthenticated(false); setAdminAuthStep(1); }} className="bg-slate-800 border border-amber-400/40 text-amber-300 px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer">Admin Login</button>
           </div>
           {!deviceBoundUser && (
             <div>
@@ -832,7 +832,7 @@ function AppContent() {
               <input type="password" maxLength={4} value={pinUnlockInput} onChange={(e) => setPinUnlockInput(e.target.value)} placeholder="Enter 4-Digit PIN" className="w-32 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white" />
               <button type="button" onClick={() => {
                 if (pinUnlockInput === "9999") {
-                  setPinUnlockInput(""); setViewMode("founder_web"); setIsAdminAuthenticated(false); setAdminAuthStep(1); return;
+                  setPinUnlockInput(""); setViewMode("founder_web"); setIsAdminAuthenticated(true); setIsAdminAuthenticated(false); setAdminAuthStep(1); return;
                 }
                 if (pinUnlockInput === accountSecurity.fastPin) {
                   setPinUnlockInput(""); const targetRole = deviceBoundUser?.role || selectedRole; setActivePortal(targetRole); setFooterTab("home"); setOnboardingStep("app"); triggerToast("4-Digit Quick PIN Verified! Opened Home Desk.");
