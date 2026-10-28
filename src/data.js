@@ -5,8 +5,8 @@
 // ============================================================================
 
 export const INITIAL_APP_UPDATE_INFO = {
-  currentVersion: "2.5.0",
-  latestAvailableVersion: "2.6.0",
+  currentVersion: "2.6.0",
+  latestAvailableVersion: "2.7.0",
   updateAvailable: true,
   apkDownloadUrl: "/WE4ALL.apk",
   releaseNotes: "WE4ALL v2.6.0: Live Cloud Sync across all 5 Portals, Instant OTA Auto-Update without data loss, and enhanced 3-Point Captain GPS Route Map."
