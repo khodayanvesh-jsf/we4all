@@ -1,13 +1,9 @@
 import React, { useState } from "react";
 
-// ============================================================================
-// MODULE: src/modules/UpiPaymentModal.jsx
-// PURPOSE: Automatic UPI App Chooser (PhonePe, GPay, Paytm, BHIM, CRED)
-// ============================================================================
 const UPI_APPS = [
   { id: "phonepe", name: "PhonePe", badge: "Fastest in Adilabad", icon: "\uD83D\uDFE3" },
   { id: "gpay", name: "Google Pay (GPay)", badge: "Zero-MDR Instant", icon: "\uD83D\uDD35" },
-  { id: "paytm", name: "Paytm UPI", badge: " instant Wallet/UPI", icon: "\uD83D\uDC99" },
+  { id: "paytm", name: "Paytm UPI", badge: "Instant Wallet/UPI", icon: "\uD83D\uDC99" },
   { id: "bhim", name: "BHIM NPCI Official", badge: "Direct Bank UPI", icon: "\uD83D\uDFE0" },
   { id: "cred", name: "CRED Pay", badge: "Cashback UPI", icon: "\u26AB" }
 ];
@@ -19,7 +15,6 @@ export default function UpiPaymentModal({
   onPaymentSuccess
 }) {
   const [launchingApp, setLaunchingApp] = useState(null);
-
   if (!paymentRequest) return null;
 
   const handlePayWithApp = (app) => {
@@ -39,7 +34,7 @@ export default function UpiPaymentModal({
     setTimeout(() => {
       setLaunchingApp(null);
       onPaymentSuccess(app.name);
-    }, 650);
+    }, 600);
   };
 
   return (
@@ -51,6 +46,7 @@ export default function UpiPaymentModal({
             <p className="text-[10px] text-slate-400">{paymentRequest.title}</p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="bg-slate-800 px-2.5 py-1 rounded-xl text-xs font-bold cursor-pointer"
           >
@@ -75,6 +71,7 @@ export default function UpiPaymentModal({
           {UPI_APPS.map((app) => (
             <button
               key={app.id}
+              type="button"
               onClick={() => handlePayWithApp(app)}
               className="w-full p-2.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-emerald-400 flex items-center justify-between cursor-pointer transition"
             >

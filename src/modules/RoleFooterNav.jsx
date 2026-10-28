@@ -1,9 +1,5 @@
 import React from "react";
 
-// ============================================================================
-// MODULE: src/modules/RoleFooterNav.jsx
-// PURPOSE: Strictly Bound 5-Button Bottom Navigation Footer for Each Role
-// ============================================================================
 export default function RoleFooterNav({
   activePortal,
   footerTab,
@@ -14,8 +10,8 @@ export default function RoleFooterNav({
 }) {
   const ROLE_TABS = {
     customer: [
-      { id: "home", icon: "\uD83C\uDFE0", label: "Stores & Taxi" },
-      { id: "services", icon: "\uD83D\uDD27", label: "1-Hr Services" },
+      { id: "home", icon: "\uD83C\uDFE0", label: "Stores" },
+      { id: "services", icon: "\uD83D\uDD27", label: "Services" },
       { id: "carts", icon: "\uD83D\uDED2", label: `Carts (${totalCartCount})` },
       { id: "orders", icon: "\uD83D\uDCE6", label: `Orders (${totalOrdersCount})` },
       { id: "account", icon: "\uD83D\uDC64", label: "Account" }
@@ -43,7 +39,7 @@ export default function RoleFooterNav({
     ],
     rider: [
       { id: "home", icon: "\uD83D\uDEF5", label: `Radar (${totalOrdersCount})` },
-      { id: "map", icon: "\uD83D\uDDFA\uFE0F", label: "Live Route" },
+      { id: "map", icon: "\uD83D\uDDFA\uFE0F", label: "3-Pt Live Map" },
       { id: "batching", icon: "\u26A1", label: "Smart Batch" },
       { id: "orders", icon: "\u2B50", label: "Scorecard" },
       { id: "account", icon: "\uD83D\uDC64", label: "Account" }

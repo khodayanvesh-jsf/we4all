@@ -1,7 +1,3 @@
-// ============================================================================
-// MODULE: src/modules/i18n/indianLanguages.js
-// PURPOSE: Pan-India 12-Language Dictionary with pure ASCII Unicode escapes
-// ============================================================================
 export const INDIAN_LANGUAGES = [
   { code: "EN", label: "English", native: "English" },
   { code: "TE", label: "Telugu", native: "\u0C24\u0C46\u0C32\u0C41\u0C17\u0C41" },
@@ -38,8 +34,7 @@ export const TRANSLATIONS = {
     services: "\u0C39\u0C4B\u0C2E\u0C4D \u0C38\u0C30\u0C4D\u0C35\u0C40\u0C38\u0C46\u0C38\u0C4D",
     decor: "\u0C21\u0C46\u0C15\u0C30\u0C47\u0C37\u0C28\u0C4D & \u0C39\u0C3E\u0C32\u0C4D\u0C38\u0C4D",
     taxi: "\u0C2C\u0C48\u0C15\u0C4D / \u0C06\u0C1F\u0C4B \u0C1F\u0C3E\u0C15\u0C4D\u0C38\u0C40",
-    addToCart: "+ \u0C15\u0C3E\u0C30\u0C4D\u0C1F\u0C4D\u200C\u0C32\u0C4B \u0C1A\u0C47\u0C30\u0C4D\u0C1A\u0C02\u0C21\u0C3F",
-    payUpi: "UPI \u0C26\u0C4D\u0C35\u0C3E\u0C30\u0C3E \u0C1A\u0C46\u0C32\u0C4D\u0C32\u0C3F\u0C02\u0C1A\u0C02\u0C21\u0C3F"
+    addToCart: "+ \u0C15\u0C3E\u0C30\u0C4D\u0C1F\u0C4D\u200C\u0C32\u0C4B \u0C1A\u0C47\u0C30\u0C4D\u0C1A\u0C02\u0C21\u0C3F"
   },
   HI: {
     ...BASE_EN,
@@ -47,8 +42,7 @@ export const TRANSLATIONS = {
     services: "\u0939\u094B\u092E \u0938\u0930\u094D\u0935\u093F\u0938",
     decor: "\u0921\u0947\u0915\u094B\u0930 & \u0939\u0949\u0932",
     taxi: "\u092C\u093E\u0907\u0915 / \u0911\u091F\u094B \u091F\u0948\u0915\u094D\u0938\u0940",
-    addToCart: "+ \u0915\u093E\u0930\u094D\u091F \u092E\u0947\u0902 \u091C\u094B\u0921\u093C\u0947\u0902",
-    payUpi: "UPI \u0938\u0947 \u092D\u0941\u0917\u0924\u093E\u0928 \u0915\u0930\u0947\u0902"
+    addToCart: "+ \u0915\u093E\u0930\u094D\u091F \u092E\u0947\u0902 \u091C\u094B\u0921\u093C\u0947\u0902"
   }
 };
 

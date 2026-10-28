@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from "react";
 
-// ============================================================================
-// MODULE: src/modules/ads/GeoTargetedAdBanner.jsx
-// PURPOSE: Plays Ads strictly by priority:
-//          1st: Hyperlocal Geo-Location (Adilabad GPS)
-//          2nd: State-Level (Telangana)
-//          3rd: National Brand Ads
-// ============================================================================
 export default function GeoTargetedAdBanner({
   adsList = [],
   userZone = "Adilabad",
@@ -51,6 +44,7 @@ export default function GeoTargetedAdBanner({
           ].map((t) => (
             <button
               key={t.id}
+              type="button"
               onClick={() => {
                 setSelectedTier(t.id);
                 setActiveSlideIdx(0);
@@ -74,15 +68,13 @@ export default function GeoTargetedAdBanner({
 
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="bg-amber-400 text-slate-950 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">
-              {currentAd.tier === "GEO_LOCAL"
-                ? `1ST PRIORITY: ${currentAd.regionLabel}`
-                : currentAd.tier === "STATE_LEVEL"
-                ? `2ND PRIORITY: ${currentAd.regionLabel}`
-                : `3RD PRIORITY: ${currentAd.regionLabel}`}
-            </span>
-          </div>
+          <span className="bg-amber-400 text-slate-950 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">
+            {currentAd.tier === "GEO_LOCAL"
+              ? `1ST PRIORITY: ${currentAd.regionLabel}`
+              : currentAd.tier === "STATE_LEVEL"
+              ? `2ND PRIORITY: ${currentAd.regionLabel}`
+              : `3RD PRIORITY: ${currentAd.regionLabel}`}
+          </span>
           <p className="text-xs font-black truncate mt-1">{currentAd.title}</p>
           <p className={`text-[10px] truncate ${brightTheme ? "text-slate-600" : "text-slate-300"}`}>
             {currentAd.subtitle}

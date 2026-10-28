@@ -1,18 +1,7 @@
 import React, { useState } from "react";
 import { REJECTION_REASONS } from "../data";
 
-// ============================================================================
-// MODULE: src/modules/FounderAdminSuite.jsx
-// PURPOSE:
-//   - Point 22: Strictly protected by Founder Username (KhodayAnvesh) &
-//               Password (22061969s!). No PIN backdoor.
-//   - Point 28 & 29: ONLY Founder Admin can change the WE4ALL App Logo and
-//                    select the APK Launcher Icon before APK compilation.
-//   - Point 5 & 23: Persistent Approvals & Clean Reset / Demo Seed controls.
-// ============================================================================
 export default function FounderAdminSuite({
-  isAdminAuthenticated,
-  setIsAdminAuthenticated,
   founderLogoUrl,
   onUploadFounderPhoto,
   apkIconUrl,
@@ -27,17 +16,12 @@ export default function FounderAdminSuite({
   merchants,
   setMerchants,
   serviceProviders,
-  setServiceProviders,
   decorators,
-  setDecorators,
   registeredUsers,
-  setRegisteredUsers,
   products,
   setProducts,
   functionHalls,
-  setFunctionHalls,
   orders,
-  setOrders,
   serviceBookings,
   pendingMerchants,
   setPendingMerchants,
@@ -50,20 +34,22 @@ export default function FounderAdminSuite({
   splitScreens,
   appUpdateInfo,
   setAppUpdateInfo,
-  onClearAllTestingData,
+  onBroadcastOtaPushNotification,
   onLaunchMultiPhoneView,
   onTeleportToScreen,
   onExitAdminToApp,
   onTriggerToast
 }) {
-  const [adminUser, setAdminUser] = useState("");
-  const [adminPass, setAdminPass] = useState("");
-  const [adminAuthErr, setAdminAuthErr] = useState("");
-
   const [adminDisplayMode, setAdminDisplayMode] = useState("web");
-  const [founderTab, setFounderTab] = useState("branding_apk");
+  const [founderTab, setFounderTab] = useState("telemetry");
   const [adminDbTab, setAdminDbTab] = useState("merchants");
   const [editingRecord, setEditingRecord] = useState(null);
+  const [rejectModal, setRejectModal] = useState({
+    open: false,
+    item: null,
+    reason: REJECTION_REASONS[0],
+    comment: ""
+  });
 
   const [newAdForm, setNewAdForm] = useState({
     tier: "GEO_LOCAL",
@@ -81,149 +67,88 @@ export default function FounderAdminSuite({
   });
 
   const [otaForm, setOtaForm] = useState({
-    version: "2.9.0",
-    notes: "WE4ALL OTA Update: New features & pricing rules live across all 5 portals."
+    version: appUpdateInfo?.latestAvailableVersion || "2.8.6",
+    notes:
+      appUpdateInfo?.releaseNotes ||
+      "WE4ALL v2.8.6: 2-Step Admin Security, Manual Check for Update Icon & Live Push Alerts."
   });
-
-  // Point 22: Strict Founder Admin Login Gate (Username: KhodayAnvesh / PW: 22061969s!)
-  if (!isAdminAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#04090e] flex items-center justify-center p-4 text-white">
-        <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
-          <div className="text-center space-y-1">
-            <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
-              Restricted Root Access
-            </span>
-            <h2 className="text-base font-black text-emerald-400 mt-1">
-              WE4ALL Founder Admin Console
-            </h2>
-            <p className="text-[11px] text-slate-400">
-              PIN login is disabled for Admin. Enter Founder credentials.
-            </p>
-          </div>
-
-          {adminAuthErr && (
-            <div className="bg-rose-950 border border-rose-500 text-rose-200 p-2 rounded-xl text-xs font-bold text-center">
-              {adminAuthErr}
-            </div>
-          )}
-
-          <div className="space-y-2.5 text-xs">
-            <div>
-              <label className="block text-slate-400 mb-1 font-bold">Founder Username:</label>
-              <input
-                type="text"
-                value={adminUser}
-                onChange={(e) => setAdminUser(e.target.value)}
-                placeholder="Enter Founder Username"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white font-bold"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-400 mb-1 font-bold">Founder Password:</label>
-              <input
-                type="password"
-                value={adminPass}
-                onChange={(e) => setAdminPass(e.target.value)}
-                placeholder="Enter Founder Password"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white font-bold"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (adminUser.trim() === "KhodayAnvesh" && adminPass === "22061969s!") {
-                  setIsAdminAuthenticated(true);
-                  setAdminAuthErr("");
-                  if (onTriggerToast) onTriggerToast("Welcome Founder Khoday Anvesh!");
-                } else {
-                  setAdminAuthErr("Invalid Founder Username or Password.");
-                }
-              }}
-              className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow-lg"
-            >
-              Authenticate Founder Console &rarr;
-            </button>
-            <button
-              type="button"
-              onClick={onExitAdminToApp}
-              className="w-full bg-slate-800 text-slate-300 font-bold py-2 rounded-xl cursor-pointer"
-            >
-              &larr; Return to User App
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const totalGmv =
     orders.reduce((s, o) => s + Number(o.grandTotal || 0), 0) +
     serviceBookings.reduce((s, b) => s + Number(b.escrowVisitingAmount || 0), 0);
+  const totalGst = Number((totalGmv * 0.05).toFixed(2));
 
   const ADMIN_TABS = [
-    { id: "branding_apk", label: "1. App Logo & APK Launcher Icon", badge: "Exclusive" },
-    { id: "approvals", label: "2. Partner & Stock Approvals", badge: `${pendingMerchants.length + pendingSubCategories.length}` },
-    { id: "telemetry", label: "3. Telemetry & Kill-Switches", badge: "Live GMV" },
-    { id: "geo_ads", label: "4. 3-Tier Geo/State/Brand Ads", badge: `${geoAds.length} Ads` },
-    { id: "categories", label: "5. Dynamic Category Builder", badge: `${categories.length}` },
-    { id: "monetization", label: "6. Silent Monetization Engine", badge: "Backend" },
-    { id: "ota_updates", label: "7. Push App Update (OTA)", badge: `v${appUpdateInfo?.latestAvailableVersion}` },
-    { id: "testing", label: "8. 5-Phone Sandbox & Flow Tester", badge: "5 Portals" },
-    { id: "database", label: "9. Master DB & Clean Reset", badge: "CRUD" }
+    { id: "telemetry", label: "1. Telemetry & Kill-Switches", badge: "Live GMV" },
+    { id: "geo_ads", label: "2. 3-Tier Geo/State/Brand Ads", badge: `${geoAds.length} Ads` },
+    {
+      id: "approvals",
+      label: "3. Approvals & KYC Queue",
+      badge: `${pendingMerchants.length + pendingSubCategories.length}`
+    },
+    { id: "categories", label: "4. Dynamic Category Builder", badge: `${categories.length}` },
+    { id: "monetization", label: "5. Silent Monetization Engine", badge: "Backend" },
+    {
+      id: "ota_updates",
+      label: "6. Push App Update (OTA & Alert)",
+      badge: `v${appUpdateInfo?.latestAvailableVersion || "2.8.6"}`
+    },
+    { id: "testing", label: "7. 5-Phone Live Sandbox", badge: `${splitScreens.length} Phones` },
+    { id: "flow_tester", label: "8. 1-Click Screen Flow Tester", badge: "12 Flows" },
+    { id: "database", label: "9. Classified Master DB Editor", badge: "JSON CRUD" }
   ];
 
   const renderAdminBody = () => (
     <div className="space-y-4 text-xs">
-      {/* TAB 1: EXCLUSIVE FOUNDER LOGO & APK LAUNCHER ICON SELECTOR (Points 28 & 29) */}
-      {founderTab === "branding_apk" && (
-        <div className="bg-slate-900 border-2 border-amber-400 rounded-2xl p-4 space-y-4">
-          <h3 className="font-black text-amber-400 text-sm">
-            Exclusive Founder App Logo & APK Launcher Icon Controls (Points 28 & 29)
-          </h3>
-          <p className="text-slate-300 text-[11px]">
-            Regular users and partners cannot alter the application logo. Only you (Founder Admin)
-            can update the in-app WE4ALL Emblem and select the Android APK Launcher Icon here.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full border-2 border-amber-400 overflow-hidden shrink-0 bg-emerald-950 flex items-center justify-center">
-                {founderLogoUrl ? (
-                  <img src={founderLogoUrl} alt="App Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[9px] font-black text-amber-300">WE4ALL</span>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <p className="font-bold text-white">1. In-App WE4ALL Header Logo</p>
-                <label className="inline-block bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-[10px] cursor-pointer">
-                  Select New App Logo Photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={onUploadFounderPhoto}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+      {founderTab === "telemetry" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+              <p className="text-slate-400">Total Town GMV</p>
+              <p className="text-xl font-black text-emerald-400 mt-1">
+                Rs.{totalGmv.toLocaleString("en-IN")}
+              </p>
             </div>
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+              <p className="text-slate-400">5% GST Telemetry</p>
+              <p className="text-xl font-black text-teal-300 mt-1">
+                Rs.{totalGst.toLocaleString("en-IN")}
+              </p>
+            </div>
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+              <p className="text-slate-400">Active Catalog Items</p>
+              <p className="text-xl font-black text-amber-400 mt-1">{products.length}</p>
+            </div>
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+              <p className="text-slate-400">Registered Users</p>
+              <p className="text-xl font-black text-purple-400 mt-1">
+                {registeredUsers.length}
+              </p>
+            </div>
+          </div>
 
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl border-2 border-emerald-400 overflow-hidden shrink-0 bg-slate-900 flex items-center justify-center">
-                {apkIconUrl || founderLogoUrl ? (
-                  <img
-                    src={apkIconUrl || founderLogoUrl}
-                    alt="APK Icon"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-[9px] font-black text-emerald-300">APK ICON</span>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <p className="font-bold text-white">2. Android APK Launcher Icon</p>
-                <label className="inline-block bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-[10px] cursor-pointer">
-                  Select APK Launcher Icon
+          <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3">
+            <div>
+              <h3 className="font-black text-amber-400 text-sm">
+                Official WE4ALL Emblem & APK Launcher Icon (Admin-Only Control)
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Regular users cannot alter the app emblem. Upload your Founder Emblem or APK icon.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <label className="bg-emerald-400 text-slate-950 font-black px-3 py-2 rounded-xl cursor-pointer">
+                Upload App Emblem
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={onUploadFounderPhoto}
+                  className="hidden"
+                />
+              </label>
+              {onUploadApkIcon && (
+                <label className="bg-amber-400 text-slate-950 font-black px-3 py-2 rounded-xl cursor-pointer">
+                  Upload APK Icon
                   <input
                     type="file"
                     accept="image/*"
@@ -231,90 +156,160 @@ export default function FounderAdminSuite({
                     className="hidden"
                   />
                 </label>
-              </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <h3 className="font-black text-amber-400 text-sm">
+              Pan-India Zonal Category Kill-Switches
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {geoZones.map((zone) => {
+                const killed = killedCategoriesByZone[zone.id] || [];
+                return (
+                  <div
+                    key={zone.id}
+                    className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2"
+                  >
+                    <p className="font-bold text-emerald-400">
+                      {zone.name} ({zone.state} - {zone.radiusKm}km)
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["daily_needs", "construction", "medicines", "services", "taxi"].map(
+                        (catKey) => {
+                          const isKilled = killed.includes(catKey);
+                          return (
+                            <button
+                              key={catKey}
+                              type="button"
+                              onClick={() => {
+                                const updated = isKilled
+                                  ? killed.filter((k) => k !== catKey)
+                                  : [...killed, catKey];
+                                setKilledCategoriesByZone({
+                                  ...killedCategoriesByZone,
+                                  [zone.id]: updated
+                                });
+                                onTriggerToast(`Updated ${catKey} switch in ${zone.name}`);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer ${
+                                isKilled
+                                  ? "bg-rose-600 text-white"
+                                  : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                              }`}
+                            >
+                              {catKey}: {isKilled ? "HALTED" : "LIVE"}
+                            </button>
+                          );
+                        }
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: PARTNER & BRAND APPROVALS (Point 5: Persists permanently to DB) */}
+      {founderTab === "geo_ads" && (
+        <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
+          <h3 className="font-black text-amber-400 text-sm">
+            3-Tier Geo-Location Ad Engine (1st: Local GPS, 2nd: State, 3rd: National Brand)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <select
+              value={newAdForm.tier}
+              onChange={(e) => {
+                const tier = e.target.value;
+                const regionLabel =
+                  tier === "GEO_LOCAL"
+                    ? "ADILABAD TOWN GPS"
+                    : tier === "STATE_LEVEL"
+                    ? "TELANGANA STATE"
+                    : "NATIONAL BRAND";
+                setNewAdForm({ ...newAdForm, tier, regionLabel });
+              }}
+              className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-bold"
+            >
+              <option value="GEO_LOCAL">Priority 1: Local Geo-Location Ad (Town/Mandal)</option>
+              <option value="STATE_LEVEL">Priority 2: State-Level Ad (Telangana)</option>
+              <option value="BRAND_NATIONAL">Priority 3: National Brand Ad</option>
+            </select>
+            <input
+              type="text"
+              value={newAdForm.regionLabel}
+              onChange={(e) => setNewAdForm({ ...newAdForm, regionLabel: e.target.value })}
+              placeholder="Region Badge"
+              className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white"
+            />
+            <input
+              type="text"
+              value={newAdForm.title}
+              onChange={(e) => setNewAdForm({ ...newAdForm, title: e.target.value })}
+              placeholder="Ad Headline"
+              className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white"
+            />
+            <input
+              type="text"
+              value={newAdForm.subtitle}
+              onChange={(e) => setNewAdForm({ ...newAdForm, subtitle: e.target.value })}
+              placeholder="Offer Subtitle"
+              className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (!newAdForm.title.trim()) return;
+                setGeoAds([{ id: `ad_${Date.now()}`, ...newAdForm }, ...geoAds]);
+                setNewAdForm({ ...newAdForm, title: "", subtitle: "" });
+                onTriggerToast("Targeted Ad published live!");
+              }}
+              className="md:col-span-2 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+            >
+              + Publish Targeted Ad Campaign
+            </button>
+          </div>
+        </div>
+      )}
+
       {founderTab === "approvals" && (
         <div className="space-y-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <h3 className="font-black text-emerald-400 text-sm">
-              Pending Partner Registrations ({pendingMerchants.length})
+              Pending Partner KYC Queue ({pendingMerchants.length})
             </h3>
-            {pendingMerchants.length === 0 && (
-              <p className="text-slate-400">No pending partner registrations in queue.</p>
-            )}
             {pendingMerchants.map((m) => (
               <div
                 key={m.id}
                 className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center"
               >
                 <div>
-                  <p className="font-bold text-white">
-                    {m.businessName || m.fullName} ({m.role || "merchant"})
-                  </p>
+                  <p className="font-bold text-white">{m.businessName}</p>
                   <p className="text-[10px] text-slate-400">
-                    Phone: {m.phone} | Category: {m.categoryId || m.specialization || "General"}
+                    Owner: {m.owner} | {m.phone} | Category: {m.categoryId}
                   </p>
                 </div>
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (m.role === "service_provider") {
-                        setServiceProviders([
-                          ...serviceProviders,
-                          {
-                            id: `sp_${Date.now()}`,
-                            serviceCategoryId: m.categoryId || "srv_plumbing",
-                            providerName: m.businessName || m.fullName,
-                            maskedId: `Verified Partner #${Math.floor(100 + Math.random() * 899)}`,
-                            serviceCategory: "Home Service",
-                            specialization: m.specialization || "Verified Technician",
-                            visitingFee: 99,
-                            hourlyRate: 150,
-                            area: "Adilabad",
-                            rating: 4.9,
-                            phone: m.phone,
-                            availableSlots: ["09:00 AM - 10:00 AM", "10:00 AM - 11:00 AM", "02:00 PM - 03:00 PM"]
-                          }
-                        ]);
-                      } else {
-                        setMerchants([
-                          ...merchants,
-                          {
-                            id: Date.now(),
-                            businessName: m.businessName || m.fullName,
-                            owner: m.fullName || m.owner,
-                            categoryId: m.categoryId || "daily_needs",
-                            phone: m.phone,
-                            area: "Adilabad",
-                            status: "Approved"
-                          }
-                        ]);
-                      }
-                      setPendingMerchants(pendingMerchants.filter((x) => x.id !== m.id));
-                      onTriggerToast("Partner Approved & Permanently Saved to Database!");
-                    }}
-                    className="bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl cursor-pointer"
-                  >
-                    Approve & Save to DB
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMerchants([...merchants, { ...m, status: "Approved" }]);
+                    setPendingMerchants(pendingMerchants.filter((x) => x.id !== m.id));
+                    onTriggerToast(`Approved ${m.businessName}!`);
+                  }}
+                  className="bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl cursor-pointer"
+                >
+                  Approve
+                </button>
               </div>
             ))}
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <h3 className="font-black text-amber-400 text-sm">
-              Pending Merchant Product Brands / Stock ({pendingSubCategories.length})
+              Pending Brand Sub-Categories ({pendingSubCategories.length})
             </h3>
-            {pendingSubCategories.length === 0 && (
-              <p className="text-slate-400">No pending brand submissions.</p>
-            )}
             {pendingSubCategories.map((item) => (
               <div
                 key={item.id}
@@ -322,44 +317,32 @@ export default function FounderAdminSuite({
               >
                 <div>
                   <p className="font-bold text-white">{item.subCategoryBrand}</p>
-                  <p className="text-[10px] text-slate-400">
-                    Shop: {item.shopName} | Category: {item.categoryId}
-                  </p>
+                  <p className="text-[10px] text-slate-400">Shop: {item.shopName}</p>
                 </div>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => {
-                      setProducts([
-                        {
-                          ...item,
-                          id: Date.now(),
-                          inStock: true,
-                          status: "approved"
-                        },
-                        ...products
-                      ]);
+                      setProducts([...products, { ...item, status: "approved" }]);
                       setPendingSubCategories(
                         pendingSubCategories.filter((x) => x.id !== item.id)
                       );
-                      onTriggerToast(`Approved ${item.subCategoryBrand} into Live Catalog!`);
+                      onTriggerToast(`Approved ${item.subCategoryBrand}!`);
                     }}
                     className="bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl cursor-pointer"
                   >
-                    Approve Brand
+                    Approve
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setRejectedItems([
-                        ...rejectedItems,
-                        { ...item, rejectReason: REJECTION_REASONS[0] }
-                      ]);
-                      setPendingSubCategories(
-                        pendingSubCategories.filter((x) => x.id !== item.id)
-                      );
-                      onTriggerToast("Rejected brand submission.");
-                    }}
+                    onClick={() =>
+                      setRejectModal({
+                        open: true,
+                        item,
+                        reason: REJECTION_REASONS[0],
+                        comment: ""
+                      })
+                    }
                     className="bg-rose-600 text-white font-bold px-3 py-1.5 rounded-xl cursor-pointer"
                   >
                     Reject
@@ -371,165 +354,132 @@ export default function FounderAdminSuite({
         </div>
       )}
 
-      {/* TAB 3: TELEMETRY & KILL-SWITCHES */}
-      {founderTab === "telemetry" && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Live GMV</p>
-            <p className="text-xl font-black text-emerald-400 mt-1">
-              Rs.{totalGmv.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Registered Users</p>
-            <p className="text-xl font-black text-teal-300 mt-1">{registeredUsers.length}</p>
-          </div>
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Approved Merchants</p>
-            <p className="text-xl font-black text-amber-400 mt-1">{merchants.length}</p>
-          </div>
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Service Providers</p>
-            <p className="text-xl font-black text-purple-400 mt-1">{serviceProviders.length}</p>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: 3-TIER GEO AD ENGINE */}
-      {founderTab === "geo_ads" && (
-        <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
-          <h3 className="font-black text-amber-400 text-sm">
-            3-Tier Geo-Targeted Ad Manager (1st: Local GPS, 2nd: State, 3rd: Brand)
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <select
-              value={newAdForm.tier}
-              onChange={(e) => setNewAdForm({ ...newAdForm, tier: e.target.value })}
-              className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-bold"
-            >
-              <option value="GEO_LOCAL">1. Local Geo-Location Ad</option>
-              <option value="STATE_LEVEL">2. State-Level Ad</option>
-              <option value="BRAND_NATIONAL">3. National Brand Ad</option>
-            </select>
-            <input
-              type="text"
-              value={newAdForm.title}
-              onChange={(e) => setNewAdForm({ ...newAdForm, title: e.target.value })}
-              placeholder="Ad Headline"
-              className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (!newAdForm.title.trim()) return;
-              setGeoAds([{ id: `ad_${Date.now()}`, ...newAdForm }, ...geoAds]);
-              setNewAdForm({ ...newAdForm, title: "" });
-              onTriggerToast("Targeted Ad published!");
-            }}
-            className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-          >
-            + Publish Targeted Ad
-          </button>
-        </div>
-      )}
-
-      {/* TAB 5: DYNAMIC CATEGORY BUILDER */}
       {founderTab === "categories" && (
         <div className="bg-slate-900 border border-purple-500/40 rounded-2xl p-4 space-y-3">
-          <h3 className="font-black text-purple-300 text-sm">Dynamic Category Generator</h3>
-          <div className="flex gap-2">
+          <h3 className="font-black text-purple-300 text-sm">
+            Dynamic Category & Module Generator
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input
+              type="text"
+              value={newCatForm.icon}
+              onChange={(e) => setNewCatForm({ ...newCatForm, icon: e.target.value })}
+              placeholder="Emoji Icon"
+              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+            />
             <input
               type="text"
               value={newCatForm.name}
               onChange={(e) => setNewCatForm({ ...newCatForm, name: e.target.value })}
-              placeholder="New Category Name"
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+              placeholder="New Category (e.g. Fresh Bakery / Agri Seeds)"
+              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
             />
-            <button
-              type="button"
-              onClick={() => {
-                if (!newCatForm.name.trim()) return;
-                setCategories([
-                  ...categories,
-                  {
-                    id: `cat_${Date.now()}`,
-                    name: newCatForm.name.trim(),
-                    icon: newCatForm.icon || "\uD83D\uDED2",
-                    partnerType: "merchant",
-                    badge: "Direct Local Price"
-                  }
-                ]);
-                setNewCatForm({ ...newCatForm, name: "" });
-                onTriggerToast("Category added to Unified Merchant Storefront!");
-              }}
-              className="bg-emerald-400 text-slate-950 font-black px-4 rounded-xl cursor-pointer"
+            <select
+              value={newCatForm.partnerType}
+              onChange={(e) => setNewCatForm({ ...newCatForm, partnerType: e.target.value })}
+              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
             >
-              + Add Category
-            </button>
+              <option value="merchant">Routes to Product Merchant Portal</option>
+              <option value="service_provider">Routes to Service Provider Portal</option>
+              <option value="decorator">Routes to Decorator & Hall Portal</option>
+            </select>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (!newCatForm.name.trim()) return;
+              const newId = `cat_${Date.now()}`;
+              setCategories([
+                ...categories,
+                {
+                  id: newId,
+                  name: newCatForm.name.trim(),
+                  icon: newCatForm.icon || "\uD83D\uDED2",
+                  partnerType: newCatForm.partnerType,
+                  badge: newCatForm.badge,
+                  flow: "instant_goods",
+                  minOrderValue: 99,
+                  baseDeliveryFee: 20
+                }
+              ]);
+              setNewCatForm({ ...newCatForm, name: "" });
+              onTriggerToast("New Dynamic Category launched live!");
+            }}
+            className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+          >
+            + Launch Dynamic Category
+          </button>
         </div>
       )}
 
-      {/* TAB 6: SILENT BACKEND MONETIZATION */}
       {founderTab === "monetization" && (
         <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-3">
           <h3 className="font-black text-amber-400 text-sm">
-            Silent Backend Monetization Engine
+            Silent Backend Monetization Engine (Rs.0 Initial Default)
           </h3>
-          <div className="grid grid-cols-3 gap-2">
-            <input
-              type="number"
-              value={monetizationConfig.globalPlatformFee}
-              onChange={(e) =>
-                setMonetizationConfig({
-                  ...monetizationConfig,
-                  globalPlatformFee: Number(e.target.value)
-                })
-              }
-              placeholder="Global Fee"
-              className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
-            />
-            <input
-              type="number"
-              value={monetizationConfig.serviceBookingSurcharge}
-              onChange={(e) =>
-                setMonetizationConfig({
-                  ...monetizationConfig,
-                  serviceBookingSurcharge: Number(e.target.value)
-                })
-              }
-              placeholder="Service Fee"
-              className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
-            />
-            <input
-              type="number"
-              value={monetizationConfig.productSpecificFee}
-              onChange={(e) =>
-                setMonetizationConfig({
-                  ...monetizationConfig,
-                  productSpecificFee: Number(e.target.value)
-                })
-              }
-              placeholder="Per-Product Fee"
-              className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <label className="text-slate-400 block mb-1">Global Checkout Fee (Rs.)</label>
+              <input
+                type="number"
+                value={monetizationConfig.globalPlatformFee}
+                onChange={(e) =>
+                  setMonetizationConfig({
+                    ...monetizationConfig,
+                    globalPlatformFee: Number(e.target.value)
+                  })
+                }
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white"
+              />
+            </div>
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <label className="text-slate-400 block mb-1">Service Booking Surcharge (Rs.)</label>
+              <input
+                type="number"
+                value={monetizationConfig.serviceBookingSurcharge}
+                onChange={(e) =>
+                  setMonetizationConfig({
+                    ...monetizationConfig,
+                    serviceBookingSurcharge: Number(e.target.value)
+                  })
+                }
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white"
+              />
+            </div>
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <label className="text-slate-400 block mb-1">Per-Product Surcharge (Rs.)</label>
+              <input
+                type="number"
+                value={monetizationConfig.productSpecificFee}
+                onChange={(e) =>
+                  setMonetizationConfig({
+                    ...monetizationConfig,
+                    productSpecificFee: Number(e.target.value)
+                  })
+                }
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white"
+              />
+            </div>
           </div>
         </div>
       )}
 
-      {/* TAB 7: OTA UPDATE BROADCASTER */}
       {founderTab === "ota_updates" && (
         <div className="bg-slate-900 border-2 border-emerald-400 rounded-2xl p-4 space-y-3">
           <h3 className="font-black text-emerald-400 text-sm">
-            Push Live Over-The-Air (OTA) App Update to All Portals
+            WE4ALL Over-The-Air (OTA) Update & Mobile Push Notification Broadcaster
           </h3>
+          <p className="text-slate-300 text-[11px]">
+            Broadcasting an update here immediately fires a live Push Notification alert to
+            all active mobile portals, activates the top Update Banner, and lights up the
+            Download & Install Update button in the Account section.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <input
               type="text"
               value={otaForm.version}
               onChange={(e) => setOtaForm({ ...otaForm, version: e.target.value })}
-              placeholder="New Version (e.g. 2.9.0)"
+              placeholder="Target Version (e.g. 2.9.0)"
               className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
             />
             <input
@@ -543,96 +493,142 @@ export default function FounderAdminSuite({
           <button
             type="button"
             onClick={() => {
-              setAppUpdateInfo({
+              const nextInfo = {
                 ...appUpdateInfo,
-                latestAvailableVersion: otaForm.version,
-                releaseNotes: otaForm.notes,
-                updateAvailable: otaForm.version !== appUpdateInfo.currentVersion
-              });
-              onTriggerToast(`Pushed OTA Update v${otaForm.version} to all phones!`);
+                latestAvailableVersion: otaForm.version.trim(),
+                releaseNotes: otaForm.notes.trim(),
+                updateAvailable: true
+              };
+              setAppUpdateInfo(nextInfo);
+              if (onBroadcastOtaPushNotification) {
+                onBroadcastOtaPushNotification(nextInfo);
+              }
             }}
-            className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+            className="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
           >
-            Broadcast OTA Update v{otaForm.version} Now
+            \uD83D\uDD14 Broadcast OTA Update & Push Notification to All Mobiles
           </button>
         </div>
       )}
 
-      {/* TAB 8: 5-PHONE SANDBOX */}
       {founderTab === "testing" && (
         <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
-          <button
-            type="button"
-            onClick={onLaunchMultiPhoneView}
-            className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-          >
-            Launch All 5 Portals Side-by-Side Live Sync &rarr;
-          </button>
-        </div>
-      )}
-
-      {/* TAB 9: MASTER DATABASE & CLEAN RESET (Point 23) */}
-      {founderTab === "database" && (
-        <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-3">
           <div className="flex justify-between items-center">
-            <h3 className="font-black text-amber-400 text-sm">
-              Classified Master Database ({registeredUsers.length} Users | {orders.length} Orders)
+            <h3 className="font-black text-emerald-400 text-sm">
+              5-Phone Side-by-Side Live Sync Testing Bench
             </h3>
             <button
               type="button"
-              onClick={onClearAllTestingData}
-              className="bg-rose-600 text-white font-black px-3 py-1.5 rounded-xl text-[10px] cursor-pointer"
+              onClick={onLaunchMultiPhoneView}
+              className="bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl cursor-pointer"
             >
-              Reset / Empty Test Orders & Users (Clean DB)
+              Launch All 5 Portals Side-by-Side &rarr;
             </button>
           </div>
+        </div>
+      )}
+
+      {founderTab === "flow_tester" && (
+        <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
+          <h3 className="font-black text-emerald-400 text-sm">
+            1-Click Automated Screen-by-Screen Flow Tester
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {[
+              { id: "auth_vault", title: "1. Security Vault (PIN & Biometric)" },
+              { id: "cust_stores", title: "2. Customer: Merchant Stores & Compare" },
+              { id: "cust_services", title: "3. Customer: 1-Hr Services & Slot Filter" },
+              { id: "cust_decor", title: "4. Customer: Event Decor & Hall Schedule" },
+              { id: "cust_carts", title: "5. Customer: Unified & Module Carts" },
+              { id: "cust_orders", title: "6. Customer: Orders Timeline & PDF Invoice" },
+              { id: "cust_account", title: "7. Owner Profile & Bottom OTA Updater" },
+              { id: "portal_merchant", title: "8. Portal 2: Product Merchant Desk" },
+              { id: "portal_service", title: "9. Portal 3: Service Provider (Geo Happy Code)" },
+              { id: "portal_decorator", title: "10. Portal 4: Decorator & Hall Calendar" },
+              { id: "portal_rider", title: "11. Portal 5: Captain 3-Point Live GPS Map" },
+              { id: "portal_split", title: "12. All 5 Phones Side-by-Side Live Sync" }
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => onTeleportToScreen(f.id)}
+                className="p-3 bg-slate-950 border border-slate-800 hover:border-emerald-400 rounded-xl text-left font-bold text-emerald-300 cursor-pointer"
+              >
+                {f.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {founderTab === "database" && (
+        <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-3">
+          <h3 className="font-black text-amber-400 text-sm">
+            Classified Master Database Editor (Raw JSON CRUD)
+          </h3>
           <div className="flex flex-wrap gap-1.5">
             {[
-              { id: "users", label: `Registered Users (${registeredUsers.length})` },
-              { id: "merchants", label: `Merchants (${merchants.length})` },
-              { id: "service_providers", label: `Service Providers (${serviceProviders.length})` },
-              { id: "catalog", label: `Stock Catalog (${products.length})` },
-              { id: "orders", label: `Orders (${orders.length})` }
+              { id: "merchants", label: `1. Merchants (${merchants.length})` },
+              { id: "users", label: `2. Users (${registeredUsers.length})` },
+              { id: "catalog", label: `3. Products (${products.length})` },
+              { id: "service_providers", label: `4. Service Providers (${serviceProviders.length})` },
+              { id: "decorators", label: `5. Decorators (${decorators.length})` },
+              { id: "halls", label: `6. Function Halls (${functionHalls.length})` },
+              { id: "orders", label: `7. Orders (${orders.length})` }
             ].map((t) => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => setAdminDbTab(t.id)}
-                className={`px-3 py-1 rounded-xl font-bold cursor-pointer ${
-                  adminDbTab === t.id ? "bg-amber-400 text-slate-950" : "bg-slate-800 text-slate-300"
+                className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer ${
+                  adminDbTab === t.id
+                    ? "bg-amber-400 text-slate-950"
+                    : "bg-slate-800 text-slate-300"
                 }`}
               >
                 {t.label}
               </button>
             ))}
           </div>
-          <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 max-h-72 overflow-y-auto space-y-1.5">
-            {(adminDbTab === "users"
-              ? registeredUsers
-              : adminDbTab === "merchants"
+          <div className="bg-slate-950 rounded-xl p-3 border border-slate-800 space-y-2 max-h-80 overflow-y-auto">
+            {(adminDbTab === "merchants"
               ? merchants
-              : adminDbTab === "service_providers"
-              ? serviceProviders
+              : adminDbTab === "users"
+              ? registeredUsers
               : adminDbTab === "catalog"
               ? products
+              : adminDbTab === "service_providers"
+              ? serviceProviders
+              : adminDbTab === "decorators"
+              ? decorators
+              : adminDbTab === "halls"
+              ? functionHalls
               : orders
-            ).map((r, i) => (
-              <div key={r.id || i} className="flex justify-between items-center border-b border-slate-900 pb-1">
-                <span>
-                  {r.fullName || r.businessName || r.providerName || r.subCategoryBrand || r.id}{" "}
-                  <small className="text-emerald-400">({r.role || r.categoryId || r.status})</small>
+            ).map((rec, idx) => (
+              <div
+                key={rec.id || idx}
+                className="flex justify-between items-center border-b border-slate-900 pb-1.5"
+              >
+                <span className="font-bold text-white">
+                  {rec.businessName ||
+                    rec.fullName ||
+                    rec.subCategoryBrand ||
+                    rec.providerName ||
+                    rec.name ||
+                    rec.id}
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (adminDbTab === "users") {
-                      setRegisteredUsers(registeredUsers.filter((_, idx) => idx !== i));
-                    }
-                    onTriggerToast("Record updated in Master Database.");
-                  }}
-                  className="text-rose-400 text-[10px] underline cursor-pointer"
+                  onClick={() =>
+                    setEditingRecord({
+                      type: adminDbTab,
+                      index: idx,
+                      jsonStr: JSON.stringify(rec, null, 2)
+                    })
+                  }
+                  className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer"
                 >
-                  Delete Role/Record
+                  Edit JSON
                 </button>
               </div>
             ))}
@@ -644,52 +640,211 @@ export default function FounderAdminSuite({
 
   return (
     <div className="min-h-screen bg-[#04090e] text-slate-100 flex flex-col font-sans">
-      <header className="bg-slate-900 border-b border-emerald-500/40 px-5 py-3 flex justify-between items-center sticky top-0 z-50">
+      <header className="bg-slate-900 border-b border-emerald-500/40 px-5 py-3 flex flex-wrap justify-between items-center gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <h1 className="text-sm font-black text-amber-400">
-            WE4ALL FOUNDER ADMIN CONSOLE (KhodayAnvesh)
-          </h1>
+          <div className="w-10 h-10 rounded-full border-2 border-amber-400 bg-emerald-950 flex flex-col items-center justify-center text-[8px] font-black text-amber-300 overflow-hidden">
+            {founderLogoUrl ? (
+              <img src={founderLogoUrl} alt="WE4ALL" className="w-full h-full object-cover" />
+            ) : (
+              "WE4ALL"
+            )}
+          </div>
+          <div>
+            <h1 className="text-sm font-black text-white">
+              WE4ALL Founder Master Admin Suite (Khoday Anvesh)
+            </h1>
+            <p className="text-[10px] text-emerald-400">
+              2-Step Verified Root Console (Web Console & Mobile Admin App)
+            </p>
+          </div>
         </div>
+
         <div className="flex items-center gap-2 text-xs">
-          <button
-            type="button"
-            onClick={() =>
-              setAdminDisplayMode(adminDisplayMode === "web" ? "mobile_admin" : "web")
-            }
-            className="bg-purple-500 text-white font-black px-3 py-1.5 rounded-xl cursor-pointer"
-          >
-            {adminDisplayMode === "web" ? "Switch to Mobile Admin View" : "Switch to Web Console"}
-          </button>
+          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex gap-1">
+            <button
+              type="button"
+              onClick={() => setAdminDisplayMode("web")}
+              className={`px-3 py-1 rounded-lg font-black cursor-pointer ${
+                adminDisplayMode === "web"
+                  ? "bg-emerald-400 text-slate-950"
+                  : "text-slate-400"
+              }`}
+            >
+              Web Console
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminDisplayMode("mobile_admin")}
+              className={`px-3 py-1 rounded-lg font-black cursor-pointer ${
+                adminDisplayMode === "mobile_admin"
+                  ? "bg-purple-400 text-slate-950"
+                  : "text-slate-400"
+              }`}
+            >
+              Mobile Admin App
+            </button>
+          </div>
           <button
             type="button"
             onClick={onExitAdminToApp}
             className="bg-amber-400 text-slate-950 font-black px-3.5 py-1.5 rounded-xl cursor-pointer"
           >
-            Exit Admin
+            Exit to User App
           </button>
         </div>
       </header>
 
-      <div className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-4 gap-5">
-        <aside className="space-y-1.5">
-          {ADMIN_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setFounderTab(tab.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold border cursor-pointer ${
-                founderTab === tab.id
-                  ? "bg-emerald-500/15 border-emerald-400 text-emerald-300"
-                  : "bg-slate-900/80 border-slate-800 text-slate-400"
-              }`}
+      {adminDisplayMode === "web" ? (
+        <div className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-4 gap-5">
+          <aside className="space-y-1.5">
+            {ADMIN_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFounderTab(tab.id)}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold border cursor-pointer ${
+                  founderTab === tab.id
+                    ? "bg-emerald-500/15 border-emerald-400 text-emerald-300"
+                    : "bg-slate-900/80 border-slate-800 text-slate-400"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                  {tab.badge}
+                </span>
+              </button>
+            ))}
+          </aside>
+          <main className="lg:col-span-3">{renderAdminBody()}</main>
+        </div>
+      ) : (
+        <div className="flex-1 flex justify-center items-center p-4">
+          <div className="w-full max-w-[412px] h-[840px] bg-[#071118] border-[10px] border-slate-800 rounded-[44px] shadow-2xl overflow-hidden flex flex-col">
+            <div className="bg-purple-950 px-4 py-2.5 flex justify-between items-center border-b border-purple-500/40">
+              <span className="text-xs font-black text-amber-300">WE4ALL MOBILE ADMIN</span>
+              <span className="text-[10px] text-emerald-300 font-bold">2-STEP VERIFIED</span>
+            </div>
+            <div className="flex gap-1 overflow-x-auto bg-slate-950 p-2 border-b border-slate-800 shrink-0">
+              {ADMIN_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setFounderTab(t.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-black shrink-0 cursor-pointer ${
+                    founderTab === t.id
+                      ? "bg-purple-400 text-slate-950"
+                      : "bg-slate-900 text-slate-400"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">{renderAdminBody()}</div>
+          </div>
+        </div>
+      )}
+
+      {rejectModal.open && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-500 rounded-2xl max-w-md w-full p-4 space-y-3">
+            <h3 className="font-black text-rose-400 text-sm">
+              Select Rejection Reason for Merchant
+            </h3>
+            <select
+              value={rejectModal.reason}
+              onChange={(e) => setRejectModal({ ...rejectModal, reason: e.target.value })}
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs"
             >
-              <span>{tab.label}</span>
-              <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded">{tab.badge}</span>
-            </button>
-          ))}
-        </aside>
-        <main className="lg:col-span-3">{renderAdminBody()}</main>
-      </div>
+              {REJECTION_REASONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectedItems([
+                    ...rejectedItems,
+                    { ...rejectModal.item, rejectReason: rejectModal.reason }
+                  ]);
+                  setPendingSubCategories(
+                    pendingSubCategories.filter((i) => i.id !== rejectModal.item.id)
+                  );
+                  setRejectModal({
+                    open: false,
+                    item: null,
+                    reason: REJECTION_REASONS[0],
+                    comment: ""
+                  });
+                  onTriggerToast("Item rejected and returned to merchant.");
+                }}
+                className="flex-1 bg-rose-600 text-white font-black py-2 rounded-xl text-xs cursor-pointer"
+              >
+                Confirm Reject
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setRejectModal({
+                    open: false,
+                    item: null,
+                    reason: REJECTION_REASONS[0],
+                    comment: ""
+                  })
+                }
+                className="flex-1 bg-slate-800 text-slate-300 font-bold py-2 rounded-xl text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-400 rounded-2xl max-w-xl w-full p-4 space-y-3">
+            <h3 className="font-black text-amber-400 text-sm">Master JSON Database Editor</h3>
+            <textarea
+              value={editingRecord.jsonStr}
+              onChange={(e) => setEditingRecord({ ...editingRecord, jsonStr: e.target.value })}
+              className="w-full h-60 bg-slate-950 text-emerald-300 font-mono text-xs p-3 rounded-xl border border-slate-700"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingRecord(null)}
+                className="flex-1 bg-slate-800 py-2 rounded-xl font-bold text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const parsed = JSON.parse(editingRecord.jsonStr);
+                    if (editingRecord.type === "catalog") {
+                      const next = [...products];
+                      next[editingRecord.index] = parsed;
+                      setProducts(next);
+                    }
+                    setEditingRecord(null);
+                    onTriggerToast("Database Record Saved!");
+                  } catch (err) {
+                    alert("Invalid JSON syntax.");
+                  }
+                }}
+                className="flex-1 bg-amber-400 text-slate-950 py-2 rounded-xl font-black text-xs cursor-pointer"
+              >
+                Save JSON Record
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
