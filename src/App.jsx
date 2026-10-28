@@ -59,14 +59,10 @@ function calculateOrderLogistics(items = [], consumerDistanceKm = 1.8, heavyFee 
   const totalRouteKm = Number(
     (consumerDistanceKm + Math.max(0, uniqueMerchantsCount - 1) * 1.1).toFixed(1)
   );
-
   let vehicle = "2W Bike Captain (Up to 45kg)";
   let baseDelivery = 25;
-
   if (totalWeightGrams <= 45000) {
-    if (totalRouteKm > 2.5) {
-      baseDelivery += Math.ceil((totalRouteKm - 2.5) * 5.5);
-    }
+    if (totalRouteKm > 2.5) baseDelivery += Math.ceil((totalRouteKm - 2.5) * 5.5);
   } else if (totalWeightGrams <= 300000) {
     vehicle = "3W Cargo Auto (Up to 3 Quintals / 300kg)";
     baseDelivery = 150 + Math.ceil(totalRouteKm * 18);
@@ -74,7 +70,6 @@ function calculateOrderLogistics(items = [], consumerDistanceKm = 1.8, heavyFee 
     vehicle = "Merchant Heavy Transport / Mini-Truck (>300kg)";
     baseDelivery = 350 + Math.ceil(totalRouteKm * 25);
   }
-
   const deliveryFee = baseDelivery + Number(heavyFee || 0) + Number(laborFee || 0);
   return { totalWeightGrams, totalRouteKm, vehicle, deliveryFee };
 }
@@ -218,7 +213,6 @@ function AppContent() {
     typeof window !== "undefined" && window.location.search.includes("admin=true");
 
   const [viewMode, setViewMode] = useState(isDirectAdminUrl ? "founder_web" : "mobile_app");
-  // 2-STEP ADMIN SECURITY STATE (Step 1: Credentials -> Step 2: Founder PIN 9999)
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminAuthStep, setAdminAuthStep] = useState(1);
   const [adminLoginForm, setAdminLoginForm] = useState({ username: "", password: "" });
@@ -285,7 +279,6 @@ function AppContent() {
   const [authTab, setAuthTab] = useState(() =>
     localStorage.getItem("we4all_device_bound_user_v4") ? "pin_biometric" : "register"
   );
-  const [regStep, setRegStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState(
     deviceBoundUser?.role || savedCloud?.activePortal || "customer"
   );
@@ -296,7 +289,6 @@ function AppContent() {
   const [footerTab, setFooterTab] = useState("home");
   const [authError, setAuthError] = useState("");
 
-  // OTA Update Engine + Manual "Check Update" Refresh + Push Notification
   const [appUpdateInfo, setAppUpdateInfo] = useState(
     savedCloud?.appUpdateInfo || INITIAL_APP_UPDATE_INFO
   );
@@ -307,9 +299,7 @@ function AppContent() {
     setCheckingUpdate(true);
     triggerToast("Checking WE4ALL Cloud Server for updates...");
     const latest = await checkLiveCloudOtaManifest((payload) => {
-      if (payload?.appUpdateInfo) {
-        setAppUpdateInfo(payload.appUpdateInfo);
-      }
+      if (payload?.appUpdateInfo) setAppUpdateInfo(payload.appUpdateInfo);
     });
     setTimeout(() => {
       setCheckingUpdate(false);
@@ -372,26 +362,14 @@ function AppContent() {
   const [loginForm, setLoginForm] = useState({ usernameOrPhone: "", password: "" });
   const [regForm, setRegForm] = useState({
     role: "customer",
-    categoryId: "daily_needs",
-    specialization: "",
-    phone: "",
-    generatedOtp: "",
-    otpInput: "",
-    otpVerified: false,
     fullName: "",
-    username: "",
-    govId: "",
+    phone: "",
     upiId: "",
-    bankName: "State Bank of India",
-    accountNumber: "",
-    ifscCode: "SBIN0000801",
-    password: "",
-    confirmPassword: "",
     fastPin: ""
   });
 
   const [pendingUpiPayment, setPendingUpiPayment] = useState(null);
-  const [isPrimeCustomer, setIsPrimeCustomer] = useState(true);
+  const [isPrimeCustomer] = useState(true);
   const [mobileToast, setMobileToast] = useState("");
   const [notificationBellOpen, setNotificationBellOpen] = useState(false);
   const [notificationsList, setNotificationsList] = useState([]);
@@ -406,7 +384,6 @@ function AppContent() {
   const [killedCategoriesByZone, setKilledCategoriesByZone] = useState({});
   const [geoAds, setGeoAds] = useState(savedCloud?.geoAds || INITIAL_GEO_ADS);
   const [categories, setCategories] = useState(savedCloud?.categories || INITIAL_CATEGORIES);
-  const [serviceCategories] = useState(SERVICE_CATEGORIES);
   const [merchants, setMerchants] = useState(savedCloud?.merchants || INITIAL_MERCHANTS);
   const [serviceProviders, setServiceProviders] = useState(
     savedCloud?.serviceProviders || INITIAL_SERVICE_PROVIDERS
@@ -416,7 +393,7 @@ function AppContent() {
   const [functionHalls, setFunctionHalls] = useState(
     savedCloud?.functionHalls || INITIAL_FUNCTION_HALLS
   );
-  const [riders, setRiders] = useState(savedCloud?.riders || INITIAL_RIDERS);
+  const [riders] = useState(savedCloud?.riders || INITIAL_RIDERS);
 
   const [pendingMerchants, setPendingMerchants] = useState(
     savedCloud?.pendingMerchants || []
@@ -465,8 +442,8 @@ function AppContent() {
   const [selectedMerchantByProduct, setSelectedMerchantByProduct] = useState({});
   const [expandedCompareProdId, setExpandedCompareProdId] = useState(null);
 
-  const [serviceFilterDate, setServiceFilterDate] = useState("2026-10-28");
-  const [serviceFilterSlot, setServiceFilterSlot] = useState("10:00 AM - 11:00 AM");
+  const [serviceFilterDate] = useState("2026-10-28");
+  const [serviceFilterSlot] = useState("10:00 AM - 11:00 AM");
 
   const [merchantCart, setMerchantCart] = useState(savedCloud?.merchantCart || []);
   const [serviceCart, setServiceCart] = useState(savedCloud?.serviceCart || []);
@@ -475,11 +452,9 @@ function AppContent() {
   const [activeCartViewTab, setActiveCartViewTab] = useState("merchant_cart");
 
   const [taxiBookingForm, setTaxiBookingForm] = useState({
-    mode: "P2P_PARCEL",
     pickupPin: "Subhash Nagar, Adilabad (19.6641, 78.5320)",
     dropPin: "Collectorate Chowk, Adilabad (19.6710, 78.5390)",
-    distanceKm: 2.8,
-    parcelWeightKg: 5
+    distanceKm: 2.8
   });
 
   const [orders, setOrders] = useState(savedCloud?.orders || []);
@@ -490,10 +465,8 @@ function AppContent() {
   const [providerInsideGeoFence, setProviderInsideGeoFence] = useState(true);
   const [providerHappyCodeInput, setProviderHappyCodeInput] = useState("");
   const [eventDate, setEventDate] = useState("2026-11-05");
-  const [decorStep, setDecorStep] = useState("cart");
-  const [decorBids, setDecorBids] = useState([
-    { id: "bid_1", maskedVendor: "Decorator Partner #A", price: 21500, features: "Imported Orchids + LED Truss + Maharaja Sofa" },
-    { id: "bid_2", maskedVendor: "Decorator Partner #B", price: 19800, features: "Full Stage Setup + Grand Welcome Arch" }
+  const [decorBids] = useState([
+    { id: "bid_1", maskedVendor: "Decorator Partner #A", price: 21500, features: "Imported Orchids + LED Truss + Maharaja Sofa" }
   ]);
   const [hallScheduleDateInput, setHallScheduleDateInput] = useState("2026-11-05");
   const [captainOtpInput, setCaptainOtpInput] = useState("");
@@ -512,10 +485,6 @@ function AppContent() {
       registeredUsers,
       products,
       functionHalls,
-      riders,
-      pendingMerchants,
-      pendingSubCategories,
-      rejectedItems,
       monetizationConfig,
       addressBook,
       merchantCart,
@@ -538,10 +507,6 @@ function AppContent() {
     registeredUsers,
     products,
     functionHalls,
-    riders,
-    pendingMerchants,
-    pendingSubCategories,
-    rejectedItems,
     monetizationConfig,
     addressBook,
     merchantCart,
@@ -643,10 +608,7 @@ function AppContent() {
       totalWeightGrams,
       vehicle,
       shopName: Array.from(new Set(merchantCart.map((i) => i.merchantName))).join(" + "),
-      items: merchantCart.map((it) => ({
-        ...it,
-        approvalStatus: "APPROVED"
-      })),
+      items: merchantCart.map((it) => ({ ...it, approvalStatus: "APPROVED" })),
       itemsTotal,
       deliveryFee,
       gst,
@@ -855,7 +817,7 @@ function AppContent() {
             </button>
             <button
               type="button"
-              onClick={() => { setAuthTab("register"); setRegStep(1); setAuthError(""); }}
+              onClick={() => { setAuthTab("register"); setAuthError(""); }}
               className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
                 authTab === "register" ? "bg-amber-400 text-slate-950" : "text-slate-400"
               }`}
@@ -959,7 +921,7 @@ function AppContent() {
         {authTab === "register" && (
           <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5">
             <p className="font-black text-amber-400 text-xs">
-              Quick 3-Step Partner / Customer Registration
+              Quick Partner / Customer Registration
             </p>
             <input
               type="text"

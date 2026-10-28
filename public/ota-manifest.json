@@ -2,7 +2,7 @@
   "currentVersion": "2.8.0",
   "latestAvailableVersion": "2.8.6",
   "updateAvailable": true,
-  "publishedAt": "2026-10-28T23:05:00Z",
+  "publishedAt": "2026-10-28T23:10:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
   "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk",
   "releaseNotes": "WE4ALL v2.8.6: 2-Step Founder Admin Security (Credentials -> PIN 9999), Check Update Refresh Icon, and Live OTA Push Alerts."
