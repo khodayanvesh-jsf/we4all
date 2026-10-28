@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">WE4ALL</string>
+    <string name="title_activity_main">WE4ALL</string>
+    <string name="package_name">com.we4all.superapp</string>
+    <string name="custom_url_scheme">com.we4all.superapp</string>
+</resources>

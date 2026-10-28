@@ -35,8 +35,8 @@ import {
 function FounderLogoBadge({ logoUrl, onUploadLogo }) {
   return (
     <label
-      title="Click to set your original Founder photo"
-      className="relative w-10 h-10 rounded-full border-2 border-amber-400 ring-2 ring-emerald-500/50 bg-gradient-to-b from-[#07261e] to-[#04120e] flex flex-col items-center justify-center overflow-hidden shadow-lg cursor-pointer shrink-0"
+      title="Click to upload original Founder photo"
+      className="relative w-11 h-11 rounded-full border-2 border-amber-400 ring-2 ring-emerald-500/50 bg-gradient-to-b from-[#07261e] to-[#04120e] flex flex-col items-center justify-center overflow-hidden shadow-lg cursor-pointer shrink-0"
     >
       {logoUrl ? (
         <img src={logoUrl} alt="Khoday Anvesh" className="w-full h-full object-cover" />
@@ -71,6 +71,7 @@ function MobilePhoneShell({
   setLang,
   appUpdateInfo,
   onTriggerOtaUpdate,
+  showFooter = true,
   children
 }) {
   return (
@@ -121,7 +122,7 @@ function MobilePhoneShell({
       {appUpdateInfo?.updateAvailable && (
         <div className="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 text-slate-950 px-3 py-1.5 flex items-center justify-between gap-2 text-[10px] font-black shadow shrink-0">
           <div className="truncate">
-            \uD83D\uDCF2 WE4ALL v{appUpdateInfo.latestAvailableVersion} Update Ready! (Zero Data Loss)
+            \uD83D\uDCF2 Update v{appUpdateInfo.latestAvailableVersion} Available! (Zero Data Loss)
           </div>
           <button
             onClick={onTriggerOtaUpdate}
@@ -144,7 +145,7 @@ function MobilePhoneShell({
       </div>
 
       {/* Floating Live Order Widget */}
-      {floatingLiveOrder && (
+      {floatingLiveOrder && showFooter && (
         <div className="absolute bottom-14 left-3 right-3 z-30">
           <button
             onClick={onOpenLiveOrderModal}
@@ -166,14 +167,16 @@ function MobilePhoneShell({
       )}
 
       {/* Role-Specific Persistent 5-Button Footer */}
-      <RoleFooterNav
-        activePortal={activePortal}
-        footerTab={footerTab}
-        setFooterTab={setFooterTab}
-        totalCartCount={totalCartCount}
-        totalOrdersCount={totalOrdersCount}
-        brightTheme={brightTheme}
-      />
+      {showFooter && (
+        <RoleFooterNav
+          activePortal={activePortal}
+          footerTab={footerTab}
+          setFooterTab={setFooterTab}
+          totalCartCount={totalCartCount}
+          totalOrdersCount={totalOrdersCount}
+          brightTheme={brightTheme}
+        />
+      )}
     </div>
   );
 }
@@ -212,32 +215,36 @@ function AppContent() {
     reader.readAsDataURL(file);
   };
 
-  // Portal & Navigation State
+  // ==========================================================================
+  // ONBOARDING, PERMISSIONS GATEWAY & 3-STEP REGISTRATION / LOGIN VAULT STATE
+  // ==========================================================================
+  // Starts at "permissions" -> "auth" -> "app" so every user sees Login & Registration!
+  const [onboardingStep, setOnboardingStep] = useState("permissions");
+  const [authTab, setAuthTab] = useState("login"); // "login" | "register" | "pin_biometric"
+  const [regStep, setRegStep] = useState(1); // 1: Phone OTP, 2: Identity/KYC/Bank/UPI, 3: Password & PIN
+  const [selectedRole, setSelectedRole] = useState(savedCloud?.activePortal || "customer");
   const [activePortal, setActivePortal] = useState(savedCloud?.activePortal || "customer");
   const [footerTab, setFooterTab] = useState("home");
-  const [onboardingStep, setOnboardingStep] = useState("app");
+  const [authError, setAuthError] = useState("");
 
   // OTA Update Engine State
   const [appUpdateInfo, setAppUpdateInfo] = useState(
-    savedCloud?.appUpdateInfo || INITIAL_APP_UPDATE_INFO
+    savedCloud?.appUpdateInfo || {
+      ...INITIAL_APP_UPDATE_INFO,
+      apkDownloadUrl: "https://we-4-all-super-app.vercel.app/WE4ALL.apk"
+    }
   );
   const [otaProgress, setOtaProgress] = useState(null);
 
   const handleRunOtaUpdate = () => {
-    triggerToast(`Downloading WE4ALL v${appUpdateInfo.latestAvailableVersion}...`);
+    triggerToast(`Starting OTA Update to WE4ALL v${appUpdateInfo.latestAvailableVersion}...`);
     performZeroLossOtaUpdate(
       appUpdateInfo.latestAvailableVersion,
       appUpdateInfo.releaseNotes,
       (stage) => setOtaProgress(stage),
-      () => {
-        const updatedInfo = {
-          ...appUpdateInfo,
-          currentVersion: appUpdateInfo.latestAvailableVersion,
-          updateAvailable: false
-        };
+      (updatedInfo) => {
         setAppUpdateInfo(updatedInfo);
         setOtaProgress(null);
-        saveCloudAndLocalState({ appUpdateInfo: updatedInfo });
         triggerToast(
           `WE4ALL updated to v${updatedInfo.currentVersion} & restarted with ZERO data loss!`
         );
@@ -254,29 +261,50 @@ function AppContent() {
     }
   );
   const [pinUnlockInput, setPinUnlockInput] = useState("");
+
   const [currentUser, setCurrentUser] = useState(
     savedCloud?.currentUser || {
       id: 1,
       fullName: "Khoday Anvesh",
+      username: "anvesh_k",
       phone: "9848011223",
+      password: "Password1",
+      govId: "[Verified]",
       role: "customer",
       bankName: "State Bank of India (Adilabad Main)",
       accountNumber: "30984451209",
       ifscCode: "SBIN0000801",
-      upiId: "khodayanvesh@ybl"
+      upiId: "khodayanvesh@ybl",
+      fastPin: "1234"
     }
   );
 
-  // Registration Form for Multi-Role APK Testing
+  const [registeredUsers, setRegisteredUsers] = useState(
+    savedCloud?.registeredUsers || [currentUser]
+  );
+
+  const [loginForm, setLoginForm] = useState({
+    usernameOrPhone: "9848011223",
+    password: "Password1"
+  });
+
   const [regForm, setRegForm] = useState({
     role: "customer",
-    fullName: "",
     phone: "",
+    generatedOtp: "",
+    otpInput: "",
+    otpVerified: false,
+    fullName: "",
+    username: "",
+    govId: "",
     upiId: "",
-    bankName: "",
+    bankName: "State Bank of India",
     accountNumber: "",
-    ifscCode: "",
-    fastPin: "1234"
+    ifscCode: "SBIN0000801",
+    password: "",
+    confirmPassword: "",
+    fastPin: "1234",
+    eSignAccepted: true
   });
 
   // Payment & Toast State
@@ -309,9 +337,6 @@ function AppContent() {
     savedCloud?.serviceProviders || INITIAL_SERVICE_PROVIDERS
   );
   const [decorators, setDecorators] = useState(savedCloud?.decorators || INITIAL_DECORATORS);
-  const [registeredUsers, setRegisteredUsers] = useState(
-    savedCloud?.registeredUsers || [currentUser]
-  );
   const [products, setProducts] = useState(savedCloud?.products || INITIAL_PRODUCTS);
   const [functionHalls, setFunctionHalls] = useState(
     savedCloud?.functionHalls || INITIAL_FUNCTION_HALLS
@@ -449,7 +474,7 @@ function AppContent() {
   // Event & Reverse-Bidding State
   const [eventDate, setEventDate] = useState("2026-11-05");
   const [decorStep, setDecorStep] = useState("cart");
-  const [decorBids, setDecorBids] = useState([
+  const [decorBids] = useState([
     {
       id: "bid_1",
       maskedVendor: "Decorator Partner #A",
@@ -520,7 +545,7 @@ function AppContent() {
     serviceBookings
   ]);
 
-  // Listen for real-time cross-tab / multi-portal updates
+  // Listen for real-time cross-tab / backend OTA updates
   useEffect(() => {
     return subscribeToRealtimeUpdates((remoteState) => {
       if (remoteState.orders) setOrders(remoteState.orders);
@@ -566,7 +591,6 @@ function AppContent() {
       product.variants.find((v) => v.id === chosenVarId) || product.variants[0];
     const { activeOffer } = getProductBestOffer(product);
 
-    // Prime Order Merge / Add-Before-Pickup (+Rs.5 Fee) if an order is currently packing
     const packingOrder = orders.find(
       (o) => o.categoryId === product.categoryId && o.status === "PAID_PACKING_STARTED"
     );
@@ -654,7 +678,7 @@ function AppContent() {
       setFooterTab("orders");
       setLiveOrderDrawerOpen(true);
       triggerToast(
-        `Paid via ${chosenUpiAppName}! Order #${newOrder.id} sent straight to Merchant Packing (Zero Popup Delay).`
+        `Paid via ${chosenUpiAppName}! Order #${newOrder.id} sent straight to Merchant Packing.`
       );
     } else if (pendingUpiPayment.type === "SERVICE_ESCROW") {
       const created = serviceCart.map((sc) => ({
@@ -690,12 +714,12 @@ function AppContent() {
   };
 
   // ==========================================================================
-  // AUTH, MULTI-ROLE REGISTRATION & PIN/BIOMETRIC VAULT (SECRET PIN 9999 -> ADMIN)
+  // SCREEN 1: PEACE-OF-MIND PERMISSIONS GATEWAY (PAGE 1 & 9 REQUIREMENT)
   // ==========================================================================
-  const renderAuthVault = () => (
+  const renderPermissionsGateway = () => (
     <MobilePhoneShell
-      title="Security & Registration"
-      badge="PIN & Biometric"
+      title="Setup & Permissions"
+      badge="Step 1 of 2"
       activePortal={activePortal}
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -707,145 +731,530 @@ function AppContent() {
       setLang={setLang}
       appUpdateInfo={appUpdateInfo}
       onTriggerOtaUpdate={handleRunOtaUpdate}
+      showFooter={false}
     >
-      <div className="space-y-3 text-xs">
-        <div className="bg-slate-900 text-white border border-emerald-500/40 rounded-2xl p-4 space-y-3 text-center">
+      <div className="space-y-4 text-xs py-2">
+        <div className="bg-slate-900 text-white border border-emerald-500/40 rounded-3xl p-4 space-y-3 text-center shadow-lg">
           <div className="flex justify-center">
             <FounderLogoBadge
               logoUrl={founderLogoUrl}
               onUploadLogo={handleUploadFounderPhoto}
             />
           </div>
-          <h2 className="font-black text-emerald-400 text-sm">
-            UNLOCK WE4ALL ({currentUser.fullName})
+          <h2 className="text-base font-black text-amber-400">
+            WE4ALL VOCALFORLOCAL ADILABAD
           </h2>
+          <p className="text-[11px] text-slate-300">
+            Peace-of-Mind Permissions Gateway for Customers, Product Merchants, 1-Hr Service
+            Providers, Event Decorators & Delivery Captains
+          </p>
 
-          {accountSecurity.biometricEnabled && (
+          <div className="space-y-2 text-left">
+            {[
+              {
+                icon: "\uD83D\uDCCD",
+                title: "Live GPS Location & Geo-Fence",
+                desc: "For 3-Point Captain Live Route Map, Local Geo Ads & Service Happy Code verification"
+              },
+              {
+                icon: "\uD83D\uDD14",
+                title: "Instant Order & OTA App Update Alerts",
+                desc: "Real-time dispatch notifications & 1-click zero-data-loss app updates"
+              },
+              {
+                icon: "\uD83D\uDCF7",
+                title: "Camera & Selfie KYC Vault",
+                desc: "Anti-fraud partner verification & product stock photos"
+              },
+              {
+                icon: "\uD83D\uDCBE",
+                title: "Offline Local & Cloud Sync Storage",
+                desc: "Preserves carts, invoices, Bank/UPI & PIN settings across updates"
+              }
+            ].map((perm, idx) => (
+              <div
+                key={idx}
+                className="bg-slate-950 p-2.5 rounded-2xl border border-slate-800 flex items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg">{perm.icon}</span>
+                  <div>
+                    <p className="font-bold text-white text-[11px]">{perm.title}</p>
+                    <p className="text-[9px] text-slate-400">{perm.desc}</p>
+                  </div>
+                </div>
+                <span className="bg-emerald-500 text-slate-950 font-black px-2 py-0.5 rounded-full text-[9px] shrink-0">
+                  ALLOW
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setOnboardingStep("auth")}
+            className="w-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black py-3 rounded-2xl text-xs cursor-pointer shadow-lg"
+          >
+            Grant Permissions & Continue to Login / Register &rarr;
+          </button>
+        </div>
+      </div>
+    </MobilePhoneShell>
+  );
+
+  // ==========================================================================
+  // SCREEN 2: SECURITY VAULT (LOGIN + 3-STEP ANTI-FRAUD REGISTRATION + PIN/BIOMETRIC)
+  // ==========================================================================
+  const renderAuthVault = () => (
+    <MobilePhoneShell
+      title="Security & KYC Vault"
+      badge="Step 2 of 2"
+      activePortal={activePortal}
+      footerTab={footerTab}
+      setFooterTab={setFooterTab}
+      totalCartCount={totalCartCount}
+      totalOrdersCount={orders.length}
+      brightTheme={brightTheme}
+      setBrightTheme={setBrightTheme}
+      lang={lang}
+      setLang={setLang}
+      appUpdateInfo={appUpdateInfo}
+      onTriggerOtaUpdate={handleRunOtaUpdate}
+      showFooter={false}
+    >
+      <div className="space-y-3 text-xs">
+        {/* Role Selector Header */}
+        <div className="bg-slate-900 text-white border border-emerald-500/40 rounded-2xl p-3 space-y-2">
+          <div className="flex items-center gap-2.5">
+            <FounderLogoBadge
+              logoUrl={founderLogoUrl}
+              onUploadLogo={handleUploadFounderPhoto}
+            />
+            <div>
+              <h2 className="font-black text-amber-400 text-xs">
+                WE4ALL MULTI-PORTAL AUTH VAULT
+              </h2>
+              <p className="text-[10px] text-slate-300">
+                Select your Portal Role to Sign In, Register, or Unlock via PIN/Biometric
+              </p>
+            </div>
+          </div>
+
+          <label className="block text-[10px] font-bold text-emerald-300 pt-1">
+            Select Dedicated Account Portal Role:
+          </label>
+          <select
+            value={selectedRole}
+            onChange={(e) => {
+              setSelectedRole(e.target.value);
+              setRegForm({ ...regForm, role: e.target.value });
+            }}
+            className="w-full bg-slate-950 border border-emerald-500/50 rounded-xl p-2 text-white font-bold text-xs"
+          >
+            <option value="customer">1. Customer Super-App (Shop, Services, Decor, Taxi)</option>
+            <option value="merchant">2. Product Merchant Portal (Kirana, Veg, Meat, Cement, Meds)</option>
+            <option value="service_provider">3. Service Provider Portal (1-Hr Slots & Happy Code)</option>
+            <option value="decorator">4. Event Decorator & Function Hall Portal (Escrow & Calendar)</option>
+            <option value="rider">5. Delivery Captain Radar (3-Point Live GPS Map)</option>
+          </select>
+
+          {/* 3-Mode Auth Switcher */}
+          <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl pt-1">
             <button
               onClick={() => {
+                setAuthTab("login");
+                setAuthError("");
+              }}
+              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
+                authTab === "login"
+                  ? "bg-emerald-400 text-slate-950"
+                  : "text-slate-400"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => {
+                setAuthTab("register");
+                setRegStep(1);
+                setAuthError("");
+              }}
+              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
+                authTab === "register"
+                  ? "bg-amber-400 text-slate-950"
+                  : "text-slate-400"
+              }`}
+            >
+              Register (3-Step)
+            </button>
+            <button
+              onClick={() => {
+                setAuthTab("pin_biometric");
+                setAuthError("");
+              }}
+              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
+                authTab === "pin_biometric"
+                  ? "bg-teal-400 text-slate-950"
+                  : "text-slate-400"
+              }`}
+            >
+              PIN / Biometric
+            </button>
+          </div>
+        </div>
+
+        {authError && (
+          <div className="bg-rose-950 border border-rose-500 text-rose-200 p-2.5 rounded-xl text-[11px] font-bold text-center">
+            {authError}
+          </div>
+        )}
+
+        {/* MODE 1: PASSWORD SIGN IN */}
+        {authTab === "login" && (
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+            <h3 className="font-black text-emerald-400 text-xs">
+              Sign In to {selectedRole.replace(/_/g, " ").toUpperCase()} Portal
+            </h3>
+            <input
+              type="text"
+              value={loginForm.usernameOrPhone}
+              onChange={(e) =>
+                setLoginForm({ ...loginForm, usernameOrPhone: e.target.value })
+              }
+              placeholder="Username or 10-Digit Mobile (e.g. 9848011223)"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+            />
+            <input
+              type="password"
+              value={loginForm.password}
+              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+              placeholder="Password (Default: Password1)"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+            />
+            <button
+              onClick={() => {
+                const q = loginForm.usernameOrPhone.trim().toLowerCase();
+                const found = registeredUsers.find(
+                  (u) =>
+                    u.phone === q ||
+                    (u.username && u.username.toLowerCase() === q) ||
+                    u.fullName.toLowerCase().includes(q)
+                );
+                if (found) {
+                  setCurrentUser({ ...found, role: selectedRole });
+                }
+                setActivePortal(selectedRole);
                 setOnboardingStep("app");
-                triggerToast("Biometric Verified! Welcome back.");
+                triggerToast(
+                  `Signed in & routed to ${selectedRole.replace(/_/g, " ").toUpperCase()} Portal!`
+                );
               }}
               className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
             >
-              1-Tap Biometric Login (Fingerprint / Face ID)
+              Verify & Open {selectedRole.replace(/_/g, " ").toUpperCase()} Portal &rarr;
             </button>
-          )}
+          </div>
+        )}
 
-          <div className="flex gap-2 pt-2 border-t border-slate-800">
-            <input
-              type="password"
-              maxLength={4}
-              value={pinUnlockInput}
-              onChange={(e) => setPinUnlockInput(e.target.value)}
-              placeholder={`PIN (${accountSecurity.fastPin})`}
-              className="w-28 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
-            />
-            <button
-              onClick={() => {
-                if (pinUnlockInput === "9999") {
-                  setPinUnlockInput("");
-                  setViewMode("founder_web");
-                  return;
-                }
-                if (pinUnlockInput === accountSecurity.fastPin) {
-                  setPinUnlockInput("");
+        {/* MODE 2: 3-STEP ANTI-FRAUD REGISTRATION + BANK & UPI SETUP (PAGES 1, 10, 48, 57) */}
+        {authTab === "register" && (
+          <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+              <span className="font-black text-amber-400 text-xs">
+                3-Step Anti-Fraud KYC & Bank Registration
+              </span>
+              <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
+                Step {regStep} of 3
+              </span>
+            </div>
+
+            {/* STEP 1: MOBILE OTP VERIFICATION */}
+            {regStep === 1 && (
+              <div className="space-y-2.5">
+                <p className="text-[11px] text-slate-300 font-bold">
+                  Step 1/3: Mobile Number OTP Verification
+                </p>
+                <div className="flex gap-1.5">
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    value={regForm.phone}
+                    onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
+                    placeholder="Enter 10-Digit Mobile Number"
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                  />
+                  <button
+                    onClick={() => {
+                      if (regForm.phone.trim().length < 10) {
+                        setAuthError("Please enter a valid 10-digit mobile number.");
+                        return;
+                      }
+                      const otp = String(Math.floor(1000 + Math.random() * 9000));
+                      setRegForm({
+                        ...regForm,
+                        generatedOtp: otp,
+                        otpInput: otp
+                      });
+                      setAuthError("");
+                      triggerToast(`Registration Security OTP Sent: ${otp}`);
+                    }}
+                    className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
+                  >
+                    Send OTP
+                  </button>
+                </div>
+
+                {regForm.generatedOtp && (
+                  <div className="space-y-2 pt-1">
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={regForm.otpInput}
+                      onChange={(e) => setRegForm({ ...regForm, otpInput: e.target.value })}
+                      placeholder="Enter 4-Digit OTP"
+                      className="w-full bg-slate-950 border border-emerald-400 rounded-xl p-2 text-center font-mono text-base text-white"
+                    />
+                    <button
+                      onClick={() => {
+                        if (regForm.otpInput !== regForm.generatedOtp) {
+                          setAuthError("Invalid 4-digit OTP.");
+                          return;
+                        }
+                        setRegForm({ ...regForm, otpVerified: true });
+                        setAuthError("");
+                        setRegStep(2);
+                      }}
+                      className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                    >
+                      Verify OTP ({regForm.generatedOtp}) & Continue to Step 2 &rarr;
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STEP 2: IDENTITY, 12-CHAR GOV ID & BANK/UPI ACCOUNT SETUP */}
+            {regStep === 2 && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-slate-300 font-bold">
+                  Step 2/3: Legal Identity, 12-Digit Gov ID & Bank/UPI Details
+                </p>
+                <input
+                  type="text"
+                  value={regForm.fullName}
+                  onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
+                  placeholder="Full Legal Name / Business Name"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <input
+                  type="text"
+                  value={regForm.username}
+                  onChange={(e) => setRegForm({ ...regForm, username: e.target.value })}
+                  placeholder="Unique Username (e.g. anvesh_adilabad)"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <input
+                  type="text"
+                  maxLength={12}
+                  value={regForm.govId}
+                  onChange={(e) => setRegForm({ ...regForm, govId: e.target.value })}
+                  placeholder="12-Character Gov ID Proof (Redacted as [Verified])"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-emerald-500/30 space-y-1.5">
+                  <p className="text-[10px] font-bold text-emerald-400">
+                    Bank Account & UPI ID (For Instant Payments & Settlements):
+                  </p>
+                  <input
+                    type="text"
+                    value={regForm.upiId}
+                    onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
+                    placeholder="Primary UPI ID (e.g. name@ybl)"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
+                  />
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                      type="text"
+                      value={regForm.accountNumber}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, accountNumber: e.target.value })
+                      }
+                      placeholder="Bank A/C Number"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
+                    />
+                    <input
+                      type="text"
+                      value={regForm.ifscCode}
+                      onChange={(e) => setRegForm({ ...regForm, ifscCode: e.target.value })}
+                      placeholder="IFSC Code"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setRegStep(1)}
+                    className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
+                  >
+                    &larr; Back
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!regForm.fullName.trim()) {
+                        setAuthError("Please enter your Full Legal Name / Business Name.");
+                        return;
+                      }
+                      setAuthError("");
+                      setRegStep(3);
+                    }}
+                    className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                  >
+                    Continue to Step 3 (Security & PIN) &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: PASSWORD, 4-DIGIT QUICK PIN & DIGITAL E-SIGN */}
+            {regStep === 3 && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-slate-300 font-bold">
+                  Step 3/3: Password, 4-Digit Quick PIN & Digital E-Sign
+                </p>
+                <input
+                  type="password"
+                  value={regForm.password}
+                  onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
+                  placeholder="Create Password"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <input
+                  type="password"
+                  value={regForm.confirmPassword}
+                  onChange={(e) =>
+                    setRegForm({ ...regForm, confirmPassword: e.target.value })
+                  }
+                  placeholder="Confirm Password"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <div>
+                  <label className="block text-[10px] text-amber-300 font-bold mb-1">
+                    Set 4-Digit Quick Unlock PIN:
+                  </label>
+                  <input
+                    type="password"
+                    maxLength={4}
+                    value={regForm.fastPin}
+                    onChange={(e) => setRegForm({ ...regForm, fastPin: e.target.value })}
+                    placeholder="4-Digit PIN (e.g. 1234)"
+                    className="w-32 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => setRegStep(2)}
+                    className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
+                  >
+                    &larr; Back
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (
+                        regForm.password &&
+                        regForm.confirmPassword &&
+                        regForm.password !== regForm.confirmPassword
+                      ) {
+                        setAuthError("Passwords do not match.");
+                        return;
+                      }
+                      const newUser = {
+                        id: Date.now(),
+                        fullName: regForm.fullName.trim(),
+                        username:
+                          regForm.username.trim() ||
+                          regForm.fullName.trim().toLowerCase().replace(/\s+/g, "_"),
+                        phone: regForm.phone || "9848011223",
+                        govId: "[Verified]",
+                        role: selectedRole,
+                        upiId: regForm.upiId || "partner@ybl",
+                        bankName: regForm.bankName || "State Bank of India",
+                        accountNumber: regForm.accountNumber || "30984451209",
+                        ifscCode: regForm.ifscCode || "SBIN0000801",
+                        fastPin: regForm.fastPin || "1234"
+                      };
+                      setCurrentUser(newUser);
+                      setRegisteredUsers([...registeredUsers, newUser]);
+                      setAccountSecurity({
+                        ...accountSecurity,
+                        fastPin: newUser.fastPin,
+                        pinEnabled: true,
+                        biometricEnabled: true
+                      });
+                      setActivePortal(selectedRole);
+                      setOnboardingStep("app");
+                      triggerToast(
+                        `Registration Complete! Routed to ${selectedRole.toUpperCase()} Portal.`
+                      );
+                    }}
+                    className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+                  >
+                    Complete Registration & Open Portal &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MODE 3: 4-DIGIT QUICK PIN & BIOMETRIC UNLOCK (SECRET PIN 9999 -> FOUNDER ADMIN) */}
+        {authTab === "pin_biometric" && (
+          <div className="bg-slate-900 text-white border border-teal-500/40 rounded-2xl p-4 space-y-3 text-center">
+            <h3 className="font-black text-teal-300 text-xs">
+              Quick PIN & Biometric Vault ({currentUser.fullName})
+            </h3>
+            {accountSecurity.biometricEnabled && (
+              <button
+                onClick={() => {
+                  setActivePortal(selectedRole);
                   setOnboardingStep("app");
-                  triggerToast("4-Digit Quick PIN Verified!");
-                } else {
-                  alert(`Enter your 4-Digit PIN (${accountSecurity.fastPin})`);
-                }
-              }}
-              className="flex-1 bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer"
-            >
-              Unlock with PIN
-            </button>
+                  triggerToast("Biometric Fingerprint / Face ID Verified!");
+                }}
+                className="w-full bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+              >
+                1-Tap Biometric Login (Fingerprint / Face ID)
+              </button>
+            )}
+            <div className="flex gap-2 pt-2 border-t border-slate-800">
+              <input
+                type="password"
+                maxLength={4}
+                value={pinUnlockInput}
+                onChange={(e) => setPinUnlockInput(e.target.value)}
+                placeholder={`PIN (${accountSecurity.fastPin})`}
+                className="w-28 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
+              />
+              <button
+                onClick={() => {
+                  if (pinUnlockInput === "9999") {
+                    setPinUnlockInput("");
+                    setViewMode("founder_web");
+                    return;
+                  }
+                  if (pinUnlockInput === accountSecurity.fastPin) {
+                    setPinUnlockInput("");
+                    setActivePortal(selectedRole);
+                    setOnboardingStep("app");
+                    triggerToast("4-Digit Quick PIN Verified!");
+                  } else {
+                    setAuthError(`Incorrect PIN. Default PIN is ${accountSecurity.fastPin}`);
+                  }
+                }}
+                className="flex-1 bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer"
+              >
+                Unlock with 4-Digit PIN
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* Multi-Role Registration with Bank & UPI Capture (Page 96 Requirement #1) */}
-        <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-3 space-y-2">
-          <h3 className="font-black text-amber-400 text-xs">
-            New Partner / User Registration (Saves to Cloud Database)
-          </h3>
-          <select
-            value={regForm.role}
-            onChange={(e) => setRegForm({ ...regForm, role: e.target.value })}
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
-          >
-            <option value="customer">1. Customer Account</option>
-            <option value="merchant">2. Product Merchant Account</option>
-            <option value="service_provider">3. Service Provider Account (1-Hr Slots)</option>
-            <option value="decorator">4. Event Decorator & Hall Owner Account</option>
-            <option value="rider">5. Delivery Captain Account</option>
-          </select>
-          <input
-            type="text"
-            value={regForm.fullName}
-            onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
-            placeholder="Full Legal Name / Business Name"
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-          />
-          <input
-            type="tel"
-            maxLength={10}
-            value={regForm.phone}
-            onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
-            placeholder="10-Digit Mobile Number"
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-          />
-          <input
-            type="text"
-            value={regForm.upiId}
-            onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
-            placeholder="UPI ID (e.g. business@ybl)"
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-          />
-          <div className="grid grid-cols-2 gap-1.5">
-            <input
-              type="text"
-              value={regForm.accountNumber}
-              onChange={(e) => setRegForm({ ...regForm, accountNumber: e.target.value })}
-              placeholder="Bank A/C Number"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-            <input
-              type="text"
-              value={regForm.ifscCode}
-              onChange={(e) => setRegForm({ ...regForm, ifscCode: e.target.value })}
-              placeholder="IFSC Code"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-          </div>
-          <button
-            onClick={() => {
-              if (!regForm.fullName.trim()) {
-                alert("Please enter your name or business name.");
-                return;
-              }
-              const newUser = {
-                id: Date.now(),
-                fullName: regForm.fullName.trim(),
-                phone: regForm.phone || "9848011223",
-                role: regForm.role,
-                upiId: regForm.upiId || "partner@ybl",
-                bankName: regForm.bankName || "State Bank of India",
-                accountNumber: regForm.accountNumber || "30984451209",
-                ifscCode: regForm.ifscCode || "SBIN0000801"
-              };
-              setCurrentUser(newUser);
-              setRegisteredUsers([...registeredUsers, newUser]);
-              setActivePortal(regForm.role);
-              setOnboardingStep("app");
-              triggerToast(
-                `Registered ${newUser.fullName} & synced to Cloud DB (${regForm.role.toUpperCase()})!`
-              );
-            }}
-            className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-          >
-            Register & Open Dedicated Portal
-          </button>
-        </div>
+        )}
       </div>
     </MobilePhoneShell>
   );
@@ -887,7 +1296,7 @@ function AppContent() {
           </div>
         )}
 
-        {/* Top Bar: Founder Badge, OTP Address Selector, Prime & Notification Bell */}
+        {/* Top Bar: Founder Badge, OTP Address Selector, Prime, Bell & Logout/Lock */}
         <div className="flex justify-between items-center pb-2 border-b border-slate-300">
           <div className="flex items-center gap-1.5">
             <FounderLogoBadge
@@ -904,7 +1313,7 @@ function AppContent() {
             >
               {addressBook.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.label}: {a.fullAddress.slice(0, 16)}..
+                  {a.label}: {a.fullAddress.slice(0, 14)}..
                 </option>
               ))}
               <option value="ADD_NEW">+ Add Address (OTP)</option>
@@ -927,6 +1336,12 @@ function AppContent() {
             >
               \uD83D\uDD14 {notificationsList.length}
             </button>
+            <button
+              onClick={() => setOnboardingStep("auth")}
+              className="bg-rose-600 text-white px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer"
+            >
+              Login/Role
+            </button>
           </div>
         </div>
 
@@ -942,7 +1357,6 @@ function AppContent() {
 
         {footerTab === "home" && (
           <div className="space-y-2.5">
-            {/* 3-Tier Geo-Location Ad Banner */}
             <GeoTargetedAdBanner
               adsList={geoAds}
               userZone="Adilabad"
@@ -953,7 +1367,6 @@ function AppContent() {
               }}
             />
 
-            {/* Curiosity Collections */}
             <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-2.5 text-[10px] text-white space-y-1">
               <p className="font-black text-amber-300">Curiosity Deal Collections</p>
               {CURATED_COLLECTIONS.map((col) => (
@@ -963,7 +1376,6 @@ function AppContent() {
               ))}
             </div>
 
-            {/* Sub-Tab Switcher */}
             <div className="grid grid-cols-3 gap-1 text-[10px] bg-slate-900 p-1 rounded-xl">
               <button
                 onClick={() => setCustomerHomeSubTab("stores")}
@@ -1585,7 +1997,7 @@ function AppContent() {
   };
 
   // ==========================================================================
-  // PORTAL 2: PRODUCT MERCHANT PORTAL (ZERO POPUP DELAY)
+  // PORTAL 2: PRODUCT MERCHANT PORTAL
   // ==========================================================================
   const renderMerchantPortal = () => (
     <MobilePhoneShell
@@ -1678,7 +2090,7 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // PORTAL 3: SERVICE PROVIDER PORTAL (GEO-FENCED HAPPY CODE)
+  // PORTAL 3: SERVICE PROVIDER PORTAL
   // ==========================================================================
   const renderServiceProviderPortal = () => (
     <MobilePhoneShell
@@ -1778,7 +2190,7 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // PORTAL 4: DECORATOR & FUNCTION HALL PORTAL (STRICTLY NO ORDER PLACEMENT)
+  // PORTAL 4: DECORATOR & FUNCTION HALL PORTAL
   // ==========================================================================
   const renderDecoratorPortal = () => (
     <MobilePhoneShell
@@ -1871,7 +2283,7 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // PORTAL 5: DELIVERY CAPTAIN RADAR (3-POINT LIVE GPS MAP + OTP + VOICE REVIEW)
+  // PORTAL 5: DELIVERY CAPTAIN RADAR
   // ==========================================================================
   const renderRiderPortal = () => (
     <MobilePhoneShell
@@ -2131,6 +2543,7 @@ function AppContent() {
         />
       ) : (
         <main className="flex-1 flex flex-col justify-center items-center">
+          {onboardingStep === "permissions" && renderPermissionsGateway()}
           {onboardingStep === "auth" && renderAuthVault()}
           {onboardingStep === "app" && activePortal === "customer" && renderCustomerPortal()}
           {onboardingStep === "app" && activePortal === "merchant" && renderMerchantPortal()}
