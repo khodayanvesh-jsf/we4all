@@ -1,0 +1,10 @@
+{
+  "appId": "com.we4all.superapp",
+  "appName": "WE4ALL",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
