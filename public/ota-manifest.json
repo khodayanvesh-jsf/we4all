@@ -1,7 +1,9 @@
 {
-  "currentVersion": "2.6.0",
-  "latestAvailableVersion": "2.7.0",
+  "currentVersion": "2.8.2",
+  "latestAvailableVersion": "2.8.3",
   "updateAvailable": true,
+  "publishedAt": "2026-10-28T21:55:00Z",
+  "liveServerUrl": "https://we-4-all-super-app.vercel.app",
   "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk",
-  "releaseNotes": "WE4ALL v2.7.0: Full Permissions Gateway, 3-Step OTP/KYC/Bank Registration & Login Vault, 5-Portal Cloud Sync, and Live Backend OTA Auto-Updater."
+  "releaseNotes": "WE4ALL v2.8.3: Implemented 2-Step Admin Security (Credentials + PIN)."
 }

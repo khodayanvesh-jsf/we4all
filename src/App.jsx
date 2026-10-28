@@ -242,6 +242,8 @@ function AppContent() {
   const [viewMode, setViewMode] = useState(isDirectAdminUrl ? "founder_web" : "mobile_app");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminLoginForm, setAdminLoginForm] = useState({ username: "", password: "" });
+  const [adminAuthStep, setAdminAuthStep] = useState(1);
+  const [adminPinInput, setAdminPinInput] = useState("");
   const [adminLoginError, setAdminLoginError] = useState("");
   const [lang, setLang] = useState("EN");
   const t = getLangText(lang);
@@ -4142,7 +4144,7 @@ function AppContent() {
   // ==========================================================================
   // POINT 22: FOUNDER ADMIN CREDENTIAL GATE (`KhodayAnvesh` / `22061969s!`)
   // ==========================================================================
-  const renderAdminAuthGate = () => (
+    const renderAdminAuthGate = () => (
     <div className="min-h-screen bg-[#04090e] flex items-center justify-center p-4 text-white">
       <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-5 space-y-3 shadow-2xl text-xs">
         <div className="flex items-center gap-3">
@@ -4161,53 +4163,100 @@ function AppContent() {
             {adminLoginError}
           </div>
         )}
-        <input
-          type="text"
-          value={adminLoginForm.username}
-          onChange={(e) =>
-            setAdminLoginForm({ ...adminLoginForm, username: e.target.value })
-          }
-          placeholder="Admin Username"
-          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
-        />
-        <input
-          type="password"
-          value={adminLoginForm.password}
-          onChange={(e) =>
-            setAdminLoginForm({ ...adminLoginForm, password: e.target.value })
-          }
-          placeholder="Admin Password"
-          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
-        />
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setViewMode("mobile_app")}
-            className="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl font-bold cursor-pointer"
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (
-                adminLoginForm.username.trim() === "KhodayAnvesh" &&
-                adminLoginForm.password === "22061969s!"
-              ) {
-                setIsAdminAuthenticated(true);
-                setAdminLoginError("");
-              } else {
-                setAdminLoginError("Invalid Founder Admin Credentials.");
+        
+        {adminAuthStep === 1 ? (
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={adminLoginForm.username}
+              onChange={(e) =>
+                setAdminLoginForm({ ...adminLoginForm, username: e.target.value })
               }
-            }}
-            className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-          >
-            Unlock Founder Admin Suite
-          </button>
-        </div>
+              placeholder="Admin Username"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+            />
+            <input
+              type="password"
+              value={adminLoginForm.password}
+              onChange={(e) =>
+                setAdminLoginForm({ ...adminLoginForm, password: e.target.value })
+              }
+              placeholder="Admin Password"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setViewMode("mobile_app")}
+                className="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl font-bold cursor-pointer"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    adminLoginForm.username.trim().toLowerCase() === "khodayanvesh" &&
+                    adminLoginForm.password === "22061969s!"
+                  ) {
+                    setAdminAuthStep(2);
+                    setAdminLoginError("");
+                  } else {
+                    setAdminLoginError("Invalid Founder Admin Credentials.");
+                  }
+                }}
+                className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+              >
+                Verify Credentials &rarr;
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3 text-center pt-2">
+            <p className="font-bold text-emerald-400 text-[11px]">Credentials Verified. Step 2 of 2.</p>
+            <input
+              type="password"
+              maxLength={4}
+              value={adminPinInput}
+              onChange={(e) => setAdminPinInput(e.target.value)}
+              placeholder="Enter 4-Digit Founder PIN"
+              className="w-full bg-slate-950 border border-amber-400 rounded-xl p-3 text-center font-mono text-base text-white tracking-widest"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminAuthStep(1);
+                  setAdminPinInput("");
+                  setAdminLoginError("");
+                }}
+                className="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl font-bold cursor-pointer"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (adminPinInput === "9999") {
+                    setIsAdminAuthenticated(true);
+                    setAdminLoginError("");
+                    setAdminPinInput("");
+                    setAdminAuthStep(1);
+                  } else {
+                    setAdminLoginError("Invalid Founder PIN.");
+                  }
+                }}
+                className="flex-1 bg-emerald-500 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+              >
+                Unlock Founder Admin Suite
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
+
 
   // ==========================================================================
   // MAIN ROUTER
