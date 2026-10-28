@@ -59,13 +59,13 @@ export default function OwnerAccountProfile({
     if (!file) return;
     const url = URL.createObjectURL(file);
     setBasicProfile({ ...basicProfile, profilePhoto: url });
-    onTriggerToast('📷 Owner Profile Photo updated!');
+    onTriggerToast('ðŸ“· Owner Profile Photo updated!');
   };
 
   const handleRequestBasicInfoOtp = () => {
     if (!canEditBasicThisMonth) {
       alert(
-        `⏳ Once-a-Month Rule Active: You already updated your basic profile this month. Next edit unlocks in ${
+        `â³ Once-a-Month Rule Active: You already updated your basic profile this month. Next edit unlocks in ${
           30 - daysSinceLastBasicEdit
         } days.`
       );
@@ -74,7 +74,7 @@ export default function OwnerAccountProfile({
     const otp = String(Math.floor(1000 + Math.random() * 9000));
     setBasicEditOtpSent(otp);
     setBasicEditOtpInput(otp);
-    onTriggerToast(`🔐 Basic Profile Modification OTP Sent: ${otp} (Auto-filled)`);
+    onTriggerToast(`ðŸ” Basic Profile Modification OTP Sent: ${otp} (Auto-filled)`);
   };
 
   const handleConfirmBasicInfoWithOtp = () => {
@@ -93,7 +93,7 @@ export default function OwnerAccountProfile({
     });
     setEditingBasicInfo(false);
     setBasicEditOtpSent('');
-    onTriggerToast('✅ Basic Profile updated via OTP! Locked for the next 30 days.');
+    onTriggerToast('âœ… Basic Profile updated via OTP! Locked for the next 30 days.');
   };
 
   return (
@@ -108,22 +108,22 @@ export default function OwnerAccountProfile({
               className="w-full h-16 object-cover"
             />
             <span className="absolute bottom-0 inset-x-0 bg-black/75 text-[8px] text-amber-300 text-center font-bold py-0.5">
-              📷 Photo
+              ðŸ“· Photo
             </span>
             <input type="file" accept="image/*" onChange={handleProfilePhotoUpload} className="hidden" />
           </label>
           <div className="flex-1 min-w-0">
             <span className="bg-amber-400 text-slate-950 text-[8px] font-black px-2 py-0.5 rounded-full uppercase">
-              VERIFIED ACCOUNT OWNER • {activePortal.replace('_', ' ')}
+              VERIFIED ACCOUNT OWNER â€¢ {activePortal.replace('_', ' ')}
             </span>
             <h3 className="text-sm font-black text-white truncate mt-1">
               {basicProfile.fullName}
             </h3>
             <p className="text-[10px] text-emerald-300 font-semibold">
-              📞 +91 {basicProfile.phone}
+              ðŸ“ž +91 {basicProfile.phone}
             </p>
             <p className="text-[9px] text-slate-300 truncate">
-              📍 {basicProfile.savedLocation}
+              ðŸ“ {basicProfile.savedLocation}
             </p>
           </div>
         </div>
@@ -134,8 +134,8 @@ export default function OwnerAccountProfile({
             <div className="flex justify-between items-center">
               <span className="text-[9px] text-slate-400">
                 {canEditBasicThisMonth
-                  ? '✓ Monthly Basic Profile Edit Available (Requires OTP)'
-                  : `🔒 Locked for ${30 - daysSinceLastBasicEdit} more days (Once-a-Month Rule)`}
+                  ? 'âœ“ Monthly Basic Profile Edit Available (Requires OTP)'
+                  : `ðŸ”’ Locked for ${30 - daysSinceLastBasicEdit} more days (Once-a-Month Rule)`}
               </span>
               <button
                 onClick={() => {
@@ -155,13 +155,13 @@ export default function OwnerAccountProfile({
                     : 'bg-slate-900 text-slate-500'
                 }`}
               >
-                ✏️ Edit Basic Info (1x/Month)
+                âœï¸ Edit Basic Info (1x/Month)
               </button>
             </div>
           ) : (
             <div className="space-y-2 bg-slate-950 p-2.5 rounded-2xl border border-amber-400/50">
               <p className="text-[10px] font-bold text-amber-300">
-                ✏️ Alter Basic Details (Once-a-Month OTP Verification):
+                âœï¸ Alter Basic Details (Once-a-Month OTP Verification):
               </p>
               <input
                 type="text"
@@ -215,7 +215,7 @@ export default function OwnerAccountProfile({
                     onClick={handleConfirmBasicInfoWithOtp}
                     className="flex-1 bg-emerald-400 text-slate-950 font-black py-1.5 rounded-xl cursor-pointer"
                   >
-                    ✓ Verify OTP & Lock 30d
+                    âœ“ Verify OTP & Lock 30d
                   </button>
                 </div>
               )}
@@ -229,7 +229,7 @@ export default function OwnerAccountProfile({
         <div className="flex justify-between items-center">
           <div>
             <h4 className="font-black text-emerald-400 text-xs">
-              🏦 Linked Bank Account & UPI ID
+              ðŸ¦ Linked Bank Account & UPI ID
             </h4>
             <p className="text-[9px] text-slate-400">
               Can be modified anytime for instant UPI payments, payouts & refunds
@@ -239,7 +239,7 @@ export default function OwnerAccountProfile({
             onClick={() => setEditingBank(!editingBank)}
             className="bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 px-2.5 py-1 rounded-xl text-[9px] font-black cursor-pointer"
           >
-            {editingBank ? 'Close' : '✏️ Modify Anytime'}
+            {editingBank ? 'Close' : 'âœï¸ Modify Anytime'}
           </button>
         </div>
 
@@ -297,11 +297,11 @@ export default function OwnerAccountProfile({
             <button
               onClick={() => {
                 setEditingBank(false);
-                onTriggerToast('🏦 Bank Account & UPI ID updated immediately!');
+                onTriggerToast('ðŸ¦ Bank Account & UPI ID updated immediately!');
               }}
               className="w-full bg-emerald-400 text-slate-950 font-black py-1.5 rounded-xl cursor-pointer"
             >
-              ✓ Save Bank & UPI Details Now
+              âœ“ Save Bank & UPI Details Now
             </button>
           </div>
         )}
@@ -311,13 +311,13 @@ export default function OwnerAccountProfile({
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2">
         <div className="flex justify-between items-center">
           <span className="font-bold text-amber-300 text-[11px]">
-            ☀️ Screen Readability Mode:
+            â˜€ï¸ Screen Readability Mode:
           </span>
           <button
             onClick={() => setBrightTheme(!brightTheme)}
             className="bg-slate-800 border border-slate-700 px-3 py-1 rounded-xl text-[10px] font-black text-emerald-300 cursor-pointer"
           >
-            {brightTheme ? '🌙 Switch to Dark Emerald' : '☀️ Switch to Bright Daylight'}
+            {brightTheme ? 'ðŸŒ™ Switch to Dark Emerald' : 'â˜€ï¸ Switch to Bright Daylight'}
           </button>
         </div>
 
@@ -325,18 +325,18 @@ export default function OwnerAccountProfile({
           <button
             onClick={() => {
               setActivePortal('customer');
-              onTriggerToast('🛍️ Switched to Personal Consumer Shopping Mode (Role Strictly Isolated)!');
+              onTriggerToast('ðŸ›ï¸ Switched to Personal Consumer Shopping Mode (Role Strictly Isolated)!');
             }}
             className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl text-xs cursor-pointer shadow"
           >
-            🛍️ Shop as Consumer (Buy Groceries / Book Services)
+            ðŸ›ï¸ Shop as Consumer (Buy Groceries / Book Services)
           </button>
         )}
       </div>
 
       {/* 4. PIN & BIOMETRIC SECURITY CONTROLS */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2">
-        <h4 className="font-black text-teal-300 text-xs">🔐 App PIN & Biometric Lock</h4>
+        <h4 className="font-black text-teal-300 text-xs">ðŸ” App PIN & Biometric Lock</h4>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() =>
@@ -349,7 +349,7 @@ export default function OwnerAccountProfile({
               accountSecurity.pinEnabled ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800'
             }`}
           >
-            PIN Login: {accountSecurity.pinEnabled ? 'ON ✓' : 'OFF'}
+            PIN Login: {accountSecurity.pinEnabled ? 'ON âœ“' : 'OFF'}
           </button>
           <button
             onClick={() =>
@@ -362,7 +362,7 @@ export default function OwnerAccountProfile({
               accountSecurity.biometricEnabled ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800'
             }`}
           >
-            Biometric: {accountSecurity.biometricEnabled ? 'ON ✓' : 'OFF'}
+            Biometric: {accountSecurity.biometricEnabled ? 'ON âœ“' : 'OFF'}
           </button>
         </div>
         <div className="flex gap-2">
@@ -377,7 +377,7 @@ export default function OwnerAccountProfile({
           <button
             onClick={() => {
               setAccountSecurity({ ...accountSecurity, fastPin: newPinInput });
-              onTriggerToast('🔐 4-Digit Quick PIN saved!');
+              onTriggerToast('ðŸ” 4-Digit Quick PIN saved!');
             }}
             className="flex-1 bg-slate-800 text-amber-300 font-bold rounded-xl text-[10px] cursor-pointer"
           >
@@ -387,7 +387,7 @@ export default function OwnerAccountProfile({
             onClick={onLockApp}
             className="bg-rose-600 text-white font-black px-3 rounded-xl text-[10px] cursor-pointer"
           >
-            🔒 Lock
+            ðŸ”’ Lock
           </button>
         </div>
       </div>
@@ -395,7 +395,7 @@ export default function OwnerAccountProfile({
       {/* 5. ROLE SWITCHER FOR REAL-WORLD TESTING */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2">
         <p className="font-bold text-slate-300 text-[10px]">
-          🧭 Switch Dedicated Module Portal (Each has its own separate footer & rules):
+          ðŸ§­ Switch Dedicated Module Portal (Each has its own separate footer & rules):
         </p>
         <div className="grid grid-cols-2 gap-1.5 text-[10px]">
           {[
@@ -404,7 +404,7 @@ export default function OwnerAccountProfile({
             { id: 'service_provider', label: '3. Service Provider' },
             { id: 'decorator', label: '4. Decorator / Hall' },
             { id: 'rider', label: '5. Captain Radar' },
-            { id: 'split', label: '📱 All 5 Phones View' }
+            { id: 'split', label: 'ðŸ“± All 5 Phones View' }
           ].map((p) => (
             <button
               key={p.id}
@@ -423,7 +423,7 @@ export default function OwnerAccountProfile({
           onClick={onOpenAdminWeb}
           className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl text-xs cursor-pointer"
         >
-          👑 Open Founder Admin Backend Console
+          ðŸ‘‘ Open Founder Admin Backend Console
         </button>
       </div>
     </div>
