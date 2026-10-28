@@ -1,15 +1,51 @@
 export const GEO_ZONES = [
-  { id: 'adilabad', name: 'Adilabad Town HQ', radiusKm: 12, active: true },
-  { id: 'nirmal', name: 'Nirmal Hub', radiusKm: 10, active: true },
-  { id: 'mancherial', name: 'Mancherial Zone', radiusKm: 15, active: true },
-  { id: 'armoor', name: 'Armoor / Nizamabad', radiusKm: 12, active: true }
+  { id: 'adilabad', name: 'Adilabad Town HQ', state: 'Telangana', radiusKm: 12, active: true },
+  { id: 'nirmal', name: 'Nirmal Hub', state: 'Telangana', radiusKm: 10, active: true },
+  { id: 'mancherial', name: 'Mancherial Zone', state: 'Telangana', radiusKm: 15, active: true },
+  { id: 'armoor', name: 'Armoor / Nizamabad', state: 'Telangana', radiusKm: 12, active: true }
+];
+
+// 3-TIER GEO-LOCATION TARGETED ADS (1st: Local Geo -> 2nd: State -> 3rd: Brand)
+export const INITIAL_GEO_ADS = [
+  {
+    id: 'ad_geo_1',
+    tier: 'GEO_LOCAL',
+    regionLabel: 'ADILABAD TOWN GPS (1.2 KM)',
+    title: 'Sri Laxmi Supermart & Balaji Kirana • 0% Markup',
+    subtitle: 'Direct Mandi & Wholesale Store Rates in Subhash Nagar & Gandhi Chowk!',
+    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ad_geo_2',
+    tier: 'GEO_LOCAL',
+    regionLabel: 'ADILABAD MANDAL GEO',
+    title: 'Royal Palace Function Hall & Mavala DTCP Plots',
+    subtitle: '35% Escrow Hall Booking & ₹0 Brokerage Site Visits in Adilabad.',
+    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ad_state_1',
+    tier: 'STATE_LEVEL',
+    regionLabel: 'TELANGANA STATE SPECIAL',
+    title: 'Telangana Rytu Mandi & Pochampally Handloom Fest',
+    subtitle: 'State-wide zero commission support for farmers & local artisans.',
+    image: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=300&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ad_brand_1',
+    tier: 'BRAND_NATIONAL',
+    regionLabel: 'NATIONAL BRAND PARTNER',
+    title: 'UltraTech Super Cement & Tata Tiscon 550SD Steel',
+    subtitle: 'Direct factory lot dispatch via 3W Auto & Mini-Truck to your site.',
+    image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'
+  }
 ];
 
 export const INITIAL_CATEGORIES = [
   {
     id: 'daily_needs',
     name: 'Daily Home Needs',
-    icon: '🛒',
+    icon: '\uD83D\uDED2',
     partnerType: 'merchant',
     badge: '10-20m Express • 0% Markup',
     flow: 'instant_goods',
@@ -20,7 +56,7 @@ export const INITIAL_CATEGORIES = [
   {
     id: 'veg_fruits',
     name: 'Fresh Veg & Fruits',
-    icon: '🥬',
+    icon: '\uD83E\uDD6C',
     partnerType: 'merchant',
     badge: '5 AM Rytu Mandi Rate',
     flow: 'instant_goods',
@@ -31,7 +67,7 @@ export const INITIAL_CATEGORIES = [
   {
     id: 'non_veg',
     name: 'Non-Veg: Meat & Fish',
-    icon: '🍗',
+    icon: '\uD83C\uDF57',
     partnerType: 'merchant',
     badge: 'Live Cut • 100% Halal',
     flow: 'instant_goods',
@@ -42,7 +78,7 @@ export const INITIAL_CATEGORIES = [
   {
     id: 'construction',
     name: 'Construction & Steel',
-    icon: '🏗️',
+    icon: '\uD83C\uDFD7\uFE0F',
     partnerType: 'merchant',
     badge: '3W Auto / Heavy Dispatch',
     flow: 'heavy_goods',
@@ -53,7 +89,7 @@ export const INITIAL_CATEGORIES = [
   {
     id: 'medicines',
     name: 'Medicines & Rx',
-    icon: '💊',
+    icon: '\uD83D\uDC8A',
     partnerType: 'merchant',
     badge: '10-Min Priority Pharmacy',
     flow: 'instant_goods',
@@ -67,7 +103,7 @@ export const SERVICE_CATEGORIES = [
   {
     id: 'srv_plumbing',
     name: 'Plumbers & Water Tank Fix',
-    icon: '🚰',
+    icon: '\uD83D\uDEB0',
     startingVisitFee: 89,
     badge: '40-Min Arrival',
     image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80'
@@ -75,7 +111,7 @@ export const SERVICE_CATEGORIES = [
   {
     id: 'srv_electrical',
     name: 'Electricians & DB Setup',
-    icon: '⚡',
+    icon: '\u26A1',
     startingVisitFee: 99,
     badge: 'Single-Phase / MCB Expert',
     image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&auto=format&fit=crop&q=80'
@@ -83,7 +119,7 @@ export const SERVICE_CATEGORIES = [
   {
     id: 'srv_carpentry',
     name: 'Carpenters & Wood Works',
-    icon: '🪚',
+    icon: '\uD83E\uDE9A',
     startingVisitFee: 99,
     badge: 'Own Power Tools',
     image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=300&auto=format&fit=crop&q=80'
@@ -91,7 +127,7 @@ export const SERVICE_CATEGORIES = [
   {
     id: 'srv_ac_repair',
     name: 'AC, Fridge & Motor Repair',
-    icon: '❄️',
+    icon: '\u2744\uFE0F',
     startingVisitFee: 149,
     badge: 'Gas Refill & Winding',
     image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=300&auto=format&fit=crop&q=80'
@@ -99,7 +135,7 @@ export const SERVICE_CATEGORIES = [
   {
     id: 'srv_loans_realestate',
     name: 'Loans & Real Estate Desk',
-    icon: '🏠',
+    icon: '\uD83C\uDFE0',
     startingVisitFee: 0,
     badge: '₹0 Brokerage • Free Visit',
     image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&auto=format&fit=crop&q=80'
@@ -147,7 +183,6 @@ export const INITIAL_SERVICE_PROVIDERS = [
     area: 'Gandhi Chowk',
     rating: 4.9,
     phone: '9848022201',
-    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30', '2026-11-05'],
     availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80'
   },
@@ -163,8 +198,7 @@ export const INITIAL_SERVICE_PROVIDERS = [
     area: 'Subhash Nagar',
     rating: 4.9,
     phone: '9848022202',
-    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30', '2026-11-05'],
-    availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '03:00 PM - 04:00 PM', '05:00 PM - 06:00 PM'],
+    availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&auto=format&fit=crop&q=80'
   },
   {
@@ -179,8 +213,7 @@ export const INITIAL_SERVICE_PROVIDERS = [
     area: 'Old Bus Stand',
     rating: 4.8,
     phone: '9848022203',
-    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30'],
-    availableSlots: ['10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
+    availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=300&auto=format&fit=crop&q=80'
   },
   {
@@ -195,7 +228,6 @@ export const INITIAL_SERVICE_PROVIDERS = [
     area: 'Collectorate Chowk',
     rating: 4.9,
     phone: '9848022204',
-    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30'],
     availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=300&auto=format&fit=crop&q=80'
   },
@@ -211,8 +243,7 @@ export const INITIAL_SERVICE_PROVIDERS = [
     area: 'Mavala Bypass / Collectorate',
     rating: 4.9,
     phone: '9848022205',
-    availableDates: ['2026-10-28', '2026-10-29', '2026-10-30'],
-    availableSlots: ['10:00 AM - 11:00 AM', '11:00 AM - 12:00 PM', '04:00 PM - 05:00 PM'],
+    availableSlots: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM', '02:00 PM - 03:00 PM', '04:00 PM - 05:00 PM'],
     image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&auto=format&fit=crop&q=80'
   }
 ];
@@ -256,7 +287,8 @@ export const INITIAL_PRODUCTS = [
     ],
     merchantOffers: [
       { merchantId: 'm1', merchantName: 'Sri Laxmi Supermart', price: 58, area: 'Subhash Nagar', rating: 4.9 },
-      { merchantId: 'm2', merchantName: 'Balaji Wholesale Kirana', price: 61, area: 'Gandhi Chowk', rating: 4.8 }
+      { merchantId: 'm2', merchantName: 'Balaji Wholesale Kirana', price: 61, area: 'Gandhi Chowk', rating: 4.8 },
+      { merchantId: 'm3', merchantName: 'Annapurna Traders', price: 64, area: 'Station Road', rating: 4.7 }
     ]
   },
   {
@@ -273,7 +305,8 @@ export const INITIAL_PRODUCTS = [
     status: 'approved',
     variants: [
       { id: 'v21', label: '1 Litre Wood-Pressed Oil', price: 178, mrp: 205, weightGrams: 1000 },
-      { id: 'v22', label: '10 Kg Sona Masoori Bag', price: 540, mrp: 610, weightGrams: 10000 }
+      { id: 'v22', label: '10 Kg Sona Masoori Bag', price: 540, mrp: 610, weightGrams: 10000 },
+      { id: 'v23', label: '25 Kg Wholesale Rice Sack', price: 1310, mrp: 1490, weightGrams: 25000 }
     ],
     merchantOffers: [
       { merchantId: 'm2', merchantName: 'Balaji Wholesale Kirana', price: 178, area: 'Gandhi Chowk', rating: 4.9 },
@@ -297,7 +330,8 @@ export const INITIAL_PRODUCTS = [
       { id: 'v9', label: '1 Litre Farm Can', price: 66, mrp: 75, weightGrams: 1000 }
     ],
     merchantOffers: [
-      { merchantId: 'm6', merchantName: 'Sri Laxmi Dairy Parlour', price: 34, area: 'Main Bazar', rating: 4.9 }
+      { merchantId: 'm6', merchantName: 'Sri Laxmi Dairy Parlour', price: 34, area: 'Main Bazar', rating: 4.9 },
+      { merchantId: 'm7', merchantName: 'Vijaya Milk Point', price: 37, area: 'Bus Stand', rating: 4.7 }
     ]
   },
   {
@@ -314,10 +348,12 @@ export const INITIAL_PRODUCTS = [
     status: 'approved',
     variants: [
       { id: 'v4', label: 'Red Onions 1 kg', price: 32, mrp: 42, weightGrams: 1000 },
+      { id: 'v6', label: 'Red Onions 5 kg Bag', price: 150, mrp: 185, weightGrams: 5000 },
       { id: 'v7', label: 'Banganapalli Mangoes 1 kg', price: 105, mrp: 125, weightGrams: 1000 }
     ],
     merchantOffers: [
-      { merchantId: 'm8', merchantName: 'Adilabad Rytu Mandi', price: 32, area: 'Vegetable Market', rating: 4.9 }
+      { merchantId: 'm8', merchantName: 'Adilabad Rytu Mandi', price: 32, area: 'Vegetable Market', rating: 4.9 },
+      { merchantId: 'm9', merchantName: 'Raju Fresh Farm Veg', price: 36, area: 'Gandhi Chowk', rating: 4.8 }
     ]
   },
   {
@@ -334,30 +370,34 @@ export const INITIAL_PRODUCTS = [
     status: 'approved',
     variants: [
       { id: 'v30', label: 'Natu Kodi (Country Chicken) 1 Kg', price: 370, mrp: 410, weightGrams: 1000 },
-      { id: 'v31', label: 'Tender Goat Mutton Curry Cut 1 Kg', price: 740, mrp: 790, weightGrams: 1000 }
+      { id: 'v31', label: 'Tender Goat Mutton Curry Cut 1 Kg', price: 740, mrp: 790, weightGrams: 1000 },
+      { id: 'v32', label: 'Live Rohu Fish Cleaned 1 Kg', price: 210, mrp: 240, weightGrams: 1000 }
     ],
     merchantOffers: [
-      { merchantId: 'm13', merchantName: 'Deccan Fresh Meat Hub', price: 370, area: 'Old Town', rating: 4.9 }
+      { merchantId: 'm13', merchantName: 'Deccan Fresh Meat Hub', price: 370, area: 'Old Town', rating: 4.9 },
+      { merchantId: 'm14', merchantName: 'Telangana Natu Kodi Center', price: 390, area: 'Bypass Road', rating: 4.8 }
     ]
   },
   {
     id: 'prod_6',
     zoneId: 'adilabad',
     categoryId: 'construction',
-    subCategoryBrand: 'UltraTech Super Cement (Grade 53)',
+    subCategoryBrand: 'UltraTech Super Cement & Kiln Red Bricks',
     shopName: 'Shri Ram Hardware & Steel',
     distanceKm: 1.9,
     rating: 5.0,
     buyersToday: 124,
-    curiosityTag: 'Fresh Factory Lot',
+    curiosityTag: 'Fresh Factory Lot • 3W Auto',
     image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80',
     status: 'approved',
     variants: [
-      { id: 'v12', label: '1 Bag (50 kg)', price: 390, mrp: 420, weightGrams: 50000 },
-      { id: 'v13', label: '5 Bags (250 kg 3W Auto)', price: 1790, mrp: 2100, weightGrams: 250000 }
+      { id: 'v12', label: '1 Bag Cement (50 kg)', price: 390, mrp: 420, weightGrams: 50000 },
+      { id: 'v13', label: '5 Bags Cement (250 kg Auto)', price: 1790, mrp: 2100, weightGrams: 250000 },
+      { id: 'v17', label: '500 Red Clay Bricks Load', price: 4150, mrp: 4500, weightGrams: 500000 }
     ],
     merchantOffers: [
-      { merchantId: 'm20', merchantName: 'Shri Ram Hardware & Steel', price: 390, area: 'Industrial Area', rating: 5.0 }
+      { merchantId: 'm20', merchantName: 'Shri Ram Hardware & Steel', price: 390, area: 'Industrial Area', rating: 5.0 },
+      { merchantId: 'm21', merchantName: 'Bhavani Steel & Cement', price: 405, area: 'Bypass Chowk', rating: 4.8 }
     ]
   },
   {
@@ -448,19 +488,19 @@ export const DELIVERY_REVIEW_QUESTIONS = [
   {
     id: 'q1',
     question: 'Did the partner arrive on time?',
-    subText: 'सही समय पर सेवा मिली? • సమయానికి వచ్చారా?',
+    subText: 'On-time SLA check',
     voiceText: 'Question 1. Did the partner arrive on time? Please tap Yes or No.'
   },
   {
     id: 'q2',
-    question: 'Was the work or delivery completed safely without damage?',
-    subText: 'क्या काम और सामान सुरक्षित मिला? • పని లేదా వస్తువులు సురక్షితంగా ఉన్నాయా?',
-    voiceText: 'Question 2. Was the work or delivery completed safely without any damage? Please tap Yes or No.'
+    question: 'Were all items or services delivered safely without damage?',
+    subText: 'Quality & safety check',
+    voiceText: 'Question 2. Were all items delivered safely without damage? Please tap Yes or No.'
   },
   {
     id: 'q3',
-    question: 'Was the partner polite and charged zero extra money outside the app bill?',
-    subText: 'क्या व्यवहार अच्छा था और ₹0 एक्स्ट्रा लिया? • అదనపు డబ్బు అడగకుండా మర్యాదగా ఉన్నారా?',
+    question: 'Was the partner polite and charged zero extra money outside the app?',
+    subText: 'Zero extra cash check',
     voiceText: 'Question 3. Was the partner polite and charged zero extra money? Please tap Yes or No.'
   }
 ];

@@ -1,6 +1,23 @@
+// ============================================================================
+// WE4ALL • VOCALFORLOCAL ADILABAD SUPER-APP (MASTER APPLICATION FILE)
+// Founder & System Architect: Khoday Anvesh
+// ============================================================================
+// QUICK NAVIGATION TABLE OF CONTENTS:
+//   [SECTION-01]: Imports, Founder Emblem & Auto-Responsive MobilePhoneShell
+//   [SECTION-02]: Application State Variables (Auth, Isolated Carts, Geo Ads)
+//   [SECTION-03]: Security Vault, Registration (Bank/UPI), PIN & Biometrics
+//   [SECTION-04]: Logistics, Autonomous Order Flow, Prime Merge & Multi-Shop Compare
+//   [SECTION-07]: Portal 1 - Customer Super-App (Stores | 1-Hr Services | Decor/Halls | Taxi)
+//   [SECTION-08]: Portal 2 (Product Merchant), Portal 3 (Service Provider), Portal 4 (Decorator)
+//   [SECTION-09]: Portal 5 - Delivery Captain Radar (3-Point Live GPS Map & OTP)
+//   [SECTION-10]: Portal 6 - Separate Founder Admin Suite (Web + Mobile Admin App)
+//   [SECTION-12]: Main Router, UPI App Chooser, OTP Address Book & GlobalErrorBoundary
+// ============================================================================
+
 import React, { useState } from 'react';
 import {
   GEO_ZONES,
+  INITIAL_GEO_ADS,
   INITIAL_CATEGORIES,
   SERVICE_CATEGORIES,
   CURATED_COLLECTIONS,
@@ -13,37 +30,15 @@ import {
   INITIAL_RIDERS
 } from './data';
 
+import { INDIAN_LANGUAGES, getLangText } from './modules/i18n/indianLanguages';
+import GeoTargetedAdBanner from './modules/ads/GeoTargetedAdBanner';
 import RoleFooterNav from './modules/RoleFooterNav';
 import UpiPaymentModal from './modules/UpiPaymentModal';
 import OrdersHistoryAndInvoice from './modules/OrdersHistoryAndInvoice';
 import OwnerAccountProfile from './modules/OwnerAccountProfile';
 import FounderAdminSuite from './modules/FounderAdminSuite';
 
-// Trilingual Dictionary (English, Telugu, Hindi)
-const LANG_TEXT = {
-  EN: {
-    stores: 'Merchant Shops',
-    decor: 'Decor & Halls',
-    taxi: 'Bike/Auto Taxi',
-    addCart: '+ Add',
-    payNow: 'Select UPI App & Pay Now'
-  },
-  TE: {
-    stores: '\u0C15\u0C3F\u0C30\u0C3E\u0C23\u0C3E & \u0C37\u0C3E\u0C2A\u0C41\u0C32\u0C41',
-    decor: '\u0C21\u0C46\u0C15\u0C30\u0C47\u0C37\u0C28\u0C4D & \u0C39\u0C3E\u0C32\u0C4D\u0C38\u0C4D',
-    taxi: '\u0C2C\u0C48\u0C15\u0C4D / \u0C06\u0C1F\u0C4B \u0C1F\u0C3E\u0C15\u0C4D\u0C38\u0C40',
-    addCart: '+ \u0C1C\u0C4B\u0C21\u0C3F\u0C02\u0C1A\u0C41',
-    payNow: 'UPI \u0C26\u0C4D\u0C35\u0C3E\u0C30\u0C3E \u0C1A\u0C46\u0C32\u0C4D\u0C32\u0C3F\u0C02\u0C1A\u0C02\u0C21\u0C3F'
-  },
-  HI: {
-    stores: '\u0926\u0941\u0915\u093E\u0928\u0947\u0902 & \u092C\u093E\u091C\u093C\u093E\u0930',
-    decor: '\u0921\u0947\u0915\u094B\u0930 & \u0939\u0949\u0932',
-    taxi: '\u092C\u093E\u0907\u0915 / \u0911\u091F\u094B \u091F\u0948\u0915\u094D\u0938\u0940',
-    addCart: '+ \u091C\u094B\u0921\u093C\u0947\u0902',
-    payNow: 'UPI \u0938\u0947 \u092D\u0941\u0917\u0924\u093E\u0928 \u0915\u0930\u0947\u0902'
-  }
-};
-
+// [SECTION-01] NATIVE SMARTPHONE BEZEL WRAPPER (BRIGHT DAYLIGHT UI DEFAULT)
 function MobilePhoneShell({
   title,
   badge,
@@ -54,7 +49,8 @@ function MobilePhoneShell({
   totalOrdersCount = 0,
   floatingLiveOrder,
   onOpenLiveOrderModal,
-  brightTheme = false,
+  brightTheme = true,
+  setBrightTheme,
   lang,
   setLang,
   children
@@ -63,63 +59,75 @@ function MobilePhoneShell({
     <div
       className={`w-full sm:max-w-[412px] mx-auto overflow-hidden flex flex-col min-h-[100dvh] sm:min-h-[820px] sm:max-h-[880px] sm:rounded-[42px] sm:border-[7px] relative transition-all shadow-2xl ${
         brightTheme
-          ? 'bg-slate-50 text-slate-900 sm:border-slate-300'
+          ? 'bg-white text-slate-900 sm:border-emerald-600/80'
           : 'bg-[#071318] text-white sm:border-slate-800/90'
       }`}
     >
+      {/* Top Status & All-India 12-Language Selector Bar */}
       <div
         className={`px-3.5 py-2 flex justify-between items-center text-[10px] border-b select-none shrink-0 ${
           brightTheme
-            ? 'bg-emerald-900 text-white border-emerald-800'
+            ? 'bg-emerald-700 text-white border-emerald-800'
             : 'bg-[#040b0e] text-slate-300 border-emerald-950/80'
         }`}
       >
-        <span className="font-extrabold text-amber-400 tracking-wide flex items-center gap-1.5 truncate">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+        <span className="font-extrabold text-amber-300 tracking-wide flex items-center gap-1.5 truncate">
+          <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse shrink-0" />
           {title}
         </span>
+
         <div className="flex items-center gap-1.5">
+          {/* All-India 12-Language Dropdown */}
           {setLang && (
-            <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-700 text-[8px] font-black">
-              {['EN', 'TE', 'HI'].map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className={`px-1.5 py-0.5 rounded cursor-pointer ${
-                    lang === l ? 'bg-amber-400 text-slate-950' : 'text-slate-400'
-                  }`}
-                >
-                  {l}
-                </button>
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="bg-slate-900 text-amber-300 border border-amber-400/50 rounded-lg px-1.5 py-0.5 text-[9px] font-black outline-none cursor-pointer"
+            >
+              {INDIAN_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.native} ({l.code})
+                </option>
               ))}
-            </div>
+            </select>
           )}
-          <span className="text-teal-300 font-semibold truncate">{badge}</span>
+          {setBrightTheme && (
+            <button
+              onClick={() => setBrightTheme(!brightTheme)}
+              title="Toggle Bright Daylight / Dark Theme"
+              className="bg-slate-900/80 text-white px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer"
+            >
+              {brightTheme ? 'Dark' : 'Bright'}
+            </button>
+          )}
+          <span className="text-emerald-200 font-semibold truncate hidden sm:inline">{badge}</span>
         </div>
       </div>
 
+      {/* Scrollable Mobile Viewport */}
       <div
         className={`flex-1 overflow-y-auto p-3.5 space-y-3 pb-24 ${
           brightTheme
-            ? 'bg-slate-100 text-slate-900'
+            ? 'bg-slate-50 text-slate-900'
             : 'bg-gradient-to-b from-[#071318] via-[#09181F] to-[#050E12] text-white'
         }`}
       >
         {children}
       </div>
 
+      {/* Floating Live Order Pill (Requirement 1.3) */}
       {floatingLiveOrder && (
         <div className="absolute bottom-16 left-3 right-3 z-30">
           <button
             onClick={onOpenLiveOrderModal}
-            className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-slate-950 p-2.5 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-center justify-between cursor-pointer"
+            className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-2.5 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-center justify-between cursor-pointer"
           >
             <div className="text-left">
-              <p className="text-[10px] font-black text-white leading-tight">
+              <p className="text-[10px] font-black leading-tight">
                 LIVE ORDER {floatingLiveOrder.id} &bull; {floatingLiveOrder.status.replace(/_/g, ' ')}
               </p>
               <p className="text-[9px] font-bold text-amber-200">
-                Captain: {floatingLiveOrder.riderName} &bull; Tap for Live Map
+                Captain: {floatingLiveOrder.riderName} &bull; Tap for Live Map &amp; Bill
               </p>
             </div>
             <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-1 rounded-xl">
@@ -129,6 +137,7 @@ function MobilePhoneShell({
         </div>
       )}
 
+      {/* Role-Specific Persistent 5-Button Footer */}
       <RoleFooterNav
         activePortal={activePortal}
         footerTab={footerTab}
@@ -141,12 +150,16 @@ function MobilePhoneShell({
   );
 }
 
+// ============================================================================
+// [SECTION-02] MAIN APPLICATION CONTROLLER & STATE
+// ============================================================================
 function AppContent() {
   const isDirectAdminUrl = typeof window !== 'undefined' && window.location.search.includes('admin');
   const [viewMode, setViewMode] = useState(isDirectAdminUrl ? 'founder_web' : 'mobile_app');
   const [lang, setLang] = useState('EN');
-  const t = LANG_TEXT[lang] || LANG_TEXT.EN;
-  const [brightTheme, setBrightTheme] = useState(false);
+  const t = getLangText(lang);
+  // Bright UI enabled by default for mobile application interfaces
+  const [brightTheme, setBrightTheme] = useState(true);
 
   const [founderLogoUrl, setFounderLogoUrl] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -182,6 +195,7 @@ function AppContent() {
     id: 'usr_demo',
     fullName: 'Khoday Anvesh',
     phone: '9848011223',
+    govId: '[Verified]',
     role: 'customer',
     bankName: 'State Bank of India',
     accountNumber: '38492019482',
@@ -191,9 +205,10 @@ function AppContent() {
 
   const [pendingUpiPayment, setPendingUpiPayment] = useState(null);
   const [isPrimeCustomer, setIsPrimeCustomer] = useState(true);
+  const [surpriseBoxOpen, setSurpriseBoxOpen] = useState(false);
   const [notificationBellOpen, setNotificationBellOpen] = useState(false);
   const [notificationsList, setNotificationsList] = useState([
-    { id: 'n1', text: 'WE4ALL Adilabad Live! Trilingual EN/TE/HI & UPI Active.', time: 'Now' }
+    { id: 'n1', text: 'WE4ALL Adilabad Live! 12 Indian Languages & Geo-Targeted Ads Active.', time: 'Now' }
   ]);
   const [mobileToast, setMobileToast] = useState(null);
 
@@ -203,9 +218,10 @@ function AppContent() {
     setTimeout(() => setMobileToast(null), 3500);
   };
 
-  // Master Data State
+  // Master Data & 3-Tier Geo Ads State
   const [selectedZoneFilter, setSelectedZoneFilter] = useState('ALL_INDIA');
   const [killedCategoriesByZone, setKilledCategoriesByZone] = useState({});
+  const [geoAds, setGeoAds] = useState(INITIAL_GEO_ADS);
   const [categories, setCategories] = useState(INITIAL_CATEGORIES);
   const [serviceCategories] = useState(SERVICE_CATEGORIES);
   const [merchants, setMerchants] = useState(INITIAL_MERCHANTS);
@@ -248,6 +264,7 @@ function AppContent() {
     { id: 'p5', role: 'rider' }
   ]);
 
+  // Address Book with Consumer OTP Verification
   const [addressBook, setAddressBook] = useState([
     { id: 'addr_home', label: 'Home', fullAddress: 'Subhash Nagar, Adilabad', distanceKm: 1.8, verified: true },
     { id: 'addr_office', label: 'Office', fullAddress: 'Collectorate Chowk, Adilabad', distanceKm: 2.2, verified: true }
@@ -257,13 +274,20 @@ function AppContent() {
   const [newAddressForm, setNewAddressForm] = useState({ label: 'Other', fullAddress: '', generatedOtp: '', enteredOtp: '' });
   const activeAddressObj = addressBook.find((a) => a.id === selectedAddressId) || addressBook[0];
 
+  // Store & Multi-Shop Comparison State (Preserved from 09.pdf & 14.pdf)
   const [customerHomeSubTab, setCustomerHomeSubTab] = useState('stores');
   const [selectedCategory, setSelectedCategory] = useState('daily_needs');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedVariantMap, setSelectedVariantMap] = useState({});
+  const [selectedMerchantByProduct, setSelectedMerchantByProduct] = useState({});
+  const [expandedCompareProdId, setExpandedCompareProdId] = useState(null);
+
+  // Service Provider Step-Into Window State
   const [selectedServiceCategoryObj, setSelectedServiceCategoryObj] = useState(null);
   const [serviceFilterDate, setServiceFilterDate] = useState('2026-10-28');
   const [serviceFilterSlot, setServiceFilterSlot] = useState('10:00 AM - 11:00 AM');
 
+  // Isolated Carts per Category & Module
   const [categoryCarts, setCategoryCarts] = useState({
     daily_needs: [],
     veg_fruits: [],
@@ -276,6 +300,7 @@ function AppContent() {
   const [taxiCart, setTaxiCart] = useState([]);
   const [activeCartViewTab, setActiveCartViewTab] = useState('merchant_cart');
 
+  // Orders & Service Bookings
   const [orders, setOrders] = useState([
     {
       id: 'VFL-1024',
@@ -304,7 +329,14 @@ function AppContent() {
   const [liveOrderDrawerOpen, setLiveOrderDrawerOpen] = useState(false);
   const [serviceBookings, setServiceBookings] = useState([]);
 
+  // Event & Reverse-Bidding State (Preserved from 14.pdf)
   const [eventDate, setEventDate] = useState('2026-11-05');
+  const [decorStep, setDecorStep] = useState('setup');
+  const [decorBids, setDecorBids] = useState([
+    { id: 'b1', maskedVendor: 'Decorator Partner #A1', price: 21500, features: 'Floral arch + warm LED spotlights' },
+    { id: 'b2', maskedVendor: 'Decorator Partner #B2', price: 19800, features: 'Stage setup + grand entrance gate' }
+  ]);
+  const [selectedWinningBid, setSelectedWinningBid] = useState(null);
   const [hallScheduleDateInput, setHallScheduleDateInput] = useState('2026-11-05');
   const [providerInsideGeoFence, setProviderInsideGeoFence] = useState(true);
   const [providerHappyCodeInput, setProviderHappyCodeInput] = useState('');
@@ -317,9 +349,21 @@ function AppContent() {
   const totalCartCount = allMerchantCartItemsCount + serviceCart.length + decorCart.length + taxiCart.length;
   const activeOrder = orders.find((o) => o.id === activeOrderId && o.status !== 'CANCELLED_BY_USER') || null;
 
+  // Multi-Shop Price Comparison Helper (Preserved from 09.pdf)
+  const getProductBestOffer = (product) => {
+    const offers =
+      product.merchantOffers && product.merchantOffers.length > 0
+        ? [...product.merchantOffers].sort((a, b) => a.price - b.price)
+        : [{ merchantId: 'm_def', merchantName: product.shopName, price: product.variants[0]?.price || 50, area: 'Adilabad', rating: 4.9 }];
+    const chosenId = selectedMerchantByProduct[product.id];
+    const activeOffer = offers.find((o) => o.merchantId === chosenId) || offers[0];
+    return { offers, lowestOffer: offers[0], activeOffer };
+  };
+
   const handleAddToProductCart = (product) => {
     const chosenVarId = selectedVariantMap[product.id] || product.variants[0].id;
     const variant = product.variants.find((v) => v.id === chosenVarId) || product.variants[0];
+    const { activeOffer } = getProductBestOffer(product);
     const currentCart = categoryCarts[product.categoryId] || [];
     const existing = currentCart.find((i) => i.productId === product.id && i.variantId === variant.id);
     const updated = existing
@@ -330,14 +374,14 @@ function AppContent() {
             productId: product.id,
             variantId: variant.id,
             name: `${product.subCategoryBrand} (${variant.label})`,
-            shopName: product.shopName,
+            shopName: activeOffer.merchantName || product.shopName,
             price: variant.price,
             weightGrams: variant.weightGrams,
             qty: 1
           }
         ];
     setCategoryCarts({ ...categoryCarts, [product.categoryId]: updated });
-    triggerToast(`Added ${product.subCategoryBrand} to Cart`);
+    triggerToast(`Added ${product.subCategoryBrand} from ${activeOffer.merchantName}`);
   };
 
   const handleCompleteUpiPayment = (chosenUpiAppName) => {
@@ -391,7 +435,7 @@ function AppContent() {
     }
   };
 
-  // PIN & Biometric Lock Screen (Entering Secret PIN 9999 Opens Separate Founder Admin Suite)
+  // [SECTION-06] AUTH & PIN / BIOMETRIC VAULT
   const renderAuthVault = () => (
     <MobilePhoneShell
       title="WE4ALL Security Vault"
@@ -400,11 +444,12 @@ function AppContent() {
       footerTab={footerTab}
       setFooterTab={setFooterTab}
       brightTheme={brightTheme}
+      setBrightTheme={setBrightTheme}
       lang={lang}
       setLang={setLang}
     >
-      <div className="space-y-4 py-6 text-xs text-white">
-        <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-4 space-y-3">
+      <div className="space-y-4 py-6 text-xs">
+        <div className="bg-slate-900 text-white border border-emerald-500/40 rounded-3xl p-4 space-y-3">
           <h3 className="font-black text-emerald-400 text-center text-sm">
             Unlock WE4ALL ({currentUser.fullName})
           </h3>
@@ -453,9 +498,13 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
-  // PORTAL 1: CUSTOMER
+  // [SECTION-07] PORTAL 1: CUSTOMER SUPER-APP
   const renderCustomerPortal = () => {
-    const approvedProducts = products.filter((p) => p.categoryId === selectedCategory);
+    const approvedProducts = products.filter(
+      (p) =>
+        p.categoryId === selectedCategory &&
+        p.subCategoryBrand.toLowerCase().includes(searchQuery.toLowerCase())
+    );
     return (
       <MobilePhoneShell
         title="WE4ALL Adilabad"
@@ -468,17 +517,19 @@ function AppContent() {
         floatingLiveOrder={activeOrder}
         onOpenLiveOrderModal={() => setLiveOrderDrawerOpen(true)}
         brightTheme={brightTheme}
+        setBrightTheme={setBrightTheme}
         lang={lang}
         setLang={setLang}
       >
         {mobileToast && (
-          <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between">
+          <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
             <span>{mobileToast}</span>
             <button onClick={() => setMobileToast(null)}>X</button>
           </div>
         )}
 
-        <div className="flex justify-between items-center pb-2 border-b border-slate-800/40">
+        {/* Top Bar: OTP Address Selector + Prime + Notification Bell */}
+        <div className="flex justify-between items-center pb-2 border-b border-slate-300">
           <div className="flex items-center gap-1">
             <select
               value={selectedAddressId}
@@ -499,7 +550,7 @@ function AppContent() {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setIsPrimeCustomer(!isPrimeCustomer)}
-              className={`text-[9px] px-2 py-1 rounded-lg font-black ${
+              className={`text-[9px] px-2 py-1 rounded-lg font-black cursor-pointer ${
                 isPrimeCustomer ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300'
               }`}
             >
@@ -507,7 +558,7 @@ function AppContent() {
             </button>
             <button
               onClick={() => setNotificationBellOpen(!notificationBellOpen)}
-              className="bg-slate-900 text-amber-300 px-2 py-1 rounded-xl text-[10px] border border-slate-700 font-bold"
+              className="bg-slate-900 text-amber-300 px-2 py-1 rounded-xl text-[10px] border border-slate-700 font-bold cursor-pointer"
             >
               Alerts ({notificationsList.length})
             </button>
@@ -524,10 +575,30 @@ function AppContent() {
 
         {footerTab === 'home' && (
           <div className="space-y-3">
+            {/* 3-Tier Geo-Targeted Ad Banner (1st: Local Geo -> 2nd: State -> 3rd: Brand) */}
+            <GeoTargetedAdBanner
+              adsList={geoAds}
+              userTown="Adilabad"
+              userState="Telangana"
+              brightTheme={brightTheme}
+              onOpenDealBox={() => setSurpriseBoxOpen(!surpriseBoxOpen)}
+            />
+
+            {surpriseBoxOpen && (
+              <div className="bg-slate-900 border border-amber-400/50 rounded-2xl p-2.5 text-[10px] text-white space-y-1">
+                <p className="font-black text-amber-300">Town Curiosity Collections:</p>
+                {CURATED_COLLECTIONS.map((col) => (
+                  <p key={col.id}>
+                    &bull; <strong>{col.title}:</strong> {col.subtitle}
+                  </p>
+                ))}
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-1 text-[10px] bg-slate-900 p-1 rounded-xl">
               <button
                 onClick={() => setCustomerHomeSubTab('stores')}
-                className={`py-1.5 rounded-lg font-black ${
+                className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   customerHomeSubTab === 'stores' ? 'bg-emerald-400 text-slate-950' : 'text-slate-300'
                 }`}
               >
@@ -535,7 +606,7 @@ function AppContent() {
               </button>
               <button
                 onClick={() => setCustomerHomeSubTab('events')}
-                className={`py-1.5 rounded-lg font-black ${
+                className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   customerHomeSubTab === 'events' ? 'bg-amber-400 text-slate-950' : 'text-slate-300'
                 }`}
               >
@@ -543,7 +614,7 @@ function AppContent() {
               </button>
               <button
                 onClick={() => setCustomerHomeSubTab('taxi')}
-                className={`py-1.5 rounded-lg font-black ${
+                className={`py-1.5 rounded-lg font-black cursor-pointer ${
                   customerHomeSubTab === 'taxi' ? 'bg-teal-400 text-slate-950' : 'text-slate-300'
                 }`}
               >
@@ -553,15 +624,23 @@ function AppContent() {
 
             {customerHomeSubTab === 'stores' && (
               <div className="space-y-2.5">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search atta, rice, onions, mutton, cement, medicines..."
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-[11px] text-slate-900 outline-none shadow-xs"
+                />
+
                 <div className="grid grid-cols-5 gap-1">
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`p-1.5 rounded-xl border text-center ${
+                      className={`p-1.5 rounded-xl border text-center cursor-pointer ${
                         selectedCategory === cat.id
-                          ? 'border-emerald-400 bg-emerald-500/20'
-                          : 'border-slate-800 bg-slate-900 text-white'
+                          ? 'border-emerald-600 bg-emerald-600 text-white shadow'
+                          : 'border-slate-300 bg-white text-slate-800'
                       }`}
                     >
                       <div className="text-sm">{cat.icon}</div>
@@ -573,21 +652,70 @@ function AppContent() {
                 {approvedProducts.map((prod) => {
                   const chosenVarId = selectedVariantMap[prod.id] || prod.variants[0].id;
                   const currentVar = prod.variants.find((v) => v.id === chosenVarId) || prod.variants[0];
+                  const { offers, lowestOffer, activeOffer } = getProductBestOffer(prod);
+                  const isCompareOpen = expandedCompareProdId === prod.id;
+
                   return (
-                    <div key={prod.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 space-y-2 text-white">
+                    <div
+                      key={prod.id}
+                      className={`rounded-2xl p-2.5 space-y-2 border shadow-xs ${
+                        brightTheme ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-800 text-white'
+                      }`}
+                    >
                       <div className="flex gap-2.5 items-center">
                         <img src={prod.image} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <span className="text-[9px] text-amber-300 font-bold">{prod.curiosityTag}</span>
-                          <h4 className="text-xs font-bold truncate">{prod.subCategoryBrand}</h4>
-                          <p className="text-[9px] text-emerald-400">{prod.shopName}</p>
+                          <span className="text-[9px] text-amber-600 font-black">{prod.curiosityTag}</span>
+                          <h4 className="text-xs font-black truncate">{prod.subCategoryBrand}</h4>
+                          <div className="flex justify-between items-center">
+                            <p className="text-[9px] text-emerald-700 font-bold truncate">
+                              {activeOffer.merchantName}
+                              {activeOffer.merchantId === lowestOffer.merchantId && ' (#1 Best Price)'}
+                            </p>
+                            {offers.length > 1 && (
+                              <button
+                                onClick={() => setExpandedCompareProdId(isCompareOpen ? null : prod.id)}
+                                className="text-[9px] text-indigo-600 underline font-black cursor-pointer"
+                              >
+                                {t.compareShops} ({offers.length})
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
+
+                      {/* Expandable Multi-Shop Price Comparison Drawer */}
+                      {isCompareOpen && (
+                        <div className="bg-slate-900 text-white p-2 rounded-xl space-y-1 text-[10px]">
+                          {offers.map((off) => (
+                            <button
+                              key={off.merchantId}
+                              onClick={() =>
+                                setSelectedMerchantByProduct({
+                                  ...selectedMerchantByProduct,
+                                  [prod.id]: off.merchantId
+                                })
+                              }
+                              className={`w-full p-1.5 rounded-lg border flex justify-between cursor-pointer ${
+                                off.merchantId === activeOffer.merchantId
+                                  ? 'border-emerald-400 bg-emerald-500/20 font-bold'
+                                  : 'border-slate-800 text-slate-300'
+                              }`}
+                            >
+                              <span>
+                                {off.merchantName} ({off.area})
+                              </span>
+                              <span className="text-emerald-400">&#8377;{off.price}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="flex gap-1.5">
                         <select
                           value={currentVar.id}
                           onChange={(e) => setSelectedVariantMap({ ...selectedVariantMap, [prod.id]: e.target.value })}
-                          className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-emerald-300 flex-1"
+                          className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-emerald-300 flex-1"
                         >
                           {prod.variants.map((v) => (
                             <option key={v.id} value={v.id}>
@@ -597,7 +725,7 @@ function AppContent() {
                         </select>
                         <button
                           onClick={() => handleAddToProductCart(prod)}
-                          className="bg-emerald-400 text-slate-950 font-black px-3 py-1 rounded-xl text-[10px]"
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3 py-1 rounded-xl text-[10px] cursor-pointer"
                         >
                           {t.addCart}
                         </button>
@@ -635,7 +763,7 @@ function AppContent() {
                         setDecorCart([...decorCart, mod]);
                         triggerToast(`Added ${mod.title} to Decor Cart`);
                       }}
-                      className="bg-amber-400 text-slate-950 font-black px-2 py-1 rounded text-[9px]"
+                      className="bg-amber-400 text-slate-950 font-black px-2 py-1 rounded text-[9px] cursor-pointer"
                     >
                       + Decor Cart
                     </button>
@@ -652,7 +780,7 @@ function AppContent() {
                     setFooterTab('carts');
                     setActiveCartViewTab('taxi_cart');
                   }}
-                  className="w-full bg-teal-400 text-slate-950 font-black py-2 rounded-xl"
+                  className="w-full bg-teal-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
                 >
                   + Add Bike Taxi (&#8377;31) to Taxi Cart
                 </button>
@@ -662,14 +790,14 @@ function AppContent() {
         )}
 
         {footerTab === 'services' && (
-          <div className="space-y-3 text-xs text-white">
+          <div className="space-y-3 text-xs">
             {!selectedServiceCategoryObj ? (
               <div className="grid grid-cols-2 gap-2.5">
                 {serviceCategories.map((scat) => (
                   <button
                     key={scat.id}
                     onClick={() => setSelectedServiceCategoryObj(scat)}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden text-left"
+                    className="bg-slate-900 text-white border border-slate-800 rounded-2xl overflow-hidden text-left cursor-pointer"
                   >
                     <img src={scat.image} alt="" className="w-full h-24 object-cover" />
                     <div className="p-2">
@@ -680,7 +808,7 @@ function AppContent() {
                 ))}
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 text-white">
                 <div className="flex justify-between items-center bg-slate-900 p-2.5 rounded-2xl">
                   <span className="font-black text-indigo-300">{selectedServiceCategoryObj.name}</span>
                   <button onClick={() => setSelectedServiceCategoryObj(null)} className="bg-slate-800 px-2 py-1 rounded text-[10px]">
@@ -726,7 +854,7 @@ function AppContent() {
                           setFooterTab('carts');
                           setActiveCartViewTab('service_cart');
                         }}
-                        className="w-full bg-indigo-500 text-white font-black py-1.5 rounded-xl text-[10px]"
+                        className="w-full bg-indigo-500 text-white font-black py-1.5 rounded-xl text-[10px] cursor-pointer"
                       >
                         + Add Slot ({serviceFilterSlot}) to Service Cart (&#8377;{sp.visitingFee})
                       </button>
@@ -769,9 +897,9 @@ function AppContent() {
                         gst
                       });
                     }}
-                    className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl"
+                    className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
                   >
-                    {t.payNow} &rarr;
+                    {t.payUpi} &rarr;
                   </button>
                 )}
               </div>
@@ -793,10 +921,58 @@ function AppContent() {
                         amount: serviceCart.reduce((s, i) => s + i.visitingFee, 0)
                       })
                     }
-                    className="w-full bg-indigo-500 text-white font-black py-2.5 rounded-xl"
+                    className="w-full bg-indigo-500 text-white font-black py-2.5 rounded-xl cursor-pointer"
                   >
                     Pay Visiting Fee via UPI App &rarr;
                   </button>
+                )}
+              </div>
+            )}
+
+            {activeCartViewTab === 'decor_cart' && (
+              <div className="bg-slate-900 p-3 rounded-2xl border border-amber-500/40 space-y-2">
+                {decorCart.map((mod) => (
+                  <div key={mod.id} className="bg-slate-950 p-2 rounded-xl flex justify-between">
+                    <span>{mod.title}</span>
+                    <span className="text-amber-300">Est &#8377;{mod.baseEstimate}</span>
+                  </div>
+                ))}
+                {decorCart.length > 0 && decorStep === 'setup' && (
+                  <button
+                    onClick={() => setDecorStep('bidding')}
+                    className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                  >
+                    Broadcast Decor Cart to Reverse-Bidding Market &rarr;
+                  </button>
+                )}
+                {decorStep === 'bidding' && (
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                    {decorBids.map((b) => (
+                      <div key={b.id} className="bg-slate-950 p-2 rounded-xl space-y-1">
+                        <div className="flex justify-between font-bold">
+                          <span>{b.maskedVendor}</span>
+                          <span className="text-emerald-400">&#8377;{b.price}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedWinningBid(b);
+                            setPendingUpiPayment({
+                              type: 'PRODUCT_ORDER',
+                              catId: 'daily_needs',
+                              title: `Decor 35% Escrow Advance (${b.maskedVendor})`,
+                              amount: Math.round(b.price * 0.35),
+                              items: [{ name: b.maskedVendor, qty: 1, price: Math.round(b.price * 0.35) }],
+                              itemsTotal: Math.round(b.price * 0.35),
+                              gst: 0
+                            });
+                          }}
+                          className="w-full bg-emerald-400 text-slate-950 font-black py-1 rounded text-[10px] cursor-pointer"
+                        >
+                          Accept Quote &amp; Pay 35% Escrow via UPI
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -836,7 +1012,7 @@ function AppContent() {
     );
   };
 
-  // PORTAL 2: MERCHANT
+  // [SECTION-08] PORTAL 2: PRODUCT MERCHANT PORTAL
   const renderMerchantPortal = () => (
     <MobilePhoneShell
       title="2. Product Merchant Portal"
@@ -846,6 +1022,7 @@ function AppContent() {
       setFooterTab={setFooterTab}
       totalOrdersCount={orders.length}
       brightTheme={brightTheme}
+      setBrightTheme={setBrightTheme}
       lang={lang}
       setLang={setLang}
     >
@@ -877,7 +1054,7 @@ function AppContent() {
                     setOrders(orders.map((o) => (o.id === ord.id ? { ...o, status: 'READY_FOR_PICKUP_AGENT_ALERTED' } : o)));
                     triggerToast('Packing Approved! Delivery Captain Alerted.');
                   }}
-                  className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl"
+                  className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
                 >
                   Approve Packing &amp; Alert Captain &rarr;
                 </button>
@@ -889,7 +1066,7 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
-  // PORTAL 3: SERVICE PROVIDER
+  // PORTAL 3: SERVICE PROVIDER PORTAL
   const renderServiceProviderPortal = () => (
     <MobilePhoneShell
       title="3. Service Provider Portal"
@@ -899,6 +1076,7 @@ function AppContent() {
       setFooterTab={setFooterTab}
       totalOrdersCount={serviceBookings.length}
       brightTheme={brightTheme}
+      setBrightTheme={setBrightTheme}
       lang={lang}
       setLang={setLang}
     >
@@ -950,7 +1128,7 @@ function AppContent() {
                       triggerToast('Geo-Fence & Happy Code Verified! Escrow Released.');
                     }
                   }}
-                  className="flex-1 bg-emerald-400 text-slate-950 font-black rounded-xl"
+                  className="flex-1 bg-emerald-400 text-slate-950 font-black rounded-xl cursor-pointer"
                 >
                   Verify Code
                 </button>
@@ -962,7 +1140,7 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
-  // PORTAL 4: DECORATOR & HALLS
+  // PORTAL 4: DECORATOR & HALLS PORTAL
   const renderDecoratorPortal = () => (
     <MobilePhoneShell
       title="4. Decorator & Hall Portal"
@@ -971,6 +1149,7 @@ function AppContent() {
       footerTab={footerTab}
       setFooterTab={setFooterTab}
       brightTheme={brightTheme}
+      setBrightTheme={setBrightTheme}
       lang={lang}
       setLang={setLang}
     >
@@ -990,50 +1169,52 @@ function AppContent() {
         />
       ) : (
         <div className="space-y-3 text-xs text-white">
-          <p className="text-[10px] text-amber-300 font-bold">
-            Function Hall Schedule Calendar (Decorators cannot place orders from this portal):
-          </p>
-          <input
-            type="date"
-            value={hallScheduleDateInput}
-            onChange={(e) => setHallScheduleDateInput(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white"
-          />
-          {functionHalls.map((hall) => {
-            const isBlocked = hall.bookedDates.includes(hallScheduleDateInput);
-            return (
-              <div key={hall.id} className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
-                <p className="font-bold">{hall.name}</p>
-                <button
-                  onClick={() =>
-                    setFunctionHalls(
-                      functionHalls.map((h) =>
-                        h.id === hall.id
-                          ? {
-                              ...h,
-                              bookedDates: isBlocked
-                                ? h.bookedDates.filter((d) => d !== hallScheduleDateInput)
-                                : [...h.bookedDates, hallScheduleDateInput]
-                            }
-                          : h
+          <div className="bg-slate-900 p-3 rounded-2xl space-y-2">
+            <p className="text-[10px] text-amber-300 font-bold">
+              Function Hall Schedule Calendar (Decorators cannot place orders from this portal):
+            </p>
+            <input
+              type="date"
+              value={hallScheduleDateInput}
+              onChange={(e) => setHallScheduleDateInput(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white"
+            />
+            {functionHalls.map((hall) => {
+              const isBlocked = hall.bookedDates.includes(hallScheduleDateInput);
+              return (
+                <div key={hall.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                  <p className="font-bold">{hall.name}</p>
+                  <button
+                    onClick={() =>
+                      setFunctionHalls(
+                        functionHalls.map((h) =>
+                          h.id === hall.id
+                            ? {
+                                ...h,
+                                bookedDates: isBlocked
+                                  ? h.bookedDates.filter((d) => d !== hallScheduleDateInput)
+                                  : [...h.bookedDates, hallScheduleDateInput]
+                              }
+                            : h
+                        )
                       )
-                    )
-                  }
-                  className={`w-full py-1.5 rounded-xl font-black text-[10px] ${
-                    isBlocked ? 'bg-emerald-400 text-slate-950' : 'bg-rose-600 text-white'
-                  }`}
-                >
-                  {isBlocked ? `Mark ${hallScheduleDateInput} AVAILABLE` : `Mark ${hallScheduleDateInput} BOOKED`}
-                </button>
-              </div>
-            );
-          })}
+                    }
+                    className={`w-full py-1.5 rounded-xl font-black text-[10px] cursor-pointer ${
+                      isBlocked ? 'bg-emerald-400 text-slate-950' : 'bg-rose-600 text-white'
+                    }`}
+                  >
+                    {isBlocked ? `Mark ${hallScheduleDateInput} AVAILABLE` : `Mark ${hallScheduleDateInput} BOOKED`}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </MobilePhoneShell>
   );
 
-  // PORTAL 5: CAPTAIN
+  // [SECTION-09] PORTAL 5: DELIVERY CAPTAIN RADAR
   const renderRiderPortal = () => (
     <MobilePhoneShell
       title="5. Delivery Captain Radar"
@@ -1043,6 +1224,7 @@ function AppContent() {
       setFooterTab={setFooterTab}
       totalOrdersCount={orders.length}
       brightTheme={brightTheme}
+      setBrightTheme={setBrightTheme}
       lang={lang}
       setLang={setLang}
     >
@@ -1072,7 +1254,7 @@ function AppContent() {
                   onClick={() =>
                     setOrders(orders.map((o) => (o.id === ord.id ? { ...o, status: 'OUT_FOR_DELIVERY_LIVE_MAP' } : o)))
                   }
-                  className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl"
+                  className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
                 >
                   Accept Delivery &amp; Launch Live Route Map &rarr;
                 </button>
@@ -1095,6 +1277,7 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
+  // [SECTION-12] MAIN RENDER ROUTER
   return (
     <div className="min-h-screen bg-[#03080b] text-white flex flex-col relative">
       {viewMode === 'founder_web' ? (
@@ -1106,6 +1289,8 @@ function AppContent() {
           setSelectedZoneFilter={setSelectedZoneFilter}
           killedCategoriesByZone={killedCategoriesByZone}
           setKilledCategoriesByZone={setKilledCategoriesByZone}
+          geoAds={geoAds}
+          setGeoAds={setGeoAds}
           categories={categories}
           setCategories={setCategories}
           categoryCarts={categoryCarts}
@@ -1206,7 +1391,7 @@ function AppContent() {
 
       {liveOrderDrawerOpen && activeOrder && (
         <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs">
+          <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
             <div className="flex justify-between items-center">
               <h3 className="font-black text-emerald-400">Live Order {activeOrder.id}</h3>
               <button onClick={() => setLiveOrderDrawerOpen(false)} className="bg-slate-800 px-2.5 py-1 rounded-xl">X</button>
@@ -1229,7 +1414,7 @@ function AppContent() {
 
       {showAddAddressModal && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-teal-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs">
+          <div className="bg-slate-900 border border-teal-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
             <div className="flex justify-between items-center">
               <h3 className="font-black text-teal-300">Add Address (OTP Verified)</h3>
               <button onClick={() => setShowAddAddressModal(false)} className="bg-slate-800 px-2 py-0.5 rounded">X</button>
@@ -1276,6 +1461,37 @@ function AppContent() {
   );
 }
 
+// GLOBAL ERROR BOUNDARY
+class GlobalErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#071318] flex flex-col items-center justify-center p-4 text-white">
+          <div className="bg-slate-900 border-2 border-rose-500 rounded-3xl max-w-xl w-full p-6">
+            <h2 className="text-lg font-black text-rose-400">Application Error Caught</h2>
+            <p className="text-xs font-mono text-rose-200 mt-2">{this.state.error?.toString()}</p>
+            <button onClick={() => window.location.reload()} className="mt-4 w-full bg-rose-600 py-2.5 rounded-xl font-black">
+              Reload App
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
-  return <AppContent />;
+  return (
+    <GlobalErrorBoundary>
+      <AppContent />
+    </GlobalErrorBoundary>
+  );
 }
