@@ -1,5 +1,9 @@
 {
   "appId": "com.khodayanvesh.we4all",
   "appName": "WE4ALL",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://we-4-all-super-app.vercel.app",
+    "cleartext": true
+  }
 }

@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.9.1",
-  "latestAvailableVersion": "2.9.1",
+  "currentVersion": "2.9.0",
+  "latestAvailableVersion": "2.9.2",
   "updateAvailable": true,
-  "publishedAt": "2026-10-29T12:15:00Z",
+  "publishedAt": "2026-10-29T22:10:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
-  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.1",
-  "releaseNotes": "WE4ALL v2.9.1: Newly compiled native APK with full Product Merchant Portal (Queue, Stock Manual & Qty, Add Brand + Excel/Billing Importer, GST Invoices, Digital Signature & Admin 5-Point Checklist)."
+  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.2",
+  "releaseNotes": "WE4ALL OTA v2.9.0 (Build 2.9.2): Complete Service Provider Portal (1. Visits & Geo Happy Code, 2. 1-Hr Slots Matrix, 3. Rate Card & Portfolio Builder, 4. Escrow Bills PDF Ledger, KYC PDF/Image Upload, Signature Image & Admin Checklist)."
 }

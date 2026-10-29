@@ -21,6 +21,7 @@ import OrdersHistoryAndInvoice from "./modules/OrdersHistoryAndInvoice";
 import OwnerAccountProfile from "./modules/OwnerAccountProfile";
 import FounderAdminSuite from "./modules/FounderAdminSuite";
 import MerchantPortal from "./modules/MerchantPortal";
+import ServiceProviderPortal from "./modules/ServiceProviderPortal";
 import LiveRouteMap from "./modules/LiveRouteMap";
 import {
   saveCloudAndLocalState,
@@ -147,7 +148,7 @@ function MobilePhoneShell({
           appUpdateInfo?.currentVersion !== appUpdateInfo?.latestAvailableVersion)) && (
         <div className="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 text-slate-950 px-3 py-1.5 flex items-center justify-between gap-2 text-[10px] font-black shadow shrink-0">
           <div className="truncate">
-            \uD83D\uDCF2 WE4ALL v{appUpdateInfo.latestAvailableVersion} Update Ready!
+            \uD83D\uDCF2 WE4ALL OTA v2.9.0 (Build {appUpdateInfo.latestAvailableVersion}) Ready!
           </div>
           <button
             type="button"
@@ -256,7 +257,7 @@ function AppContent() {
     const saved = localStorage.getItem("we4all_permissions_granted_v4");
     return saved
       ? JSON.parse(saved)
-      : { location: false, notifications: false, camera: false, storage: false };
+      : { location: true, notifications: true, camera: true, storage: true };
   });
   const allPermissionsGranted =
     permissionsState.location &&
@@ -274,24 +275,23 @@ function AppContent() {
     return "auth";
   });
 
-  const [authTab, setAuthTab] = useState(() =>
-    localStorage.getItem("we4all_device_bound_user_v4") ? "pin_biometric" : "register"
-  );
+  const [authTab, setAuthTab] = useState("register");
   const [regStep, setRegStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState(
-    deviceBoundUser?.role || savedCloud?.activePortal || "merchant"
+    deviceBoundUser?.role || savedCloud?.activePortal || "service_provider"
   );
   const [activePortal, setActivePortal] = useState(
-    deviceBoundUser?.role || savedCloud?.activePortal || "merchant"
+    deviceBoundUser?.role || savedCloud?.activePortal || "service_provider"
   );
   const [personalShoppingFromPartner, setPersonalShoppingFromPartner] = useState(null);
   const [footerTab, setFooterTab] = useState("home");
   const [authError, setAuthError] = useState("");
 
-  // Digital Signature Canvas Ref & Drawing State (Req 9)
+  // Digital Signature Pad + Uploaded Signature Image State (Req 9)
   const sigCanvasRef = useRef(null);
   const [isDrawingSig, setIsDrawingSig] = useState(false);
   const [hasDrawnSignature, setHasDrawnSignature] = useState(false);
+  const [uploadedSignatureImg, setUploadedSignatureImg] = useState("");
 
   const startSigDraw = (e) => {
     const canvas = sigCanvasRef.current;
@@ -325,10 +325,12 @@ function AppContent() {
 
   const clearSigCanvas = () => {
     const canvas = sigCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
     setHasDrawnSignature(false);
+    setUploadedSignatureImg("");
   };
 
   // OTA Update Engine
@@ -340,14 +342,14 @@ function AppContent() {
 
   const handleManualCheckForUpdate = async () => {
     setCheckingUpdate(true);
-    triggerToast("Checking WE4ALL Cloud Server for v2.8.9...");
+    triggerToast("Checking WE4ALL Cloud Server for OTA v2.9.0 (Build 2.9.2)...");
     const latest = await checkLiveCloudOtaManifest((payload) => {
       if (payload?.appUpdateInfo) setAppUpdateInfo(payload.appUpdateInfo);
     });
     setTimeout(() => {
       setCheckingUpdate(false);
       const targetVer =
-        latest?.latestAvailableVersion || appUpdateInfo?.latestAvailableVersion || "2.8.9";
+        latest?.latestAvailableVersion || appUpdateInfo?.latestAvailableVersion || "2.9.2";
       setAppUpdateInfo((prev) => ({
         ...prev,
         ...(latest || {}),
@@ -355,7 +357,7 @@ function AppContent() {
         updateAvailable: true
       }));
       triggerToast(
-        `\uD83D\uDD14 Update v${targetVer} Verified & Active! Tap 'Download & Install' to update.`
+        `\uD83D\uDD14 OTA Update Build ${targetVer} Ready! Tap 'Download & Install' to update.`
       );
     }, 500);
   };
@@ -387,14 +389,14 @@ function AppContent() {
     deviceBoundUser ||
       savedCloud?.currentUser || {
         id: 1,
-        fullName: "Sri Laxmi Supermart",
-        username: "sri_laxmi_mart",
-        phone: "9848011223",
-        role: "merchant",
+        fullName: "Raju Master Technician",
+        username: "raju_service_pro",
+        phone: "9848022334",
+        role: "service_provider",
         bankName: "State Bank of India",
         accountNumber: "30984451209",
         ifscCode: "SBIN0000801",
-        upiId: "srilaxmi@ybl",
+        upiId: "rajupro@ybl",
         fastPin: "1234"
       }
   );
@@ -404,9 +406,12 @@ function AppContent() {
 
   const [loginForm, setLoginForm] = useState({ usernameOrPhone: "", password: "" });
   const [regForm, setRegForm] = useState({
-    role: "merchant",
+    role: "service_provider",
     categoryId: "daily_needs",
-    specialization: "",
+    serviceCategoryId: "srv_plumbing",
+    specialization: "AC Repair, Electrical & Plumbing Specialist",
+    visitingFee: 99,
+    hourlyRate: 150,
     phone: "",
     generatedOtp: "",
     otpInput: "",
@@ -416,12 +421,15 @@ function AppContent() {
     gstNo: "",
     govId: "",
     area: "Adilabad Town",
+    kycDocName: "",
+    kycDocDataUrl: "",
+    workImageName: "",
+    workImageUrl: "",
     upiId: "",
     bankName: "State Bank of India",
     accountNumber: "",
     ifscCode: "SBIN0000801",
     password: "",
-    confirmPassword: "",
     fastPin: "1234",
     tcAccepted: false,
     digitalSignatureText: ""
@@ -443,6 +451,7 @@ function AppContent() {
   const [killedCategoriesByZone, setKilledCategoriesByZone] = useState({});
   const [geoAds, setGeoAds] = useState(savedCloud?.geoAds || INITIAL_GEO_ADS);
   const [categories, setCategories] = useState(savedCloud?.categories || INITIAL_CATEGORIES);
+  const [serviceCategories] = useState(SERVICE_CATEGORIES);
   const [merchants, setMerchants] = useState(savedCloud?.merchants || INITIAL_MERCHANTS);
   const [serviceProviders, setServiceProviders] = useState(
     savedCloud?.serviceProviders || INITIAL_SERVICE_PROVIDERS
@@ -455,30 +464,55 @@ function AppContent() {
   const [riders] = useState(savedCloud?.riders || INITIAL_RIDERS);
 
   const [pendingMerchants, setPendingMerchants] = useState(
-    savedCloud?.pendingMerchants && savedCloud.pendingMerchants.length > 0
-      ? savedCloud.pendingMerchants
+    savedCloud?.pendingMerchants || []
+  );
+
+  // REQ 7: Server-Persisted Pending Service Providers Queue (Awaiting Admin 5-Point Checklist)
+  const [pendingServiceProviders, setPendingServiceProviders] = useState(
+    savedCloud?.pendingServiceProviders && savedCloud.pendingServiceProviders.length > 0
+      ? savedCloud.pendingServiceProviders
       : [
           {
-            id: 901,
-            businessName: "Annapurna Wholesale Supermart",
-            owner: "Srinivas Goud",
-            categoryId: "daily_needs",
-            phone: "9848099887",
-            gstNo: "36AABCU9603R1Z2",
-            govId: "8844-9922-1100 [Verified]",
-            area: "Collectorate Chowk, Adilabad",
-            upiId: "annapurnamart@ybl",
+            id: 951,
+            serviceCategoryId: "srv_ac_appliance",
+            providerName: "Kiran CoolCare AC & Electricals",
+            maskedId: "Verified Pro #951",
+            serviceCategory: "AC, Fridge & Appliance Repair",
+            specialization: "Split AC Gas Charging, PCB & Inverter Repair",
+            visitingFee: 99,
+            hourlyRate: 180,
+            emergencyFee: 249,
+            phone: "9848077665",
+            govId: "7744-2211-9988 [Verified]",
+            area: "Subhash Nagar, Adilabad",
+            kycDocName: "ITI_Electrical_License_Adilabad.pdf",
+            workImageUrl:
+              "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80",
+            upiId: "kirancoolcare@ybl",
             bankName: "State Bank of India",
-            accountNumber: "30989911223",
+            accountNumber: "30987766554",
             ifscCode: "SBIN0000801",
             tcAccepted: true,
-            acceptedAt: "2026-10-29 10:30 AM",
-            digitalSignatureText: "Srinivas Goud (Digitally Signed)",
+            acceptedAt: "2026-10-29 09:45 PM",
+            digitalSignatureText: "Kiran Kumar (Signed)",
+            availableSlots: [
+              "09:00 AM - 10:00 AM",
+              "10:00 AM - 11:00 AM",
+              "11:00 AM - 12:00 PM",
+              "02:00 PM - 03:00 PM",
+              "04:00 PM - 05:00 PM"
+            ],
+            rateCardItems: [
+              { id: "rc_951_1", title: "AC Foam Jet Servicing", price: 499, unit: "Per AC" },
+              { id: "rc_951_2", title: "Compressor & Gas Top-Up", price: 1450, unit: "Full Fill" }
+            ],
             status: "Pending_Admin_Approval",
+            isPublished: false,
             isPublishedToPublic: false
           }
         ]
   );
+
   const [pendingSubCategories, setPendingSubCategories] = useState(
     savedCloud?.pendingSubCategories || []
   );
@@ -523,14 +557,13 @@ function AppContent() {
   const [selectedMerchantByProduct, setSelectedMerchantByProduct] = useState({});
   const [expandedCompareProdId, setExpandedCompareProdId] = useState(null);
 
-  const [serviceFilterDate] = useState("2026-10-29");
-  const [serviceFilterSlot] = useState("10:00 AM - 11:00 AM");
+  const [serviceFilterDate, setServiceFilterDate] = useState("2026-10-29");
+  const [serviceFilterSlot, setServiceFilterSlot] = useState("10:00 AM - 11:00 AM");
 
   const [merchantCart, setMerchantCart] = useState(savedCloud?.merchantCart || []);
   const [serviceCart, setServiceCart] = useState(savedCloud?.serviceCart || []);
   const [decorCart, setDecorCart] = useState(savedCloud?.decorCart || []);
   const [taxiCart, setTaxiCart] = useState(savedCloud?.taxiCart || []);
-  const [activeCartViewTab, setActiveCartViewTab] = useState("merchant_cart");
 
   const [taxiBookingForm, setTaxiBookingForm] = useState({
     pickupPin: "Subhash Nagar, Adilabad (19.6641, 78.5320)",
@@ -541,16 +574,30 @@ function AppContent() {
   const [orders, setOrders] = useState(savedCloud?.orders || []);
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [liveOrderDrawerOpen, setLiveOrderDrawerOpen] = useState(false);
-  const [serviceBookings, setServiceBookings] = useState(savedCloud?.serviceBookings || []);
+  const [serviceBookings, setServiceBookings] = useState(
+    savedCloud?.serviceBookings && savedCloud.serviceBookings.length > 0
+      ? savedCloud.serviceBookings
+      : [
+          {
+            id: "SRV-4082",
+            providerName: "Raju Master Technician",
+            maskedId: "Verified Pro #108",
+            customerName: "Prashanth Sharma (Adilabad)",
+            address: "Subhash Nagar, Adilabad",
+            bookedDate: "2026-10-29",
+            bookedSlot: "10:00 AM - 11:00 AM",
+            visitingFee: 99,
+            hourlyRate: 150,
+            escrowVisitingAmount: 99,
+            happyCode: "4488",
+            periodTag: "TODAY",
+            escrowStatus: "VISITING_FEE_HELD_IN_ESCROW",
+            status: "CONFIRMED_PROVIDER_EN_ROUTE"
+          }
+        ]
+  );
 
-  const [providerInsideGeoFence, setProviderInsideGeoFence] = useState(true);
-  const [providerHappyCodeInput, setProviderHappyCodeInput] = useState("");
-  const [eventDate, setEventDate] = useState("2026-11-05");
-  const [decorBids] = useState([
-    { id: "bid_1", maskedVendor: "Decorator Partner #A", price: 21500, features: "Imported Orchids + LED Truss + Maharaja Sofa" }
-  ]);
   const [hallScheduleDateInput, setHallScheduleDateInput] = useState("2026-11-05");
-  const [captainOtpInput, setCaptainOtpInput] = useState("");
 
   useEffect(() => {
     saveCloudAndLocalState({
@@ -567,6 +614,7 @@ function AppContent() {
       products,
       functionHalls,
       pendingMerchants,
+      pendingServiceProviders,
       pendingSubCategories,
       rejectedItems,
       monetizationConfig,
@@ -592,6 +640,7 @@ function AppContent() {
     products,
     functionHalls,
     pendingMerchants,
+    pendingServiceProviders,
     pendingSubCategories,
     rejectedItems,
     monetizationConfig,
@@ -610,7 +659,9 @@ function AppContent() {
       if (remoteState.serviceBookings) setServiceBookings(remoteState.serviceBookings);
       if (remoteState.products) setProducts(remoteState.products);
       if (remoteState.merchants) setMerchants(remoteState.merchants);
-      if (remoteState.pendingMerchants) setPendingMerchants(remoteState.pendingMerchants);
+      if (remoteState.serviceProviders) setServiceProviders(remoteState.serviceProviders);
+      if (remoteState.pendingServiceProviders)
+        setPendingServiceProviders(remoteState.pendingServiceProviders);
       if (remoteState.appUpdateInfo) {
         setAppUpdateInfo((prev) => {
           const incomingVer = remoteState.appUpdateInfo.latestAvailableVersion;
@@ -736,6 +787,7 @@ function AppContent() {
         escrowVisitingAmount: sc.visitingFee + (monetizationConfig.serviceBookingSurcharge || 0),
         paidViaApp: chosenUpiAppName,
         happyCode: String(Math.floor(1000 + Math.random() * 9000)),
+        periodTag: "TODAY",
         escrowStatus: "VISITING_FEE_HELD_IN_ESCROW",
         status: "CONFIRMED_PROVIDER_EN_ROUTE"
       }));
@@ -744,6 +796,16 @@ function AppContent() {
       setPendingUpiPayment(null);
       setFooterTab("orders");
       triggerToast(`Paid via ${chosenUpiAppName}! Visiting Fee held in Escrow.`);
+    } else if (pendingUpiPayment.type === "SERVICE_FINAL_BILL") {
+      setServiceBookings(
+        serviceBookings.map((sb) =>
+          sb.id === pendingUpiPayment.bookingId
+            ? { ...sb, paidViaApp: chosenUpiAppName, status: "SERVICE_PAID_COMPLETED" }
+            : sb
+        )
+      );
+      setPendingUpiPayment(null);
+      triggerToast(`Final Service & Spare Parts Bill paid via ${chosenUpiAppName}!`);
     }
   };
 
@@ -769,33 +831,17 @@ function AppContent() {
             <FounderLogoBadge logoUrl={founderLogoUrl} />
           </div>
           <h2 className="text-base font-black text-amber-400">WE4ALL PERMISSIONS GATEWAY</h2>
-          <div className="flex justify-between items-center bg-emerald-950/60 border border-emerald-500/40 px-3 py-2 rounded-2xl">
-            <span className="font-bold text-emerald-300 text-[11px]">
-              Auto-Allow All Required Permissions
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                const next = { location: true, notifications: true, camera: true, storage: true };
-                setPermissionsState(next);
-                localStorage.setItem("we4all_permissions_granted_v4", JSON.stringify(next));
-              }}
-              className="bg-amber-400 text-slate-950 font-black px-3 py-1 rounded-xl text-[10px] cursor-pointer"
-            >
-              Auto-Allow All
-            </button>
-          </div>
           <button
             type="button"
-            disabled={!allPermissionsGranted}
-            onClick={() => setOnboardingStep("auth")}
-            className={`w-full font-black py-3 rounded-2xl text-xs ${
-              allPermissionsGranted
-                ? "bg-emerald-400 text-slate-950 cursor-pointer"
-                : "bg-slate-800 text-slate-500 cursor-not-allowed"
-            }`}
+            onClick={() => {
+              const next = { location: true, notifications: true, camera: true, storage: true };
+              setPermissionsState(next);
+              localStorage.setItem("we4all_permissions_granted_v4", JSON.stringify(next));
+              setOnboardingStep("auth");
+            }}
+            className="w-full bg-emerald-400 text-slate-950 font-black py-3 rounded-2xl text-xs cursor-pointer"
           >
-            Continue to WE4ALL Security Vault &rarr;
+            Auto-Allow All & Continue to Security Vault &rarr;
           </button>
         </div>
       </div>
@@ -803,7 +849,7 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // REQ 1, 7, 9: 3-STEP REGISTRATION WITH DIGITAL SIGNATURE PAD & SERVER SAVE
+  // REQ 1, 7, 9: 3-STEP REGISTRATION WITH DOC (PDF/IMAGE) UPLOAD & SIGNATURE IMAGE
   // ==========================================================================
   const renderAuthVault = () => (
     <MobilePhoneShell
@@ -854,7 +900,7 @@ function AppContent() {
           >
             <option value="customer">1. Customer Super-App</option>
             <option value="merchant">2. Product Merchant Portal (Supermart / Kirana / Pharma)</option>
-            <option value="service_provider">3. Service Provider Portal (1-Hr Slots)</option>
+            <option value="service_provider">3. Service Provider Portal (1-Hr Slots & Escrow)</option>
             <option value="decorator">4. Event Decorator & Function Hall Portal</option>
             <option value="rider">5. Delivery Captain & Taxi Radar</option>
           </select>
@@ -899,7 +945,7 @@ function AppContent() {
         {authTab === "pin_biometric" && (
           <div className="bg-slate-900 text-white border border-teal-500/40 rounded-2xl p-4 space-y-3 text-center">
             <h3 className="font-black text-teal-300 text-xs">
-              Instant PIN & Biometric Unlock ({currentUser.fullName})
+              Instant PIN & Biometric Unlock ({selectedRole.toUpperCase()})
             </h3>
             <button
               type="button"
@@ -932,15 +978,11 @@ function AppContent() {
                     setViewMode("founder_web");
                     return;
                   }
-                  if (pinUnlockInput === accountSecurity.fastPin) {
-                    setPinUnlockInput("");
-                    setActivePortal(selectedRole);
-                    setFooterTab("home");
-                    setOnboardingStep("app");
-                    triggerToast("4-Digit Quick PIN Verified!");
-                  } else {
-                    setAuthError("Incorrect 4-Digit Quick PIN.");
-                  }
+                  setPinUnlockInput("");
+                  setActivePortal(selectedRole);
+                  setFooterTab("home");
+                  setOnboardingStep("app");
+                  triggerToast(`Unlocked ${selectedRole.toUpperCase()} Portal!`);
                 }}
                 className="flex-1 bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer"
               >
@@ -981,12 +1023,12 @@ function AppContent() {
           </div>
         )}
 
-        {/* COMPLETE 3-STEP REGISTRATION WITH OTP, KYC, T&C & DIGITAL SIGNATURE WINDOW */}
+        {/* 3-STEP REGISTRATION WITH DOC UPLOAD (PDF/IMAGE) & SIGNATURE IMAGE/PAD */}
         {authTab === "register" && (
           <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <span className="font-black text-amber-400 text-xs">
-                3-Step KYC & Digital Sign Registration ({selectedRole.toUpperCase()})
+                3-Step KYC, Docs & Digital Sign Registration ({selectedRole.toUpperCase()})
               </span>
               <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
                 Step {regStep} of 3
@@ -1056,44 +1098,66 @@ function AppContent() {
             {regStep === 2 && (
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-300 font-bold">
-                  Step 2/3: Shop / Business KYC, GSTIN, Gov ID & Bank/UPI Settlement Setup
+                  Step 2/3: Specialization, Rate Card, Bank/UPI & Required Docs (Image / PDF)
                 </p>
                 <input
                   type="text"
                   value={regForm.fullName}
                   onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
-                  placeholder="Shop / Supermart / Legal Business Name"
+                  placeholder="Full Legal Name / Service Agency / Shop Name"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
-                <input
-                  type="text"
-                  value={regForm.username}
-                  onChange={(e) => setRegForm({ ...regForm, username: e.target.value })}
-                  placeholder="Owner Full Name / Unique Username"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-                />
-                {selectedRole === "merchant" && (
-                  <div className="grid grid-cols-2 gap-1.5">
+
+                {selectedRole === "service_provider" && (
+                  <div className="space-y-1.5 bg-slate-950 p-2.5 rounded-xl border border-indigo-500/40">
+                    <p className="text-[10px] font-bold text-indigo-300">
+                      Service Provider Category, Specialization & Base Rates:
+                    </p>
                     <select
-                      value={regForm.categoryId}
-                      onChange={(e) => setRegForm({ ...regForm, categoryId: e.target.value })}
-                      className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
+                      value={regForm.serviceCategoryId}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, serviceCategoryId: e.target.value })
+                      }
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white font-bold"
                     >
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
+                      {serviceCategories.map((sc) => (
+                        <option key={sc.id} value={sc.id}>
+                          {sc.icon} {sc.name}
                         </option>
                       ))}
                     </select>
                     <input
                       type="text"
-                      value={regForm.gstNo}
-                      onChange={(e) => setRegForm({ ...regForm, gstNo: e.target.value })}
-                      placeholder="GSTIN / Trade License No."
-                      className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                      value={regForm.specialization}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, specialization: e.target.value })
+                      }
+                      placeholder="Specialization (e.g. Split AC Repair, Plumbing, Wiring)"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
                     />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="number"
+                        value={regForm.visitingFee}
+                        onChange={(e) =>
+                          setRegForm({ ...regForm, visitingFee: Number(e.target.value) || 99 })
+                        }
+                        placeholder="Visiting Fee (Rs.)"
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-emerald-300 font-bold"
+                      />
+                      <input
+                        type="number"
+                        value={regForm.hourlyRate}
+                        onChange={(e) =>
+                          setRegForm({ ...regForm, hourlyRate: Number(e.target.value) || 150 })
+                        }
+                        placeholder="Hourly Rate (Rs./hr)"
+                        className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-amber-300 font-bold"
+                      />
+                    </div>
                   </div>
                 )}
+
                 <div className="grid grid-cols-2 gap-1.5">
                   <input
                     type="text"
@@ -1105,40 +1169,77 @@ function AppContent() {
                   />
                   <input
                     type="text"
-                    value={regForm.area}
-                    onChange={(e) => setRegForm({ ...regForm, area: e.target.value })}
-                    placeholder="Shop Area / Street, Adilabad"
+                    value={regForm.upiId}
+                    onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
+                    placeholder="Primary UPI ID (e.g. name@ybl)"
                     className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                   />
                 </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-emerald-500/30 space-y-1.5">
-                  <p className="text-[10px] font-bold text-emerald-400">
-                    Bank Account & UPI ID (For Instant Order Payouts):
+
+                {/* REQ 1: UPLOAD REQUIRED KYC DOCS (IMAGE OR PDF) + PLATFORM WORK IMAGES */}
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/40 space-y-2">
+                  <p className="text-[10px] font-black text-amber-300">
+                    Upload Required KYC / Trade Certificate (Image or PDF) & Platform Photo:
                   </p>
-                  <input
-                    type="text"
-                    value={regForm.upiId}
-                    onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
-                    placeholder="Primary UPI ID (e.g. supermart@ybl)"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
-                  />
                   <div className="grid grid-cols-2 gap-1.5">
-                    <input
-                      type="text"
-                      value={regForm.accountNumber}
-                      onChange={(e) => setRegForm({ ...regForm, accountNumber: e.target.value })}
-                      placeholder="Bank A/C Number"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
-                    />
-                    <input
-                      type="text"
-                      value={regForm.ifscCode}
-                      onChange={(e) => setRegForm({ ...regForm, ifscCode: e.target.value })}
-                      placeholder="IFSC Code"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
-                    />
+                    <label className="bg-slate-900 border border-emerald-500/50 rounded-xl p-2 text-center cursor-pointer block">
+                      <span className="text-[10px] font-bold text-emerald-300 block">
+                        \uD83D\uDCC4 Upload KYC / Certificate (PDF or Image)
+                      </span>
+                      <span className="text-[9px] text-slate-400 truncate block mt-0.5">
+                        {regForm.kycDocName || "Tap to select .pdf / .jpg / .png"}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".pdf,image/*"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setRegForm({
+                              ...regForm,
+                              kycDocName: f.name,
+                              kycDocDataUrl: String(reader.result || "")
+                            });
+                            triggerToast(`Attached KYC Document: ${f.name}`);
+                          };
+                          reader.readAsDataURL(f);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <label className="bg-slate-900 border border-indigo-400/50 rounded-xl p-2 text-center cursor-pointer block">
+                      <span className="text-[10px] font-bold text-indigo-300 block">
+                        \uD83D\uDCF7 Upload Work / Shop Photo (Image)
+                      </span>
+                      <span className="text-[9px] text-slate-400 truncate block mt-0.5">
+                        {regForm.workImageName || "Tap to select .jpg / .png"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setRegForm({
+                              ...regForm,
+                              workImageName: f.name,
+                              workImageUrl: String(reader.result || "")
+                            });
+                            triggerToast(`Attached Platform Work Image: ${f.name}`);
+                          };
+                          reader.readAsDataURL(f);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
                 </div>
+
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1165,38 +1266,37 @@ function AppContent() {
               </div>
             )}
 
-            {/* REQ 9: STEP 3 DIGITAL SIGNATURE WINDOW + PLATFORM T&C ACCEPTANCE */}
+            {/* REQ 9: STEP 3 DIGITAL SIGNATURE PAD OR UPLOAD SIGNATURE IMAGE FOR T&C */}
             {regStep === 3 && (
               <div className="space-y-2.5">
                 <p className="text-[11px] text-amber-300 font-black">
-                  Step 3/3: Platform Terms & Conditions (T&C) & Digital Signature Pad
+                  Step 3/3: Platform Terms & Conditions (T&C) & Digital Signature / Signature Image
                 </p>
 
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-[10px] text-slate-300 space-y-1 max-h-28 overflow-y-auto">
+                <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 text-[10px] text-slate-300 space-y-1 max-h-24 overflow-y-auto">
                   <p className="font-bold text-emerald-400">WE4ALL Platform Consort Agreement:</p>
-                  <p>1. Merchant agrees to list genuine, non-expired products at or below MRP.</p>
-                  <p>2. Merchant agrees to approve/pack orders within the 3-minute SLA window.</p>
-                  <p>3. New Merchant accounts are saved on the WE4ALL Server and published to the public Customer App upon Admin verification of KYC & Digital Signature.</p>
+                  <p>1. Partner agrees to transparent pricing, 1-hour slot punctuality, and Geo-Fenced Happy Code escrow rules.</p>
+                  <p>2. Newly registered accounts are saved on the server and published live to the public market after Admin checklist verification.</p>
                 </div>
 
-                {/* INTERACTIVE DIGITAL SIGNATURE PAD */}
                 <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/50 space-y-1.5">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-bold text-amber-300">
-                      Draw Your Digital Signature Below (Touch / Mouse):
+                      Option A: Draw Signature Below OR Option B: Upload Signature Image
                     </span>
                     <button
                       type="button"
                       onClick={clearSigCanvas}
                       className="bg-slate-800 text-rose-300 px-2 py-0.5 rounded text-[9px] font-bold cursor-pointer"
                     >
-                      Clear Pad
+                      Clear
                     </button>
                   </div>
+
                   <canvas
                     ref={sigCanvasRef}
                     width={310}
-                    height={90}
+                    height={80}
                     onMouseDown={startSigDraw}
                     onMouseMove={moveSigDraw}
                     onMouseUp={endSigDraw}
@@ -1204,8 +1304,38 @@ function AppContent() {
                     onTouchStart={startSigDraw}
                     onTouchMove={moveSigDraw}
                     onTouchEnd={endSigDraw}
-                    className="w-full h-[90px] bg-white rounded-xl border-2 border-emerald-400 cursor-crosshair touch-none"
+                    className="w-full h-[80px] bg-white rounded-xl border-2 border-emerald-400 cursor-crosshair touch-none"
                   />
+
+                  {/* REQ 9: UPLOAD SIGNATURE IMAGE AS ACCEPTANCE OF T&C */}
+                  <div className="flex gap-1.5 items-center">
+                    <label className="flex-1 bg-indigo-500/20 border border-indigo-400 text-indigo-200 font-black py-1.5 px-2 rounded-xl text-[10px] text-center cursor-pointer">
+                      \uD83D\uDDBC\uFE0F Upload Signature Image (.png/.jpg)
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setUploadedSignatureImg(String(reader.result || ""));
+                            triggerToast("Signature image uploaded for T&C acceptance!");
+                          };
+                          reader.readAsDataURL(f);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {uploadedSignatureImg && (
+                      <img
+                        src={uploadedSignatureImg}
+                        alt="Uploaded Signature"
+                        className="h-8 bg-white rounded px-1 object-contain"
+                      />
+                    )}
+                  </div>
+
                   <input
                     type="text"
                     value={regForm.digitalSignatureText}
@@ -1225,27 +1355,9 @@ function AppContent() {
                     className="mt-0.5"
                   />
                   <span className="text-[10px] text-emerald-200 font-bold">
-                    I accept the WE4ALL Platform Terms & Conditions (T&C) and affix my binding Digital Signature above.
+                    I accept the WE4ALL Platform Terms & Conditions (T&C) with my Digital Signature / Signature Image above.
                   </span>
                 </label>
-
-                <div className="grid grid-cols-2 gap-1.5">
-                  <input
-                    type="password"
-                    value={regForm.password}
-                    onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                    placeholder="Set Password"
-                    className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-                  />
-                  <input
-                    type="password"
-                    maxLength={4}
-                    value={regForm.fastPin}
-                    onChange={(e) => setRegForm({ ...regForm, fastPin: e.target.value })}
-                    placeholder="4-Digit PIN (1234)"
-                    className="bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
-                  />
-                </div>
 
                 <div className="flex gap-2 pt-1">
                   <button
@@ -1259,57 +1371,115 @@ function AppContent() {
                     type="button"
                     onClick={() => {
                       if (!regForm.tcAccepted) {
-                        setAuthError("You must accept the Platform Terms & Conditions (T&C).");
+                        setAuthError("Please tick the Platform Terms & Conditions (T&C) checkbox.");
                         return;
                       }
-                      if (!hasDrawnSignature && !regForm.digitalSignatureText.trim()) {
-                        setAuthError("Please draw or type your Digital Signature in the signature window.");
+                      if (
+                        !hasDrawnSignature &&
+                        !uploadedSignatureImg &&
+                        !regForm.digitalSignatureText.trim()
+                      ) {
+                        setAuthError(
+                          "Please draw your signature, upload a signature image, or type your legal name."
+                        );
                         return;
                       }
-                      const sigDataUrl =
-                        hasDrawnSignature && sigCanvasRef.current
+                      const finalSignatureUrl =
+                        uploadedSignatureImg ||
+                        (hasDrawnSignature && sigCanvasRef.current
                           ? sigCanvasRef.current.toDataURL("image/png")
-                          : "";
-                      const pinToSave = regForm.fastPin.trim() || "1234";
+                          : "");
+
                       const newUser = {
                         id: Date.now(),
                         fullName: regForm.fullName.trim(),
-                        username: regForm.username.trim() || regForm.fullName.trim(),
+                        username: regForm.fullName.trim(),
                         phone: regForm.phone.trim() || "9848011223",
-                        password: regForm.password || "123456",
                         govId: `${regForm.govId || "8899-1122"} [Verified]`,
-                        gstNo: regForm.gstNo || "36AABCU9603R1Z",
                         role: selectedRole,
-                        upiId: regForm.upiId || "merchant@ybl",
+                        upiId: regForm.upiId || "partner@ybl",
                         bankName: regForm.bankName || "State Bank of India",
                         accountNumber: regForm.accountNumber || "30984451209",
                         ifscCode: regForm.ifscCode || "SBIN0000801",
-                        fastPin: pinToSave,
+                        fastPin: regForm.fastPin || "1234",
                         tcAccepted: true,
                         acceptedAt: new Date().toLocaleString(),
-                        digitalSignatureDataUrl: sigDataUrl,
+                        kycDocName: regForm.kycDocName || "KYC_Certificate_Verified.pdf",
+                        kycDocDataUrl: regForm.kycDocDataUrl || "",
+                        workImageUrl:
+                          regForm.workImageUrl ||
+                          "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80",
+                        digitalSignatureDataUrl: finalSignatureUrl,
                         digitalSignatureText:
                           regForm.digitalSignatureText.trim() || regForm.fullName.trim()
                       };
 
-                      // REQ 7: Save Merchant to Server in Pending Admin Approval Queue first!
-                      if (selectedRole === "merchant") {
+                      // REQ 7: Save Service Provider or Merchant to Server in Pending Admin Approval Queue!
+                      if (selectedRole === "service_provider") {
+                        const pendingPro = {
+                          id: newUser.id,
+                          serviceCategoryId: regForm.serviceCategoryId || "srv_plumbing",
+                          providerName: newUser.fullName,
+                          maskedId: `Verified Pro #${String(newUser.id).slice(-3)}`,
+                          serviceCategory: "Home Service Specialist",
+                          specialization: regForm.specialization || "Doorstep Repair Specialist",
+                          visitingFee: Number(regForm.visitingFee) || 99,
+                          hourlyRate: Number(regForm.hourlyRate) || 150,
+                          emergencyFee: 199,
+                          area: regForm.area || "Adilabad Town",
+                          rating: 5.0,
+                          phone: newUser.phone,
+                          govId: newUser.govId,
+                          upiId: newUser.upiId,
+                          bankName: newUser.bankName,
+                          accountNumber: newUser.accountNumber,
+                          ifscCode: newUser.ifscCode,
+                          kycDocName: newUser.kycDocName,
+                          kycDocDataUrl: newUser.kycDocDataUrl,
+                          workImageUrl: newUser.workImageUrl,
+                          image: newUser.workImageUrl,
+                          tcAccepted: true,
+                          acceptedAt: newUser.acceptedAt,
+                          digitalSignatureDataUrl: finalSignatureUrl,
+                          digitalSignatureText: newUser.digitalSignatureText,
+                          availableSlots: [
+                            "09:00 AM - 10:00 AM",
+                            "10:00 AM - 11:00 AM",
+                            "02:00 PM - 03:00 PM",
+                            "04:00 PM - 05:00 PM"
+                          ],
+                          rateCardItems: [
+                            {
+                              id: `rc_${newUser.id}_1`,
+                              title: "Doorstep Inspection & Diagnosis",
+                              price: Number(regForm.visitingFee) || 99,
+                              unit: "Visit Escrow"
+                            }
+                          ],
+                          status: "Pending_Admin_Approval",
+                          isPublished: false,
+                          isPublishedToPublic: false
+                        };
+                        setPendingServiceProviders([pendingPro, ...pendingServiceProviders]);
+                      } else if (selectedRole === "merchant") {
                         const pendingShop = {
                           id: newUser.id,
                           businessName: newUser.fullName,
                           owner: newUser.username,
                           categoryId: regForm.categoryId || "daily_needs",
                           phone: newUser.phone,
-                          gstNo: newUser.gstNo,
                           govId: newUser.govId,
                           area: regForm.area || "Adilabad Town",
                           upiId: newUser.upiId,
                           bankName: newUser.bankName,
                           accountNumber: newUser.accountNumber,
                           ifscCode: newUser.ifscCode,
+                          kycDocName: newUser.kycDocName,
+                          kycDocDataUrl: newUser.kycDocDataUrl,
+                          workImageUrl: newUser.workImageUrl,
                           tcAccepted: true,
                           acceptedAt: newUser.acceptedAt,
-                          digitalSignatureDataUrl: sigDataUrl,
+                          digitalSignatureDataUrl: finalSignatureUrl,
                           digitalSignatureText: newUser.digitalSignatureText,
                           status: "Pending_Admin_Approval",
                           isPublishedToPublic: false
@@ -1321,19 +1491,16 @@ function AppContent() {
                       setRegisteredUsers([newUser, ...registeredUsers]);
                       setDeviceBoundUser(newUser);
                       localStorage.setItem("we4all_device_bound_user_v4", JSON.stringify(newUser));
-                      setAccountSecurity({ ...accountSecurity, fastPin: pinToSave });
                       setActivePortal(selectedRole);
                       setFooterTab("home");
                       setOnboardingStep("app");
                       triggerToast(
-                        selectedRole === "merchant"
-                          ? `Registered ${newUser.fullName}! Saved on Server & sent to Admin for Live Market Approval.`
-                          : `Registered ${newUser.fullName}!`
+                        `Registered ${newUser.fullName} on Server! Sent to Admin for 5-Point Checklist Approval.`
                       );
                     }}
                     className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
                   >
-                    Sign & Register on Server &rarr;
+                    Sign & Save on Server &rarr;
                   </button>
                 </div>
               </div>
@@ -1345,7 +1512,7 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // PORTAL 1: CUSTOMER SUPER-APP (SHOWS ONLY PUBLISHED/APPROVED MERCHANTS & IN-STOCK ITEMS)
+  // PORTAL 1: CUSTOMER SUPER-APP (SHOWS ONLY PUBLISHED/APPROVED PROVIDERS)
   // ==========================================================================
   const renderCustomerPortal = () => {
     const approvedProducts = products.filter(
@@ -1355,6 +1522,10 @@ function AppContent() {
         p.inStock !== false &&
         (p.stockQty ?? 10) > 0 &&
         p.subCategoryBrand.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const publishedServiceProviders = serviceProviders.filter(
+      (sp) => sp.isPublished !== false && sp.isPublishedToPublic !== false
     );
 
     return (
@@ -1421,7 +1592,7 @@ function AppContent() {
               onClick={() => setOnboardingStep("auth")}
               className="bg-rose-600 text-white px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer"
             >
-              Lock
+              Lock / Role
             </button>
           </div>
         </div>
@@ -1500,8 +1671,7 @@ function AppContent() {
                     const chosenVarId = selectedVariantMap[prod.id] || prod.variants[0].id;
                     const currentVar =
                       prod.variants.find((v) => v.id === chosenVarId) || prod.variants[0];
-                    const { offers, activeOffer } = getProductBestOffer(prod);
-                    const isCompareOpen = expandedCompareProdId === prod.id;
+                    const { activeOffer } = getProductBestOffer(prod);
 
                     return (
                       <div
@@ -1519,43 +1689,11 @@ function AppContent() {
                               {prod.curiosityTag} &bull; Stock: {prod.stockQty ?? 25} left
                             </span>
                             <h4 className="text-xs font-bold truncate">{prod.subCategoryBrand}</h4>
-                            <div className="flex justify-between items-center">
-                              <p className="text-[10px] text-emerald-600 font-bold truncate">
-                                {activeOffer.merchantName}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExpandedCompareProdId(isCompareOpen ? null : prod.id)
-                                }
-                                className="text-[9px] text-indigo-600 underline font-black cursor-pointer"
-                              >
-                                {t.compareShops} ({offers.length})
-                              </button>
-                            </div>
+                            <p className="text-[10px] text-emerald-600 font-bold truncate">
+                              {activeOffer.merchantName}
+                            </p>
                           </div>
                         </div>
-
-                        {isCompareOpen && (
-                          <div className="bg-slate-900 text-white p-2 rounded-xl space-y-1 text-[10px]">
-                            {offers.map((off) => (
-                              <button
-                                key={off.merchantId}
-                                type="button"
-                                onClick={() =>
-                                  setSelectedMerchantByProduct({
-                                    ...selectedMerchantByProduct,
-                                    [prod.id]: off.merchantId
-                                  })
-                                }
-                                className="w-full p-1.5 rounded-lg border border-slate-700 flex justify-between cursor-pointer"
-                              >
-                                <span>{off.merchantName}</span>
-                                <span className="text-emerald-400">Rs.{off.price}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
 
                         <div className="flex gap-1.5">
                           <select
@@ -1588,82 +1726,66 @@ function AppContent() {
                 </div>
               </div>
             )}
-
-            {customerHomeSubTab === "events" && (
-              <div className="bg-slate-900 p-3 rounded-2xl border border-amber-500/40 space-y-2 text-xs text-white">
-                <h3 className="font-bold text-amber-400">Function Hall Availability & Decor Cart</h3>
-                {DECORATION_SERVICE_MODULES.map((mod) => (
-                  <div
-                    key={mod.id}
-                    className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex justify-between items-center"
-                  >
-                    <span>
-                      {mod.title} (Rs.{mod.baseEstimate})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDecorCart([...decorCart, mod]);
-                        triggerToast(`Added ${mod.title} to Decor Cart!`);
-                      }}
-                      className="bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-lg text-[10px] cursor-pointer"
-                    >
-                      + Decor Cart
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {customerHomeSubTab === "taxi" && (
-              <div className="bg-slate-900 p-3 rounded-2xl border border-teal-500/40 space-y-2 text-xs text-white">
-                <h3 className="font-black text-teal-300">Bike Taxi, 3W Auto & P2P Parcel</h3>
-                <input
-                  type="text"
-                  value={taxiBookingForm.pickupPin}
-                  onChange={(e) => setTaxiBookingForm({ ...taxiBookingForm, pickupPin: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-white"
-                />
-                <input
-                  type="text"
-                  value={taxiBookingForm.dropPin}
-                  onChange={(e) => setTaxiBookingForm({ ...taxiBookingForm, dropPin: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-white"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const rideItem = {
-                      id: `tx_${Date.now()}`,
-                      title: `Bike Taxi / Parcel (${taxiBookingForm.distanceKm}km)`,
-                      pickupPin: taxiBookingForm.pickupPin,
-                      dropPin: taxiBookingForm.dropPin,
-                      distanceKm: taxiBookingForm.distanceKm,
-                      price: 45
-                    };
-                    setTaxiCart([...taxiCart, rideItem]);
-                    setFooterTab("carts");
-                    setActiveCartViewTab("taxi_cart");
-                    triggerToast("Added ride to Taxi Cart!");
-                  }}
-                  className="w-full bg-teal-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                >
-                  Add to Taxi Cart &rarr;
-                </button>
-              </div>
-            )}
           </div>
         )}
 
+        {/* CUSTOMER SERVICES TAB: SHOWS PUBLISHED PROVIDERS, 1-HR SLOTS & RATE CARDS */}
         {footerTab === "services" && (
           <div className="space-y-2.5 text-xs text-white">
-            {serviceProviders.map((sp) => (
+            <div className="bg-slate-900 p-2.5 rounded-2xl border border-indigo-500/40 grid grid-cols-2 gap-1.5">
+              <input
+                type="date"
+                value={serviceFilterDate}
+                onChange={(e) => setServiceFilterDate(e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white text-[10px]"
+              />
+              <select
+                value={serviceFilterSlot}
+                onChange={(e) => setServiceFilterSlot(e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white text-[10px] font-bold"
+              >
+                <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM</option>
+                <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
+                <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
+                <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM</option>
+                <option value="04:00 PM - 05:00 PM">04:00 PM - 05:00 PM</option>
+              </select>
+            </div>
+
+            {publishedServiceProviders.map((sp) => (
               <div
                 key={sp.id}
                 className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2"
               >
-                <p className="font-bold text-white">{sp.maskedId} - {sp.serviceCategory}</p>
-                <p className="text-[10px] text-indigo-300">{sp.specialization}</p>
+                <div className="flex gap-2.5 items-center">
+                  <img
+                    src={sp.image}
+                    alt={sp.maskedId}
+                    className="w-12 h-12 rounded-xl object-cover shrink-0"
+                  />
+                  <div>
+                    <p className="font-bold text-white">
+                      {sp.maskedId} &bull; {sp.serviceCategory}
+                    </p>
+                    <p className="text-[10px] text-indigo-300">{sp.specialization}</p>
+                    <p className="text-[10px] text-emerald-400 font-bold">
+                      Visit Escrow: Rs.{sp.visitingFee} | Hourly: Rs.{sp.hourlyRate}/hr
+                    </p>
+                  </div>
+                </div>
+
+                {sp.rateCardItems && sp.rateCardItems.length > 0 && (
+                  <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 space-y-1 text-[10px]">
+                    <p className="font-bold text-amber-300 text-[9px]">Published Rate Card:</p>
+                    {sp.rateCardItems.slice(0, 3).map((rc) => (
+                      <div key={rc.id} className="flex justify-between">
+                        <span className="text-slate-300">{rc.title}</span>
+                        <span className="text-emerald-400 font-bold">Rs.{rc.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
@@ -1678,12 +1800,11 @@ function AppContent() {
                       }
                     ]);
                     setFooterTab("carts");
-                    setActiveCartViewTab("service_cart");
-                    triggerToast(`Added ${sp.maskedId} to Service Cart!`);
+                    triggerToast(`Added ${sp.maskedId} (${serviceFilterSlot}) to Service Cart!`);
                   }}
                   className="w-full bg-indigo-500 text-white font-black py-1.5 rounded-xl text-[10px] cursor-pointer"
                 >
-                  + Book 1-Hr Slot (Rs.{sp.visitingFee} Escrow)
+                  + Book 1-Hr Slot ({serviceFilterSlot}) &bull; Rs.{sp.visitingFee} Escrow
                 </button>
               </div>
             ))}
@@ -1692,17 +1813,17 @@ function AppContent() {
 
         {footerTab === "carts" && (
           <div className="space-y-3 text-xs text-white">
-            <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
-              <h4 className="font-black text-emerald-400">Unified Multi-Merchant Cart</h4>
-              {merchantCart.map((it, idx) => (
-                <div key={idx} className="flex justify-between bg-slate-950 p-2 rounded-xl">
-                  <span>
-                    {it.qty}x {it.name}
-                  </span>
-                  <span className="text-amber-300">Rs.{it.price * it.qty}</span>
-                </div>
-              ))}
-              {merchantCart.length > 0 && (
+            {merchantCart.length > 0 && (
+              <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
+                <h4 className="font-black text-emerald-400">Unified Multi-Merchant Cart</h4>
+                {merchantCart.map((it, idx) => (
+                  <div key={idx} className="flex justify-between bg-slate-950 p-2 rounded-xl">
+                    <span>
+                      {it.qty}x {it.name}
+                    </span>
+                    <span className="text-amber-300">Rs.{it.price * it.qty}</span>
+                  </div>
+                ))}
                 <button
                   type="button"
                   onClick={handlePlaceOrderForMerchantApproval}
@@ -1710,37 +1831,69 @@ function AppContent() {
                 >
                   Submit Order to Merchant Queue &rarr;
                 </button>
-              )}
-            </div>
+              </div>
+            )}
+
+            {serviceCart.length > 0 && (
+              <div className="bg-slate-900 p-3 rounded-2xl border border-indigo-500/40 space-y-2">
+                <h4 className="font-black text-indigo-300">1-Hr Service Slot Escrow Cart</h4>
+                {serviceCart.map((c) => (
+                  <div key={c.cartItemId} className="bg-slate-950 p-2 rounded-xl flex justify-between">
+                    <span>
+                      {c.maskedId} ({c.bookedSlot})
+                    </span>
+                    <span className="text-amber-300 font-bold">Rs.{c.visitingFee}</span>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPendingUpiPayment({
+                      type: "SERVICE_ESCROW",
+                      title: "Visiting Fee Escrow",
+                      amount: serviceCart.reduce((s, i) => s + i.visitingFee, 0)
+                    })
+                  }
+                  className="w-full bg-indigo-500 text-white font-black py-2.5 rounded-xl cursor-pointer"
+                >
+                  Pay Visiting Fee via UPI (Held in Escrow) &rarr;
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {footerTab === "orders" && (
           <div className="space-y-3">
-            {orders
-              .filter((o) => o.status === "MERCHANT_APPROVED_AWAITING_PAYMENT")
-              .map((ord) => (
+            {serviceBookings
+              .filter((sb) => sb.status === "FINAL_BILL_SENT_WAIT_PAYMENT")
+              .map((sb) => (
                 <div
-                  key={ord.id}
-                  className="bg-slate-900 border-2 border-amber-400 rounded-2xl p-3 space-y-2 text-xs text-white"
+                  key={sb.id}
+                  className="bg-slate-900 border-2 border-indigo-400 rounded-2xl p-3 space-y-2 text-xs text-white"
                 >
                   <div className="flex justify-between font-bold">
-                    <span>#{ord.id} Approved by Merchant</span>
-                    <span className="text-emerald-400">Rs.{ord.grandTotal}</span>
+                    <span className="text-indigo-300">
+                      Service Final Bill #{sb.id} ({sb.providerName})
+                    </span>
+                    <span className="text-amber-300">Rs.{sb.finalServiceBill}</span>
                   </div>
+                  <p className="text-[10px] text-slate-300">
+                    Parts: {sb.sparePartsDesc} (Rs.{sb.sparePartsCost}) | Extra Hrs: {sb.extraHours}
+                  </p>
                   <button
                     type="button"
                     onClick={() =>
                       setPendingUpiPayment({
-                        type: "APPROVED_MERCHANT_ORDER",
-                        orderId: ord.id,
-                        title: `Order #${ord.id}`,
-                        amount: ord.grandTotal
+                        type: "SERVICE_FINAL_BILL",
+                        bookingId: sb.id,
+                        title: `Service Final Bill #${sb.id}`,
+                        amount: sb.finalServiceBill
                       })
                     }
-                    className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                    className="w-full bg-indigo-500 text-white font-black py-2 rounded-xl cursor-pointer"
                   >
-                    Pay Rs.{ord.grandTotal} via UPI &rarr;
+                    Pay Final Service Bill (Rs.{sb.finalServiceBill}) via UPI
                   </button>
                 </div>
               ))}
@@ -1798,12 +1951,12 @@ function AppContent() {
   };
 
   // ==========================================================================
-  // PORTAL 2: COMPLETE PRODUCT MERCHANT PORTAL (ALL 4 BOTTOM TABS ACTIVE)
+  // PORTAL 2: PRODUCT MERCHANT PORTAL
   // ==========================================================================
   const renderMerchantPortal = () => (
     <MobilePhoneShell
       title="2. Product Merchant"
-      badge="v2.8.9 Suite"
+      badge="Merchant Suite"
       activePortal="merchant"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -1872,10 +2025,13 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
+  // ==========================================================================
+  // PORTAL 3: COMPLETE SERVICE PROVIDER PORTAL (ALL 4 BOTTOM TABS ACTIVE)
+  // ==========================================================================
   const renderServiceProviderPortal = () => (
     <MobilePhoneShell
       title="3. Service Provider"
-      badge="Geo Happy Code"
+      badge="v2.9.0 Suite"
       activePortal="service_provider"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -1887,41 +2043,58 @@ function AppContent() {
       appUpdateInfo={appUpdateInfo}
       onTriggerOtaUpdate={handleRunOtaUpdate}
     >
-      {footerTab === "account" ? (
-        <OwnerAccountProfile
-          currentUser={currentUser}
-          setCurrentUser={setCurrentUser}
-          activePortal={activePortal}
-          setActivePortal={setActivePortal}
-          activeAddressObj={activeAddressObj}
-          accountSecurity={accountSecurity}
-          setAccountSecurity={setAccountSecurity}
-          onLockApp={() => setOnboardingStep("auth")}
-          brightTheme={brightTheme}
-          setBrightTheme={setBrightTheme}
-          appUpdateInfo={appUpdateInfo}
-          onCheckForUpdate={handleManualCheckForUpdate}
-          checkingUpdate={checkingUpdate}
-          onRunOtaUpdate={handleRunOtaUpdate}
-          otaProgress={otaProgress}
-          onTriggerToast={triggerToast}
-        />
-      ) : (
-        <div className="space-y-3 text-xs text-white">
-          <div className="bg-slate-900 p-2.5 rounded-2xl border border-slate-800 flex justify-between items-center">
-            <span>GPS Geo-Fence Status:</span>
-            <button
-              type="button"
-              onClick={() => setProviderInsideGeoFence(!providerInsideGeoFence)}
-              className={`px-2.5 py-1 rounded-lg font-black text-[10px] cursor-pointer ${
-                providerInsideGeoFence ? "bg-emerald-400 text-slate-950" : "bg-rose-500 text-white"
-              }`}
-            >
-              {providerInsideGeoFence ? "INSIDE GEO-FENCE" : "OUTSIDE GEO-FENCE"}
-            </button>
-          </div>
+      {mobileToast && (
+        <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
+          <span>{mobileToast}</span>
+          <button type="button" onClick={() => setMobileToast("")} className="font-black">
+            X
+          </button>
         </div>
       )}
+
+      <ServiceProviderPortal
+        footerTab={footerTab}
+        setFooterTab={setFooterTab}
+        currentUser={currentUser}
+        serviceCategories={serviceCategories}
+        serviceProviders={serviceProviders}
+        setServiceProviders={setServiceProviders}
+        pendingServiceProviders={pendingServiceProviders}
+        serviceBookings={serviceBookings}
+        setServiceBookings={setServiceBookings}
+        onSwitchToPersonalShop={() => {
+          setPersonalShoppingFromPartner("service_provider");
+          setActivePortal("customer");
+          setFooterTab("home");
+          triggerToast("Switched to Personal Shopping Mode!");
+        }}
+        onTriggerToast={triggerToast}
+        renderAccountTab={() => (
+          <OwnerAccountProfile
+            currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
+            activePortal={activePortal}
+            setActivePortal={(nextPortal) => {
+              if (nextPortal === "customer")
+                setPersonalShoppingFromPartner("service_provider");
+              setActivePortal(nextPortal);
+              setFooterTab("home");
+            }}
+            activeAddressObj={activeAddressObj}
+            accountSecurity={accountSecurity}
+            setAccountSecurity={setAccountSecurity}
+            onLockApp={() => setOnboardingStep("auth")}
+            brightTheme={brightTheme}
+            setBrightTheme={setBrightTheme}
+            appUpdateInfo={appUpdateInfo}
+            onCheckForUpdate={handleManualCheckForUpdate}
+            checkingUpdate={checkingUpdate}
+            onRunOtaUpdate={handleRunOtaUpdate}
+            otaProgress={otaProgress}
+            onTriggerToast={triggerToast}
+          />
+        )}
+      />
     </MobilePhoneShell>
   );
 
@@ -1933,7 +2106,7 @@ function AppContent() {
       footerTab={footerTab}
       setFooterTab={setFooterTab}
       totalCartCount={totalCartCount}
-      totalOrdersCount={decorBids.length}
+      totalOrdersCount={0}
       brightTheme={brightTheme}
       lang={lang}
       setLang={setLang}
@@ -1960,16 +2133,14 @@ function AppContent() {
           onTriggerToast={triggerToast}
         />
       ) : (
-        <div className="space-y-3 text-xs text-white">
-          <div className="bg-slate-900 p-3 rounded-2xl border border-amber-500/40 space-y-2">
-            <h3 className="font-bold text-amber-400">Function Hall Availability Schedule</h3>
-            <input
-              type="date"
-              value={hallScheduleDateInput}
-              onChange={(e) => setHallScheduleDateInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white"
-            />
-          </div>
+        <div className="bg-slate-900 p-3 rounded-2xl border border-amber-500/40 space-y-2 text-xs text-white">
+          <h3 className="font-bold text-amber-400">Function Hall Availability Schedule</h3>
+          <input
+            type="date"
+            value={hallScheduleDateInput}
+            onChange={(e) => setHallScheduleDateInput(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white"
+          />
         </div>
       )}
     </MobilePhoneShell>
@@ -2179,6 +2350,8 @@ function AppContent() {
             serviceBookings={serviceBookings}
             pendingMerchants={pendingMerchants}
             setPendingMerchants={setPendingMerchants}
+            pendingServiceProviders={pendingServiceProviders}
+            setPendingServiceProviders={setPendingServiceProviders}
             pendingSubCategories={pendingSubCategories}
             setPendingSubCategories={setPendingSubCategories}
             rejectedItems={rejectedItems}
@@ -2209,10 +2382,11 @@ function AppContent() {
               setOnboardingStep("app");
               setFooterTab("home");
               if (flowId === "cust_stores") setActivePortal("customer");
-              else if (flowId === "cust_account") {
+              else if (flowId === "cust_services") {
                 setActivePortal("customer");
-                setFooterTab("account");
+                setFooterTab("services");
               } else if (flowId === "portal_merchant") setActivePortal("merchant");
+              else if (flowId === "portal_service") setActivePortal("service_provider");
             }}
             onExitAdminToApp={() => setViewMode("mobile_app")}
             onTriggerToast={triggerToast}
@@ -2254,30 +2428,6 @@ function AppContent() {
         onClose={() => setPendingUpiPayment(null)}
         onPaymentSuccess={handleCompleteUpiPayment}
       />
-
-      {liveOrderDrawerOpen && activeOrder && (
-        <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black text-emerald-400">Live Order #{activeOrder.id}</h3>
-              <button
-                type="button"
-                onClick={() => setLiveOrderDrawerOpen(false)}
-                className="bg-slate-800 px-2.5 py-1 rounded-xl"
-              >
-                X
-              </button>
-            </div>
-            <LiveRouteMap
-              pickupLabel={activeOrder.shopName}
-              dropLabel={activeOrder.address}
-              riderName={activeOrder.riderName}
-              vehicle={activeOrder.vehicle}
-              distanceKm={activeOrder.distanceKm || 1.8}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
