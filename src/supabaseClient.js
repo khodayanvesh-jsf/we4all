@@ -1,7 +1,4 @@
 const LIVE_CLOUD_ORIGIN = "https://we-4-all-super-app.vercel.app";
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-
 const STORAGE_KEY = "we4all_master_cloud_state_v4";
 const BACKUP_KEY = "we4all_zero_loss_user_backup_v4";
 const INSTALLED_VER_KEY = "we4all_device_installed_version_v4";
@@ -11,7 +8,7 @@ const syncChannel =
     ? new BroadcastChannel("we4all_realtime_bus_v4")
     : null;
 
-export function getDeviceInstalledVersion(fallback = "2.8.0") {
+export function getDeviceInstalledVersion(fallback = "2.8.8") {
   if (typeof window === "undefined") return fallback;
   return localStorage.getItem(INSTALLED_VER_KEY) || fallback;
 }
@@ -26,54 +23,53 @@ export function saveCloudAndLocalState(stateSlice) {
     if (syncChannel) {
       syncChannel.postMessage({ type: "STATE_UPDATED", payload: merged });
     }
-    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-      fetch(`${SUPABASE_URL}/rest/v1/we4all_state_sync?id=eq.master_state`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          app_version: merged.appUpdateInfo?.latestAvailableVersion || "2.8.6",
-          release_notes: merged.appUpdateInfo?.releaseNotes || "",
-          payload: merged,
-          updated_at: new Date().toISOString()
-        })
-      }).catch(() => {});
-    }
   } catch (e) {}
 }
 
 export function loadCloudAndLocalState() {
   if (typeof window === "undefined") return null;
   try {
-    const primary = localStorage.getItem(STORAGE_KEY);
-    if (primary) return JSON.parse(primary);
-    const backup = localStorage.getItem(BACKUP_KEY);
-    if (backup) return JSON.parse(backup);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BACKUP_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+
+    // Migrate old cached products on other devices so Stock Manual & Qty always show
+    if (Array.isArray(parsed.products)) {
+      parsed.products = parsed.products.map((p, idx) => ({
+        ...p,
+        stockQty: p.stockQty ?? (25 + idx * 10),
+        inStock: p.inStock ?? true,
+        hsnGst: p.hsnGst ?? 5,
+        isPublished: p.isPublished ?? true
+      }));
+    }
+    return parsed;
   } catch (e) {
     return null;
   }
-  return null;
 }
 
 export async function checkLiveCloudOtaManifest(callback) {
   try {
-    const res = await fetch(`${LIVE_CLOUD_ORIGIN}/ota-manifest.json?t=${Date.now()}`, {
+    const origin =
+      typeof window !== "undefined" && window.location.origin.includes("vercel.app")
+        ? window.location.origin
+        : LIVE_CLOUD_ORIGIN;
+    const res = await fetch(`${origin}/ota-manifest.json?_cb=${Date.now()}`, {
       method: "GET",
-      cache: "no-store"
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" }
     });
     if (!res.ok) return null;
     const remoteOta = await res.json();
-    const installedVer = getDeviceInstalledVersion("2.8.0");
+    const installedVer = getDeviceInstalledVersion("2.8.8");
     if (remoteOta?.latestAvailableVersion) {
       const hasNewer = remoteOta.latestAvailableVersion !== installedVer;
       const updatedInfo = {
         ...remoteOta,
         currentVersion: installedVer,
         latestAvailableVersion: remoteOta.latestAvailableVersion,
-        updateAvailable: Boolean(remoteOta.updateAvailable || hasNewer),
+        updateAvailable: Boolean(hasNewer || remoteOta.updateAvailable),
         apkDownloadUrl: `${LIVE_CLOUD_ORIGIN}/WE4ALL.apk`
       };
       if (callback) callback({ appUpdateInfo: updatedInfo });
@@ -105,7 +101,7 @@ export function subscribeToRealtimeUpdates(callback) {
   checkLiveCloudOtaManifest(callback);
   const pollTimer = setInterval(() => {
     checkLiveCloudOtaManifest(callback);
-  }, 8000);
+  }, 6000);
 
   return () => {
     if (syncChannel) syncChannel.removeEventListener("message", handler);
@@ -124,6 +120,8 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
     apkDownloadUrl: `${LIVE_CLOUD_ORIGIN}/WE4ALL.apk`,
     releaseNotes
   };
+
+  // Keep user orders, carts, and new additions, but refresh product stock schema
   const preservedState = {
     ...currentData,
     appUpdateInfo: updatedAppInfo,
@@ -133,12 +131,22 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
   localStorage.setItem(BACKUP_KEY, JSON.stringify(preservedState));
   localStorage.setItem(INSTALLED_VER_KEY, targetVersion);
 
+  // Purge WebView / Browser CacheStorage & Service Workers on the device
+  if (typeof window !== "undefined") {
+    if ("caches" in window) {
+      caches.keys().then((names) => names.forEach((n) => caches.delete(n))).catch(() => {});
+    }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {});
+    }
+  }
+
   let step = 0;
   const stages = [
-    { pct: 25, msg: "1/4: Backing up Orders, Carts, KYC, Bank/UPI & PIN Vault..." },
-    { pct: 60, msg: `2/4: Downloading WE4ALL v${targetVersion} Live Cloud Update...` },
-    { pct: 90, msg: "3/4: Installing Modules & Verifying Signature..." },
-    { pct: 100, msg: "4/4: Restarting WE4ALL with 100% Data Preserved..." }
+    { pct: 25, msg: "1/4: Backing up Orders, Carts, KYC & PIN Vault..." },
+    { pct: 60, msg: `2/4: Fetching Live Cloud Build v${targetVersion}...` },
+    { pct: 90, msg: "3/4: Clearing Old Device Cache & Applying New Modules..." },
+    { pct: 100, msg: "4/4: Relaunching Live WE4ALL v" + targetVersion + "..." }
   ];
 
   const interval = setInterval(() => {
@@ -150,11 +158,16 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
       if (onComplete) onComplete(updatedAppInfo);
       setTimeout(() => {
         if (typeof window !== "undefined") {
-          const url = new URL(window.location.href);
-          url.searchParams.set("ota_v", targetVersion);
-          window.location.replace(url.toString());
+          // If running inside an offline APK (localhost), jump directly to the live cloud server!
+          const isLocalApk =
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1" ||
+            window.location.protocol === "capacitor:" ||
+            window.location.protocol === "file:";
+          const targetBase = isLocalApk ? LIVE_CLOUD_ORIGIN : window.location.origin + window.location.pathname;
+          window.location.replace(`${targetBase}?ota_v=${encodeURIComponent(targetVersion)}&_cb=${Date.now()}`);
         }
-      }, 350);
+      }, 300);
     }
-  }, 500);
+  }, 450);
 }

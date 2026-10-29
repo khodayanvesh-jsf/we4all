@@ -1,10 +1,9 @@
 {
-  "appId": "com.we4all.superapp",
+  "appId": "com.khodayanvesh.we4all",
   "appName": "WE4ALL",
   "webDir": "dist",
-  "bundledWebRuntime": false,
   "server": {
-    "androidScheme": "https",
+    "url": "https://we-4-all-super-app.vercel.app",
     "cleartext": true
   }
 }

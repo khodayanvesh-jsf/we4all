@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.8.8",
-  "latestAvailableVersion": "2.8.9",
+  "currentVersion": "2.8.9",
+  "latestAvailableVersion": "2.9.0",
   "updateAvailable": true,
-  "publishedAt": "2026-10-29T11:20:00Z",
+  "publishedAt": "2026-10-29T12:00:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
   "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk",
-  "releaseNotes": "WE4ALL v2.8.9: Complete Product Merchant Portal (Queue, Stock Manual & Qty Editor, Add Brand + Excel/Billing Software Importer, GST Invoices Ledger, Digital Signature Registration & Admin 5-Point Approval Checklist)."
+  "releaseNotes": "WE4ALL v2.9.0: Fixed Cross-Device OTA Cache Purge, Live Cloud APK Sync, and Complete Merchant Portal Suite."
 }
