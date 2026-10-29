@@ -200,3 +200,19 @@ export const REJECTION_REASONS = [
   "Incorrect Category Declaration",
   "Duplicate Brand Listing"
 ];
+
+// ============================================================================
+// v2.8.9 OVERRIDES: STOCK MANUAL QUANTITIES & SAMPLE PENDING MERCHANT KYC
+// ============================================================================
+INITIAL_APP_UPDATE_INFO.currentVersion = "2.8.8";
+INITIAL_APP_UPDATE_INFO.latestAvailableVersion = "2.8.9";
+INITIAL_APP_UPDATE_INFO.updateAvailable = true;
+INITIAL_APP_UPDATE_INFO.releaseNotes = "WE4ALL v2.8.9: Complete Product Merchant Portal (Live Queue, Stock Manual & Qty Editor, Add Brand + Excel/Billing Software Importer, GST Invoices Ledger, Digital Signature Registration & Admin Approval Checklist).";
+
+INITIAL_PRODUCTS.forEach((p, idx) => {
+  p.stockQty = p.stockQty ?? (25 + idx * 10);
+  p.inStock = p.inStock ?? true;
+  p.hsnGst = p.hsnGst ?? 5;
+  p.fssaiVerified = true;
+  p.isPublished = true;
+});
