@@ -5,38 +5,24 @@ export default function FounderAdminSuite({
   onUploadFounderPhoto,
   apkIconUrl,
   onUploadApkIcon,
-  geoZones,
-  selectedZoneFilter,
-  setSelectedZoneFilter,
-  killedCategoriesByZone,
-  setKilledCategoriesByZone,
   geoAds,
-  setGeoAds,
   categories,
-  setCategories,
   merchants,
   setMerchants,
   serviceProviders,
   setServiceProviders,
   decorators,
   setDecorators,
-  registeredUsers,
-  setRegisteredUsers,
-  products,
-  setProducts,
-  functionHalls,
-  setFunctionHalls,
+  decorPortfolio = [],
+  setDecorPortfolio = () => {},
   orders,
-  setOrders,
   serviceBookings,
-  pendingMerchants,
-  setPendingMerchants,
+  pendingMerchants = [],
+  setPendingMerchants = () => {},
   pendingServiceProviders = [],
   setPendingServiceProviders = () => {},
-  pendingSubCategories,
-  setPendingSubCategories,
-  rejectedItems,
-  setRejectedItems,
+  pendingDecorators = [],
+  setPendingDecorators = () => {},
   monetizationConfig,
   setMonetizationConfig,
   splitScreens,
@@ -50,7 +36,7 @@ export default function FounderAdminSuite({
 }) {
   const [adminDisplayMode, setAdminDisplayMode] = useState("web");
   const [founderTab, setFounderTab] = useState("approvals");
-  const [approvalQueueSubTab, setApprovalQueueSubTab] = useState("service_providers");
+  const [approvalQueueSubTab, setApprovalQueueSubTab] = useState("decorators_halls");
   const [checklistByPartner, setChecklistByPartner] = useState({});
 
   const toggleCheckItem = (partnerId, key) => {
@@ -81,44 +67,38 @@ export default function FounderAdminSuite({
   };
 
   const [otaForm, setOtaForm] = useState({
-    version: appUpdateInfo?.latestAvailableVersion || "2.9.2",
+    version: appUpdateInfo?.latestAvailableVersion || "2.9.3",
     notes:
       appUpdateInfo?.releaseNotes ||
-      "WE4ALL OTA v2.9.0 (Build 2.9.2): Service Provider Portal Suite, 1-Hr Slots Matrix, Rate Card, Escrow PDF Ledger & Admin Checklist."
+      "WE4ALL v2.9.3: Flower Decorator & Function Halls Portal, 35%|85% Escrow, High-Res Camera/Gallery Portfolio & In-App Silent Update."
   });
 
-  const totalGmv =
-    orders.reduce((s, o) => s + Number(o.grandTotal || 0), 0) +
-    serviceBookings.reduce(
-      (s, b) => s + Number(b.finalServiceBill || b.escrowVisitingAmount || 0),
-      0
-    );
-  const totalGst = Number((totalGmv * 0.05).toFixed(2));
   const totalPendingCount =
     (pendingMerchants?.length || 0) +
     (pendingServiceProviders?.length || 0) +
-    (pendingSubCategories?.length || 0);
+    (pendingDecorators?.length || 0);
 
   const ADMIN_TABS = [
-    { id: "telemetry", label: "1. Telemetry & Kill-Switches", badge: "Live GMV" },
-    { id: "geo_ads", label: "2. 3-Tier Geo/State/Brand Ads", badge: `${geoAds.length} Ads` },
     {
       id: "approvals",
-      label: "3. Partner KYC & T&C Checklists",
+      label: "1. Partner KYC & T&C Checklists",
       badge: `${totalPendingCount} Pending`
     },
-    { id: "categories", label: "4. Dynamic Category Builder", badge: `${categories.length}` },
-    { id: "monetization", label: "5. Silent Monetization Engine", badge: "Backend" },
+    {
+      id: "portfolio_admin",
+      label: "2. Decorator & Hall Portfolio Master Control",
+      badge: `${decorPortfolio.length} Albums`
+    },
     {
       id: "ota_updates",
-      label: "6. Push App Update (OTA & Alert)",
-      badge: `v${appUpdateInfo?.latestAvailableVersion || "2.9.2"}`
+      label: "3. Push In-App Update (OTA & Bell Alert)",
+      badge: `v${appUpdateInfo?.latestAvailableVersion || "2.9.3"}`
     },
-    { id: "testing", label: "7. 5-Phone Live Sandbox", badge: `${splitScreens.length} Phones` },
-    { id: "flow_tester", label: "8. 1-Click Screen Flow Tester", badge: "Flows" }
+    { id: "flow_tester", label: "4. 1-Click Portal Flow Tester", badge: "Portals" },
+    { id: "testing", label: "5. 5-Phone Live Sandbox", badge: `${splitScreens.length} Phones` }
   ];
 
-  const renderPartnerApprovalCard = (partner, isServicePro) => {
+  const renderPartnerApprovalCard = (partner, partnerType) => {
     const chk = checklistByPartner[partner.id] || {};
     const allFiveChecked =
       chk.kycDocVerified &&
@@ -132,7 +112,7 @@ export default function FounderAdminSuite({
     return (
       <div
         key={partner.id}
-        className="bg-slate-950 p-3.5 rounded-2xl border border-indigo-400/50 space-y-3"
+        className="bg-slate-950 p-3.5 rounded-2xl border border-amber-400/50 space-y-3"
       >
         <div className="flex flex-wrap justify-between items-start gap-2 border-b border-slate-800 pb-2">
           <div className="flex items-center gap-2.5">
@@ -145,20 +125,15 @@ export default function FounderAdminSuite({
             )}
             <div>
               <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded uppercase">
-                Unpublished (Private to {isServicePro ? "Service Provider" : "Merchant"} & Admin)
+                Unpublished (Limited to Partner & Admin Until Approved)
               </span>
               <h4 className="text-sm font-black text-white mt-1">
-                {displayName} ({partner.specialization || partner.categoryId})
+                {displayName} ({partner.decoratorSubRole === "function_hall" ? "Function Hall Merchant" : partner.decoratorSubRole === "flower_decorator" ? "Flower Decorator" : partner.specialization || partner.categoryId})
               </h4>
               <p className="text-[10px] text-slate-300">
                 Mobile: <strong>+91 {partner.phone}</strong> | Area: {partner.area || "Adilabad"} | UPI:{" "}
                 <strong className="text-emerald-300">{partner.upiId}</strong>
               </p>
-              {isServicePro && (
-                <p className="text-[10px] text-indigo-300 font-bold">
-                  Visiting Fee: Rs.{partner.visitingFee || 99} (Escrow) | Hourly Rate: Rs.{partner.hourlyRate || 150}/hr
-                </p>
-              )}
             </div>
           </div>
           <button
@@ -170,33 +145,25 @@ export default function FounderAdminSuite({
           </button>
         </div>
 
-        {/* Uploaded KYC Document (PDF/Image) & Digital Signature Specimen Box */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-amber-300">
-              Uploaded KYC / Certificate Doc & T&C Status:
+              Uploaded KYC Document (PDF/Image/Camera) & T&C Status:
             </p>
             <p className="text-[10px] text-emerald-400 font-bold">
-              &#x2713; Platform T&C Accepted on {partner.acceptedAt || "2026-10-29"}
+              &#x2713; Platform T&C Accepted on {partner.acceptedAt || "2026-10-30"}
             </p>
             <p className="text-[10px] text-slate-300">
               Gov ID: <strong>{partner.govId || "[Verified]"}</strong> | Doc:{" "}
               <span className="text-indigo-300 font-mono">
-                {partner.kycDocName || "Trade_KYC_Certificate.pdf"}
+                {partner.kycDocName || "KYC_Certificate.pdf"}
               </span>
             </p>
-            {partner.kycDocDataUrl && partner.kycDocDataUrl.startsWith("data:image") && (
-              <img
-                src={partner.kycDocDataUrl}
-                alt="KYC Doc"
-                className="h-12 rounded border border-slate-700 object-cover mt-1"
-              />
-            )}
           </div>
 
           <div className="flex flex-col items-center justify-center bg-white text-slate-900 rounded-xl p-2">
             <span className="text-[9px] font-black text-slate-500 uppercase">
-              Digital Signature / Uploaded Signature Image
+              Digital Signature / Camera Signature Specimen
             </span>
             {partner.digitalSignatureDataUrl ? (
               <img
@@ -212,7 +179,6 @@ export default function FounderAdminSuite({
           </div>
         </div>
 
-        {/* REQ 8: 5-Point Admin Approval Checklist */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-black text-teal-300">
             Mandatory Admin Approval Checklist (Click each item to verify):
@@ -220,17 +186,15 @@ export default function FounderAdminSuite({
           {[
             {
               key: "kycDocVerified",
-              label: "1. Uploaded Gov ID & KYC Document (Image / PDF) Inspected & Verified"
+              label: "1. Uploaded Gov ID & KYC Document (Image / PDF / Camera) Inspected"
             },
             {
               key: "tradeSkillVerified",
-              label: isServicePro
-                ? "2. Service Provider Trade Skill, Visiting Fee & 1-Hr Rate Card Verified"
-                : "2. Shop Trade License / GSTIN / FSSAI Registration Verified"
+              label: "2. Portfolio / Hall Capacity / Trade License & Consort Pricing Verified"
             },
             {
               key: "bankUpiVerified",
-              label: "3. Partner Bank Account & Instant UPI Escrow Settlement ID Verified"
+              label: "3. Partner Bank Account & 35%|85% Escrow UPI Settlement ID Verified"
             },
             {
               key: "tcAcceptedVerified",
@@ -238,7 +202,7 @@ export default function FounderAdminSuite({
             },
             {
               key: "signatureVerified",
-              label: "5. Digital Signature / Uploaded Signature Image Authenticated"
+              label: "5. Digital Signature / Camera Signature Image Authenticated"
             }
           ].map((item) => {
             const checked = Boolean(chk[item.key]);
@@ -270,34 +234,26 @@ export default function FounderAdminSuite({
             type="button"
             disabled={!allFiveChecked}
             onClick={() => {
-              if (isServicePro) {
-                const approvedPro = {
-                  ...partner,
-                  status: "Approved",
-                  isPublished: true,
-                  isPublishedToPublic: true,
-                  approvedAt: new Date().toLocaleString()
-                };
-                setServiceProviders([approvedPro, ...serviceProviders]);
+              const approvedObj = {
+                ...partner,
+                status: "Approved",
+                isPublished: true,
+                isPublishedToPublic: true,
+                approvedAt: new Date().toLocaleString()
+              };
+              if (partnerType === "decorator") {
+                setDecorators([approvedObj, ...decorators]);
+                setPendingDecorators(pendingDecorators.filter((x) => x.id !== partner.id));
+              } else if (partnerType === "service_provider") {
+                setServiceProviders([approvedObj, ...serviceProviders]);
                 setPendingServiceProviders(
                   pendingServiceProviders.filter((x) => x.id !== partner.id)
                 );
-                onTriggerToast(
-                  `Approved & Published Service Provider "${displayName}" LIVE to the Customer App!`
-                );
               } else {
-                const approvedShop = {
-                  ...partner,
-                  status: "Approved",
-                  isPublishedToPublic: true,
-                  approvedAt: new Date().toLocaleString()
-                };
-                setMerchants([approvedShop, ...merchants]);
+                setMerchants([approvedObj, ...merchants]);
                 setPendingMerchants(pendingMerchants.filter((x) => x.id !== partner.id));
-                onTriggerToast(
-                  `Approved & Published Shop "${displayName}" LIVE to the Customer App!`
-                );
               }
+              onTriggerToast(`Approved & Published "${displayName}" LIVE to Market!`);
             }}
             className={`flex-1 font-black py-2.5 rounded-xl text-xs ${
               allFiveChecked
@@ -306,194 +262,16 @@ export default function FounderAdminSuite({
             }`}
           >
             {allFiveChecked
-              ? `\u2713 Approve & Publish ${isServicePro ? "Service Provider" : "Shop"} Live to Market`
+              ? "\u2713 Approve & Publish Partner Live to Public Market"
               : "Complete All 5 Checklist Items Above to Approve"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (isServicePro) {
-                setPendingServiceProviders(
-                  pendingServiceProviders.filter((x) => x.id !== partner.id)
-                );
-              } else {
-                setPendingMerchants(pendingMerchants.filter((x) => x.id !== partner.id));
-              }
-              onTriggerToast(`Rejected ${displayName}`);
-            }}
-            className="bg-rose-600 text-white font-bold px-4 py-2.5 rounded-xl cursor-pointer"
-          >
-            Reject
           </button>
         </div>
       </div>
     );
   };
 
-  const renderAdminBody = () => (
-    <div className="space-y-4 text-xs">
-      {founderTab === "telemetry" && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Total Town GMV</p>
-            <p className="text-xl font-black text-emerald-400 mt-1">
-              Rs.{totalGmv.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">5% GST Telemetry</p>
-            <p className="text-xl font-black text-teal-300 mt-1">
-              Rs.{totalGst.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Live Service Providers</p>
-            <p className="text-xl font-black text-indigo-400 mt-1">{serviceProviders.length}</p>
-          </div>
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Pending Approvals</p>
-            <p className="text-xl font-black text-amber-400 mt-1">{totalPendingCount}</p>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: PARTNER APPROVALS (SERVICE PROVIDERS & PRODUCT MERCHANTS) */}
-      {founderTab === "approvals" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
-            <button
-              type="button"
-              onClick={() => setApprovalQueueSubTab("service_providers")}
-              className={`py-2 rounded-xl font-black cursor-pointer ${
-                approvalQueueSubTab === "service_providers"
-                  ? "bg-indigo-500 text-white"
-                  : "text-slate-400"
-              }`}
-            >
-              Pending Service Providers ({pendingServiceProviders.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setApprovalQueueSubTab("merchants")}
-              className={`py-2 rounded-xl font-black cursor-pointer ${
-                approvalQueueSubTab === "merchants"
-                  ? "bg-emerald-400 text-slate-950"
-                  : "text-slate-400"
-              }`}
-            >
-              Pending Product Merchants ({pendingMerchants.length})
-            </button>
-          </div>
-
-          {approvalQueueSubTab === "service_providers" ? (
-            <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-2xl p-4 space-y-3">
-              <h3 className="font-black text-indigo-300 text-sm">
-                Pending Service Provider Registrations ({pendingServiceProviders.length})
-              </h3>
-              {pendingServiceProviders.length === 0 ? (
-                <p className="text-slate-400 text-center py-4">
-                  All Service Providers are approved and live! Register a new Service Provider from the Security Vault to test.
-                </p>
-              ) : (
-                pendingServiceProviders.map((sp) => renderPartnerApprovalCard(sp, true))
-              )}
-            </div>
-          ) : (
-            <div className="bg-slate-900 border-2 border-emerald-500/50 rounded-2xl p-4 space-y-3">
-              <h3 className="font-black text-emerald-400 text-sm">
-                Pending Product Merchant Registrations ({pendingMerchants.length})
-              </h3>
-              {pendingMerchants.length === 0 ? (
-                <p className="text-slate-400 text-center py-4">
-                  All Product Merchants are approved and live!
-                </p>
-              ) : (
-                pendingMerchants.map((m) => renderPartnerApprovalCard(m, false))
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {founderTab === "ota_updates" && (
-        <div className="bg-slate-900 border-2 border-emerald-400 rounded-2xl p-4 space-y-3">
-          <h3 className="font-black text-emerald-400 text-sm">
-            WE4ALL OTA Update & Mobile Push Notification Broadcaster
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <input
-              type="text"
-              value={otaForm.version}
-              onChange={(e) => setOtaForm({ ...otaForm, version: e.target.value })}
-              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
-            />
-            <input
-              type="text"
-              value={otaForm.notes}
-              onChange={(e) => setOtaForm({ ...otaForm, notes: e.target.value })}
-              className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const nextInfo = {
-                ...appUpdateInfo,
-                latestAvailableVersion: otaForm.version.trim(),
-                releaseNotes: otaForm.notes.trim(),
-                updateAvailable: true
-              };
-              setAppUpdateInfo(nextInfo);
-              if (onBroadcastOtaPushNotification) onBroadcastOtaPushNotification(nextInfo);
-            }}
-            className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
-          >
-            \uD83D\uDD14 Broadcast OTA Update & Push Alert to All Devices
-          </button>
-        </div>
-      )}
-
-      {founderTab === "flow_tester" && (
-        <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { id: "auth_vault", title: "1. Security Vault & Service Provider Registration (Doc/PDF + Sign)" },
-            { id: "portal_service", title: "2. Portal 3: Service Provider (Visits, 1-Hr Slots, Rate Card, Escrow Bills)" },
-            { id: "portal_merchant", title: "3. Portal 2: Product Merchant (Queue, Stock Manual, Bulk Import, Invoices)" },
-            { id: "cust_services", title: "4. Customer App: 1-Hr Service Slot Booking" }
-          ].map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => onTeleportToScreen(f.id)}
-              className="p-3 bg-slate-950 border border-slate-800 hover:border-emerald-400 rounded-xl text-left font-bold text-emerald-300 cursor-pointer"
-            >
-              {f.title}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {(founderTab === "geo_ads" ||
-        founderTab === "categories" ||
-        founderTab === "monetization" ||
-        founderTab === "testing") && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex justify-between items-center">
-          <span>Active Module: {founderTab.toUpperCase()}</span>
-          <button
-            type="button"
-            onClick={onLaunchMultiPhoneView}
-            className="bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl cursor-pointer"
-          >
-            Launch 5-Phone Sandbox &rarr;
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-[#04090e] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#04090e] text-slate-100 flex flex-col font-sans text-xs">
       <header className="bg-slate-900 border-b border-emerald-500/40 px-5 py-3 flex flex-wrap justify-between items-center gap-3 sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full border-2 border-amber-400 bg-emerald-950 flex items-center justify-center text-[8px] font-black text-amber-300 overflow-hidden">
@@ -505,32 +283,20 @@ export default function FounderAdminSuite({
           </div>
           <div>
             <h1 className="text-sm font-black text-white">
-              WE4ALL Founder Master Admin Suite
+              WE4ALL Founder Master Admin Suite (v2.9.3)
             </h1>
             <p className="text-[10px] text-emerald-400">
-              Service Provider & Merchant 5-Point KYC Checklist Console
+              Decorator, Function Hall, Service Provider & Merchant Approval Console
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2 text-xs">
-          <button
-            type="button"
-            onClick={() =>
-              setAdminDisplayMode(adminDisplayMode === "web" ? "mobile_admin" : "web")
-            }
-            className="bg-slate-800 text-emerald-300 font-black px-3 py-1.5 rounded-xl cursor-pointer"
-          >
-            {adminDisplayMode === "web" ? "Switch to Mobile Admin" : "Switch to Web Console"}
-          </button>
-          <button
-            type="button"
-            onClick={onExitAdminToApp}
-            className="bg-amber-400 text-slate-950 font-black px-3.5 py-1.5 rounded-xl cursor-pointer"
-          >
-            Exit to User App
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onExitAdminToApp}
+          className="bg-amber-400 text-slate-950 font-black px-3.5 py-1.5 rounded-xl cursor-pointer"
+        >
+          Exit to User App
+        </button>
       </header>
 
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-4 gap-5">
@@ -553,7 +319,186 @@ export default function FounderAdminSuite({
             </button>
           ))}
         </aside>
-        <main className="lg:col-span-3">{renderAdminBody()}</main>
+
+        <main className="lg:col-span-3 space-y-4">
+          {founderTab === "approvals" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setApprovalQueueSubTab("decorators_halls")}
+                  className={`py-2 rounded-xl font-black cursor-pointer ${
+                    approvalQueueSubTab === "decorators_halls"
+                      ? "bg-amber-400 text-slate-950"
+                      : "text-slate-400"
+                  }`}
+                >
+                  Decorators & Halls ({pendingDecorators.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApprovalQueueSubTab("service_providers")}
+                  className={`py-2 rounded-xl font-black cursor-pointer ${
+                    approvalQueueSubTab === "service_providers"
+                      ? "bg-indigo-500 text-white"
+                      : "text-slate-400"
+                  }`}
+                >
+                  Service Providers ({pendingServiceProviders.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApprovalQueueSubTab("merchants")}
+                  className={`py-2 rounded-xl font-black cursor-pointer ${
+                    approvalQueueSubTab === "merchants"
+                      ? "bg-emerald-400 text-slate-950"
+                      : "text-slate-400"
+                  }`}
+                >
+                  Product Merchants ({pendingMerchants.length})
+                </button>
+              </div>
+
+              {approvalQueueSubTab === "decorators_halls" && (
+                <div className="bg-slate-900 border-2 border-amber-500/50 rounded-2xl p-4 space-y-3">
+                  <h3 className="font-black text-amber-400 text-sm">
+                    Pending Flower Decorator & Function Hall Registrations ({pendingDecorators.length})
+                  </h3>
+                  {pendingDecorators.map((d) => renderPartnerApprovalCard(d, "decorator"))}
+                </div>
+              )}
+
+              {approvalQueueSubTab === "service_providers" && (
+                <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-2xl p-4 space-y-3">
+                  <h3 className="font-black text-indigo-300 text-sm">
+                    Pending Service Provider Registrations ({pendingServiceProviders.length})
+                  </h3>
+                  {pendingServiceProviders.map((sp) =>
+                    renderPartnerApprovalCard(sp, "service_provider")
+                  )}
+                </div>
+              )}
+
+              {approvalQueueSubTab === "merchants" && (
+                <div className="bg-slate-900 border-2 border-emerald-500/50 rounded-2xl p-4 space-y-3">
+                  <h3 className="font-black text-emerald-400 text-sm">
+                    Pending Product Merchant Registrations ({pendingMerchants.length})
+                  </h3>
+                  {pendingMerchants.map((m) => renderPartnerApprovalCard(m, "merchant"))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {founderTab === "portfolio_admin" && (
+            <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-3">
+              <h3 className="font-black text-amber-400 text-sm">
+                Master Admin Control: All Decorator & Function Hall Portfolio Albums ({decorPortfolio.length})
+              </h3>
+              {decorPortfolio.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center gap-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-14 h-14 rounded-xl object-cover"
+                    />
+                    <div>
+                      <p className="font-bold text-white">{item.title}</p>
+                      <p className="text-[10px] text-slate-400">
+                        Owner: {item.merchantName} | Material: {item.materialUsed} | Est: Rs.{item.baseEstimate}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDecorPortfolio(decorPortfolio.filter((x) => x.id !== item.id));
+                      onTriggerToast(`Admin deleted portfolio item: ${item.title}`);
+                    }}
+                    className="bg-rose-600 text-white font-bold px-3 py-1.5 rounded-xl cursor-pointer"
+                  >
+                    Admin Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {founderTab === "ota_updates" && (
+            <div className="bg-slate-900 border-2 border-emerald-400 rounded-2xl p-4 space-y-3">
+              <h3 className="font-black text-emerald-400 text-sm">
+                Broadcast In-App OTA Update (Notifies in Bell Icon & Account Section)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={otaForm.version}
+                  onChange={(e) => setOtaForm({ ...otaForm, version: e.target.value })}
+                  className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
+                />
+                <input
+                  type="text"
+                  value={otaForm.notes}
+                  onChange={(e) => setOtaForm({ ...otaForm, notes: e.target.value })}
+                  className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextInfo = {
+                    ...appUpdateInfo,
+                    latestAvailableVersion: otaForm.version.trim(),
+                    releaseNotes: otaForm.notes.trim(),
+                    updateAvailable: true
+                  };
+                  setAppUpdateInfo(nextInfo);
+                  if (onBroadcastOtaPushNotification) onBroadcastOtaPushNotification(nextInfo);
+                }}
+                className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+              >
+                \uD83D\uDD14 Push OTA v{otaForm.version} to Bell Icon & Account Section on All Devices
+              </button>
+            </div>
+          )}
+
+          {founderTab === "flow_tester" && (
+            <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+              {[
+                { id: "auth_vault", title: "1. Security Vault & Camera/Gallery Registration" },
+                { id: "portal_decorator", title: "2. Portal 4: Decorator & Function Halls (Calendar, Bids, 35%|85%, Portfolio)" },
+                { id: "portal_service", title: "3. Portal 3: Service Provider (Visits, 1-Hr Slots, Rate Card, Escrow)" },
+                { id: "portal_merchant", title: "4. Portal 2: Product Merchant (Queue, Stock Manual, Bulk, Invoices)" }
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => onTeleportToScreen(f.id)}
+                  className="p-3 bg-slate-950 border border-slate-800 hover:border-emerald-400 rounded-xl text-left font-bold text-emerald-300 cursor-pointer"
+                >
+                  {f.title}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {founderTab === "testing" && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex justify-between items-center">
+              <span>Launch all 5 Portals side-by-side:</span>
+              <button
+                type="button"
+                onClick={onLaunchMultiPhoneView}
+                className="bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl cursor-pointer"
+              >
+                Launch 5-Phone Sandbox &rarr;
+              </button>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

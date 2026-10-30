@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.9.0",
-  "latestAvailableVersion": "2.9.2",
+  "currentVersion": "2.9.2",
+  "latestAvailableVersion": "2.9.3",
   "updateAvailable": true,
-  "publishedAt": "2026-10-29T22:10:00Z",
+  "publishedAt": "2026-10-30T08:25:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
-  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.2",
-  "releaseNotes": "WE4ALL OTA v2.9.0 (Build 2.9.2): Complete Service Provider Portal (1. Visits & Geo Happy Code, 2. 1-Hr Slots Matrix, 3. Rate Card & Portfolio Builder, 4. Escrow Bills PDF Ledger, KYC PDF/Image Upload, Signature Image & Admin Checklist)."
+  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.3",
+  "releaseNotes": "WE4ALL v2.9.3: Flower Decorator & Function Halls Portal (Role-Gated Hall Calendar & Reverse Bids, 35%|85%|100% Milestone Escrow, High-Res Camera/Gallery Portfolio Stock, In-App Silent Updater & Bell Alerts)."
 }

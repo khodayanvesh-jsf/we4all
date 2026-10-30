@@ -1,16 +1,16 @@
 const LIVE_CLOUD_ORIGIN = "https://we-4-all-super-app.vercel.app";
-const CURRENT_SCHEMA_VERSION = "2.9.2";
+const CURRENT_SCHEMA_VERSION = "2.9.3";
 const STORAGE_KEY = "we4all_master_cloud_state_v4";
 const BACKUP_KEY = "we4all_zero_loss_user_backup_v4";
 const INSTALLED_VER_KEY = "we4all_device_installed_version_v4";
-const SCHEMA_MIGRATED_KEY = "we4all_schema_migrated_v292";
+const SCHEMA_MIGRATED_KEY = "we4all_schema_migrated_v293";
 
 const syncChannel =
   typeof window !== "undefined" && "BroadcastChannel" in window
     ? new BroadcastChannel("we4all_realtime_bus_v4")
     : null;
 
-export function getDeviceInstalledVersion(fallback = "2.9.1") {
+export function getDeviceInstalledVersion(fallback = "2.9.2") {
   if (typeof window === "undefined") return fallback;
   return localStorage.getItem(INSTALLED_VER_KEY) || fallback;
 }
@@ -31,7 +31,6 @@ export function saveCloudAndLocalState(stateSlice) {
 export function loadCloudAndLocalState() {
   if (typeof window === "undefined") return null;
   try {
-    // One-time migration for v2.9.1 so devices don't stay stuck on old cached state
     if (localStorage.getItem(SCHEMA_MIGRATED_KEY) !== CURRENT_SCHEMA_VERSION) {
       localStorage.setItem(SCHEMA_MIGRATED_KEY, CURRENT_SCHEMA_VERSION);
       localStorage.setItem(INSTALLED_VER_KEY, CURRENT_SCHEMA_VERSION);
@@ -41,17 +40,7 @@ export function loadCloudAndLocalState() {
     }
     const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BACKUP_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed.products)) {
-      parsed.products = parsed.products.map((p, idx) => ({
-        ...p,
-        stockQty: p.stockQty ?? (25 + idx * 10),
-        inStock: p.inStock ?? true,
-        hsnGst: p.hsnGst ?? 5,
-        isPublished: p.isPublished ?? true
-      }));
-    }
-    return parsed;
+    return JSON.parse(raw);
   } catch (e) {
     return null;
   }
@@ -65,7 +54,7 @@ export async function checkLiveCloudOtaManifest(callback) {
     });
     if (!res.ok) return null;
     const remoteOta = await res.json();
-    const installedVer = getDeviceInstalledVersion("2.9.1");
+    const installedVer = getDeviceInstalledVersion("2.9.2");
     if (remoteOta?.latestAvailableVersion) {
       const hasNewer = remoteOta.latestAvailableVersion !== installedVer;
       const updatedInfo = {
@@ -104,7 +93,7 @@ export function subscribeToRealtimeUpdates(callback) {
   checkLiveCloudOtaManifest(callback);
   const pollTimer = setInterval(() => {
     checkLiveCloudOtaManifest(callback);
-  }, 6000);
+  }, 7000);
 
   return () => {
     if (syncChannel) syncChannel.removeEventListener("message", handler);
@@ -113,15 +102,14 @@ export function subscribeToRealtimeUpdates(callback) {
   };
 }
 
+// REQ 12: IN-APP SILENT OTA UPDATE (NEVER OPENS EXTERNAL BROWSER)
 export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress, onComplete) {
   const currentData = loadCloudAndLocalState() || {};
-  const freshApkUrl = `${LIVE_CLOUD_ORIGIN}/WE4ALL.apk?v=${targetVersion}&t=${Date.now()}`;
   const updatedAppInfo = {
     ...(currentData.appUpdateInfo || {}),
     currentVersion: targetVersion,
     latestAvailableVersion: targetVersion,
     updateAvailable: false,
-    apkDownloadUrl: freshApkUrl,
     releaseNotes
   };
 
@@ -136,10 +124,10 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
 
   let step = 0;
   const stages = [
-    { pct: 25, msg: "1/4: Backing up Orders, Carts, KYC & PIN Vault..." },
-    { pct: 60, msg: `2/4: Downloading Fresh WE4ALL v${targetVersion} APK & Modules...` },
-    { pct: 90, msg: "3/4: Applying New Merchant Portal & Stock Manual..." },
-    { pct: 100, msg: `4/4: Launching WE4ALL v${targetVersion} Installer & Reloading...` }
+    { pct: 25, msg: "1/4: Backing up Orders, Escrow & Portfolio Vault..." },
+    { pct: 60, msg: `2/4: Downloading WE4ALL v${targetVersion} Bundle In-App...` },
+    { pct: 90, msg: "3/4: Applying New Modules Inside App WebView..." },
+    { pct: 100, msg: `4/4: In-App Update v${targetVersion} Complete! Restarting App...` }
   ];
 
   const interval = setInterval(() => {
@@ -151,22 +139,10 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
       if (onComplete) onComplete(updatedAppInfo);
       setTimeout(() => {
         if (typeof window !== "undefined") {
-          const isLocalApk =
-            window.location.hostname === "localhost" ||
-            window.location.protocol === "capacitor:" ||
-            window.location.protocol === "file:";
-          if (isLocalApk) {
-            // Trigger fresh APK download on native device AND open live cloud bundle
-            const a = document.createElement("a");
-            a.href = freshApkUrl;
-            a.download = `WE4ALL-v${targetVersion}.apk`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }
-          window.location.replace(`${LIVE_CLOUD_ORIGIN}/?ota_v=${encodeURIComponent(targetVersion)}&_cb=${Date.now()}`);
+          // Reload strictly inside the current app WebView without opening external browser
+          window.location.reload();
         }
       }, 300);
     }
-  }, 450);
+  }, 420);
 }

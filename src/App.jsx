@@ -22,6 +22,7 @@ import OwnerAccountProfile from "./modules/OwnerAccountProfile";
 import FounderAdminSuite from "./modules/FounderAdminSuite";
 import MerchantPortal from "./modules/MerchantPortal";
 import ServiceProviderPortal from "./modules/ServiceProviderPortal";
+import DecoratorPortal from "./modules/DecoratorPortal";
 import LiveRouteMap from "./modules/LiveRouteMap";
 import {
   saveCloudAndLocalState,
@@ -50,29 +51,8 @@ function FounderLogoBadge({ logoUrl }) {
   );
 }
 
-function calculateOrderLogistics(items = [], consumerDistanceKm = 1.8) {
-  const totalWeightGrams = items.reduce(
-    (sum, it) => sum + (it.weightGrams || 1000) * (it.qty || 1),
-    0
-  );
-  const uniqueMerchantsCount = new Set(items.map((i) => i.merchantName)).size || 1;
-  const totalRouteKm = Number(
-    (consumerDistanceKm + Math.max(0, uniqueMerchantsCount - 1) * 1.1).toFixed(1)
-  );
-  let vehicle = "2W Bike Captain (Up to 45kg)";
-  let deliveryFee = 25;
-  if (totalWeightGrams <= 45000) {
-    if (totalRouteKm > 2.5) deliveryFee += Math.ceil((totalRouteKm - 2.5) * 5.5);
-  } else if (totalWeightGrams <= 300000) {
-    vehicle = "3W Cargo Auto (Up to 300kg)";
-    deliveryFee = 150 + Math.ceil(totalRouteKm * 18);
-  } else {
-    vehicle = "Merchant Heavy Transport (>300kg)";
-    deliveryFee = 350 + Math.ceil(totalRouteKm * 25);
-  }
-  return { totalWeightGrams, totalRouteKm, vehicle, deliveryFee };
-}
-
+// REQ 12: TOP UPDATE BANNER REMOVED FROM MobilePhoneShell!
+// Updates now appear strictly inside the Notification Bell Icon & Account Section!
 function MobilePhoneShell({
   title,
   badge,
@@ -81,18 +61,23 @@ function MobilePhoneShell({
   setFooterTab,
   totalCartCount,
   totalOrdersCount,
-  floatingLiveOrder,
-  onOpenLiveOrderModal,
   brightTheme,
   lang,
   setLang,
   appUpdateInfo,
-  onTriggerOtaUpdate,
+  notificationsCount = 0,
+  onOpenNotificationsBell,
   personalShoppingFromPartner,
   onReturnToPartnerDesk,
   showFooter = true,
   children
 }) {
+  const hasUpdatePending = Boolean(
+    appUpdateInfo?.updateAvailable ||
+      (appUpdateInfo?.latestAvailableVersion &&
+        appUpdateInfo?.currentVersion !== appUpdateInfo?.latestAvailableVersion)
+  );
+
   return (
     <div
       className={`w-full max-w-[420px] mx-auto overflow-hidden flex flex-col min-h-screen sm:min-h-[850px] sm:max-h-[92vh] sm:my-2 sm:rounded-[40px] sm:border-[8px] relative transition-all shadow-2xl ${
@@ -112,7 +97,20 @@ function MobilePhoneShell({
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           WE4ALL | {title}
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          {/* NOTIFICATION BELL ICON WITH OTA UPDATE DOT IN HEADER */}
+          {onOpenNotificationsBell && (
+            <button
+              type="button"
+              onClick={onOpenNotificationsBell}
+              className="relative bg-slate-900 border border-slate-700 text-amber-300 px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer"
+            >
+              \uD83D\uDD14 {notificationsCount + (hasUpdatePending ? 1 : 0)}
+              {hasUpdatePending && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+              )}
+            </button>
+          )}
           <select
             value={lang}
             onChange={(e) => setLang(e.target.value)}
@@ -120,11 +118,11 @@ function MobilePhoneShell({
           >
             {INDIAN_LANGUAGES.map((l) => (
               <option key={l.code} value={l.code}>
-                {l.code} - {l.native}
+                {l.code}
               </option>
             ))}
           </select>
-          <span className="bg-emerald-900/80 border border-emerald-500/40 text-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-semibold truncate max-w-[80px]">
+          <span className="bg-emerald-900/80 border border-emerald-500/40 text-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-semibold truncate max-w-[70px]">
             {badge}
           </span>
         </div>
@@ -143,23 +141,6 @@ function MobilePhoneShell({
         </div>
       )}
 
-      {(appUpdateInfo?.updateAvailable ||
-        (appUpdateInfo?.latestAvailableVersion &&
-          appUpdateInfo?.currentVersion !== appUpdateInfo?.latestAvailableVersion)) && (
-        <div className="bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 text-slate-950 px-3 py-1.5 flex items-center justify-between gap-2 text-[10px] font-black shadow shrink-0">
-          <div className="truncate">
-            \uD83D\uDCF2 WE4ALL OTA v2.9.0 (Build {appUpdateInfo.latestAvailableVersion}) Ready!
-          </div>
-          <button
-            type="button"
-            onClick={onTriggerOtaUpdate}
-            className="bg-slate-950 text-amber-300 px-2.5 py-1 rounded-lg text-[9px] font-black shrink-0 cursor-pointer"
-          >
-            Update & Restart
-          </button>
-        </div>
-      )}
-
       <div
         className={`flex-1 overflow-y-auto p-3 space-y-3 pb-24 ${
           brightTheme
@@ -169,28 +150,6 @@ function MobilePhoneShell({
       >
         {children}
       </div>
-
-      {floatingLiveOrder && showFooter && (
-        <div className="absolute bottom-14 left-3 right-3 z-30">
-          <button
-            type="button"
-            onClick={onOpenLiveOrderModal}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-2.5 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-center justify-between cursor-pointer"
-          >
-            <div className="text-left">
-              <p className="text-[10px] font-black leading-tight">
-                LIVE ORDER #{floatingLiveOrder.id}: {floatingLiveOrder.status.replace(/_/g, " ")}
-              </p>
-              <p className="text-[9px] font-bold text-amber-200">
-                Captain: {floatingLiveOrder.riderName} | Tap for Animated Route Map & OTP
-              </p>
-            </div>
-            <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-1 rounded-xl">
-              Live Map &rarr;
-            </span>
-          </button>
-        </div>
-      )}
 
       {showFooter && (
         <RoleFooterNav
@@ -229,65 +188,25 @@ function AppContent() {
     () => localStorage.getItem("we4all_apk_launcher_icon") || "/logo.png"
   );
 
-  const handleUploadFounderPhoto = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFounderLogoUrl(reader.result);
-      localStorage.setItem("we4all_founder_original_photo", reader.result);
-      triggerToast("Official WE4ALL App Logo updated by Founder Admin!");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleUploadApkIcon = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setApkIconUrl(reader.result);
-      localStorage.setItem("we4all_apk_launcher_icon", reader.result);
-      triggerToast("APK Launcher Icon updated by Founder Admin!");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const [permissionsState, setPermissionsState] = useState(() => {
-    const saved = localStorage.getItem("we4all_permissions_granted_v4");
-    return saved
-      ? JSON.parse(saved)
-      : { location: true, notifications: true, camera: true, storage: true };
-  });
-  const allPermissionsGranted =
-    permissionsState.location &&
-    permissionsState.notifications &&
-    permissionsState.camera &&
-    permissionsState.storage;
-
   const [deviceBoundUser, setDeviceBoundUser] = useState(() => {
     const raw = localStorage.getItem("we4all_device_bound_user_v4");
     return raw ? JSON.parse(raw) : null;
   });
 
-  const [onboardingStep, setOnboardingStep] = useState(() => {
-    if (!localStorage.getItem("we4all_permissions_granted_v4")) return "permissions";
-    return "auth";
-  });
-
+  const [onboardingStep, setOnboardingStep] = useState("auth");
   const [authTab, setAuthTab] = useState("register");
   const [regStep, setRegStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState(
-    deviceBoundUser?.role || savedCloud?.activePortal || "service_provider"
+    deviceBoundUser?.role || savedCloud?.activePortal || "decorator"
   );
   const [activePortal, setActivePortal] = useState(
-    deviceBoundUser?.role || savedCloud?.activePortal || "service_provider"
+    deviceBoundUser?.role || savedCloud?.activePortal || "decorator"
   );
   const [personalShoppingFromPartner, setPersonalShoppingFromPartner] = useState(null);
   const [footerTab, setFooterTab] = useState("home");
   const [authError, setAuthError] = useState("");
 
-  // Digital Signature Pad + Uploaded Signature Image State (Req 9)
+  // Digital Signature Pad + Camera/Gallery Signature Upload (Req 9)
   const sigCanvasRef = useRef(null);
   const [isDrawingSig, setIsDrawingSig] = useState(false);
   const [hasDrawnSignature, setHasDrawnSignature] = useState(false);
@@ -333,46 +252,51 @@ function AppContent() {
     setUploadedSignatureImg("");
   };
 
-  // OTA Update Engine
+  // OTA Update Engine (Bell + Account Only, In-App Silent Update)
   const [appUpdateInfo, setAppUpdateInfo] = useState(
     savedCloud?.appUpdateInfo || INITIAL_APP_UPDATE_INFO
   );
   const [otaProgress, setOtaProgress] = useState(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [notificationBellOpen, setNotificationBellOpen] = useState(false);
+  const [notificationsList, setNotificationsList] = useState([
+    {
+      id: 1,
+      text: "WE4ALL v2.9.3 Update Available: Check Account or tap below to install in-app!",
+      time: "Just now"
+    }
+  ]);
 
   const handleManualCheckForUpdate = async () => {
     setCheckingUpdate(true);
-    triggerToast("Checking WE4ALL Cloud Server for OTA v2.9.0 (Build 2.9.2)...");
+    triggerToast("Checking WE4ALL Cloud Server for v2.9.3...");
     const latest = await checkLiveCloudOtaManifest((payload) => {
       if (payload?.appUpdateInfo) setAppUpdateInfo(payload.appUpdateInfo);
     });
     setTimeout(() => {
       setCheckingUpdate(false);
       const targetVer =
-        latest?.latestAvailableVersion || appUpdateInfo?.latestAvailableVersion || "2.9.2";
+        latest?.latestAvailableVersion || appUpdateInfo?.latestAvailableVersion || "2.9.3";
       setAppUpdateInfo((prev) => ({
         ...prev,
         ...(latest || {}),
         latestAvailableVersion: targetVer,
         updateAvailable: true
       }));
-      triggerToast(
-        `\uD83D\uDD14 OTA Update Build ${targetVer} Ready! Tap 'Download & Install' to update.`
-      );
+      triggerToast(`Update v${targetVer} Ready in Account & Notification Bell!`);
     }, 500);
   };
 
   const handleRunOtaUpdate = () => {
+    setNotificationBellOpen(false);
     performZeroLossOtaUpdate(
-      appUpdateInfo.latestAvailableVersion,
+      appUpdateInfo.latestAvailableVersion || "2.9.3",
       appUpdateInfo.releaseNotes,
       (stage) => setOtaProgress(stage),
       (updatedInfo) => {
         setAppUpdateInfo(updatedInfo);
         setOtaProgress(null);
-        triggerToast(
-          `WE4ALL updated to v${updatedInfo.currentVersion} & restarted with ZERO data loss!`
-        );
+        triggerToast(`In-App Update v${updatedInfo.currentVersion} Installed Successfully!`);
       }
     );
   };
@@ -388,15 +312,16 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState(
     deviceBoundUser ||
       savedCloud?.currentUser || {
-        id: 1,
-        fullName: "Raju Master Technician",
-        username: "raju_service_pro",
-        phone: "9848022334",
-        role: "service_provider",
+        id: 401,
+        fullName: "Padmavathi Royal Flower Decorators",
+        username: "padmavathi_decor",
+        phone: "9848044556",
+        role: "decorator",
+        decoratorSubRole: "flower_decorator",
         bankName: "State Bank of India",
         accountNumber: "30984451209",
         ifscCode: "SBIN0000801",
-        upiId: "rajupro@ybl",
+        upiId: "padmavathidecor@ybl",
         fastPin: "1234"
       }
   );
@@ -406,19 +331,20 @@ function AppContent() {
 
   const [loginForm, setLoginForm] = useState({ usernameOrPhone: "", password: "" });
   const [regForm, setRegForm] = useState({
-    role: "service_provider",
+    role: "decorator",
+    decoratorSubRole: "flower_decorator",
     categoryId: "daily_needs",
     serviceCategoryId: "srv_plumbing",
-    specialization: "AC Repair, Electrical & Plumbing Specialist",
+    specialization: "Royal Floral Mandap, Reception Stage & Lighting",
     visitingFee: 99,
     hourlyRate: 150,
+    hallCapacity: 800,
+    hallDailyRent: 35000,
     phone: "",
     generatedOtp: "",
     otpInput: "",
     otpVerified: false,
     fullName: "",
-    username: "",
-    gstNo: "",
     govId: "",
     area: "Adilabad Town",
     kycDocName: "",
@@ -429,26 +355,20 @@ function AppContent() {
     bankName: "State Bank of India",
     accountNumber: "",
     ifscCode: "SBIN0000801",
-    password: "",
     fastPin: "1234",
     tcAccepted: false,
     digitalSignatureText: ""
   });
 
   const [pendingUpiPayment, setPendingUpiPayment] = useState(null);
-  const [isPrimeCustomer] = useState(true);
   const [mobileToast, setMobileToast] = useState("");
-  const [notificationBellOpen, setNotificationBellOpen] = useState(false);
-  const [notificationsList, setNotificationsList] = useState([]);
 
   const triggerToast = (msg) => {
     setMobileToast(msg);
     setNotificationsList((prev) => [{ id: Date.now(), text: msg, time: "Just now" }, ...prev]);
-    setTimeout(() => setMobileToast(""), 4200);
+    setTimeout(() => setMobileToast(""), 4000);
   };
 
-  const [selectedZoneFilter, setSelectedZoneFilter] = useState("ALL_INDIA");
-  const [killedCategoriesByZone, setKilledCategoriesByZone] = useState({});
   const [geoAds, setGeoAds] = useState(savedCloud?.geoAds || INITIAL_GEO_ADS);
   const [categories, setCategories] = useState(savedCloud?.categories || INITIAL_CATEGORIES);
   const [serviceCategories] = useState(SERVICE_CATEGORIES);
@@ -463,51 +383,153 @@ function AppContent() {
   );
   const [riders] = useState(savedCloud?.riders || INITIAL_RIDERS);
 
+  // Portfolio Stock for Decorators & Function Halls (Synced to Consumer Decor Section)
+  const [decorPortfolio, setDecorPortfolio] = useState(
+    savedCloud?.decorPortfolio && savedCloud.decorPortfolio.length > 0
+      ? savedCloud.decorPortfolio
+      : [
+          {
+            id: "pf_101",
+            ownerId: 401,
+            ownerPhone: "9848044556",
+            merchantName: "Padmavathi Royal Flower Decorators",
+            subRole: "flower_decorator",
+            title: "Royal Imported Orchid & Dutch Rose Wedding Mandap",
+            decorType: "Wedding Mandap",
+            materialUsed: "Fresh Bangkok Orchids, Dutch Roses, Warm LED Truss & Velvet",
+            albumName: "2026 Royal Muhurtham Collection",
+            dimensionsSize: "40 ft x 16 ft Stage",
+            baseEstimate: 26500,
+            image:
+              "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop&q=85",
+            isApproved: true
+          },
+          {
+            id: "pf_102",
+            ownerId: 401,
+            ownerPhone: "9848044556",
+            merchantName: "Padmavathi Royal Flower Decorators",
+            subRole: "flower_decorator",
+            title: "Haldi & Mehendi Marigold Floral Canopy",
+            decorType: "Haldi / Mehendi Setup",
+            materialUsed: "Fresh Yellow & Orange Marigolds, Brass Urli & Jhula",
+            albumName: "2026 Festive Haldi Album",
+            dimensionsSize: "24 ft x 12 ft Lawn Setup",
+            baseEstimate: 14500,
+            image:
+              "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&auto=format&fit=crop&q=85",
+            isApproved: true
+          },
+          {
+            id: "pf_103",
+            ownerId: 402,
+            ownerPhone: "9848055667",
+            merchantName: "Sri Venkateswara Grand Function Hall",
+            subRole: "function_hall",
+            title: "Grand AC Main Marriage Hall & Dining Lawn",
+            decorType: "AC Banquet & Marriage Hall",
+            materialUsed: "Central AC, Crystal Chandeliers, 800 Banquet Chairs, Valet",
+            albumName: "2026 Hall Interior & Lawn Album",
+            dimensionsSize: "12,000 sq.ft (800 Pax)",
+            baseEstimate: 35000,
+            image:
+              "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&auto=format&fit=crop&q=85",
+            isApproved: true
+          }
+        ]
+  );
+
+  // Reverse Bids Queue for Flower Decorators
+  const [decorReverseBids, setDecorReverseBids] = useState(
+    savedCloud?.decorReverseBids && savedCloud.decorReverseBids.length > 0
+      ? savedCloud.decorReverseBids
+      : [
+          {
+            id: "BID-7721",
+            customerName: "Rajeshwar Reddy (Adilabad)",
+            eventDate: "2026-11-05",
+            venueName: "Sri Venkateswara Function Hall, Adilabad",
+            selectedDesigns: [
+              "Royal Imported Orchid & Dutch Rose Wedding Mandap",
+              "Haldi & Mehendi Marigold Floral Canopy"
+            ],
+            estimatedBudget: 41000,
+            lowestBidSoFar: 38500,
+            mySubmittedBid: null,
+            status: "OPEN_FOR_REVERSE_BIDS"
+          }
+        ]
+  );
+
+  // 35% | 85% | 100% Milestone Escrow Bookings for Decorators & Function Halls
+  const [decorEscrowBookings, setDecorEscrowBookings] = useState(
+    savedCloud?.decorEscrowBookings && savedCloud.decorEscrowBookings.length > 0
+      ? savedCloud.decorEscrowBookings
+      : [
+          {
+            id: "ESC-5091",
+            ownerId: 401,
+            subRole: "flower_decorator",
+            merchantName: "Padmavathi Royal Flower Decorators",
+            customerName: "Vikram Rathod (Adilabad)",
+            venueAddress: "Subhash Nagar Function Hall, Adilabad",
+            eventDate: "2026-11-05",
+            packageTitle: "Royal Imported Orchid & Dutch Rose Wedding Mandap (40x16 ft)",
+            totalContractAmount: 26500,
+            stage35Paid: true,
+            stage85Paid: false,
+            stage100Paid: false,
+            milestoneStatus: "35_PERCENT_ADVANCE_RELEASED"
+          },
+          {
+            id: "ESC-6012",
+            ownerId: 402,
+            subRole: "function_hall",
+            merchantName: "Sri Venkateswara Grand Function Hall",
+            customerName: "Anand Rao (Adilabad)",
+            venueAddress: "Adilabad Bypass Road",
+            eventDate: "2026-11-08",
+            packageTitle: "Full-Day AC Hall + Dining Lawn (800 Pax)",
+            totalContractAmount: 35000,
+            stage35Paid: true,
+            stage85Paid: false,
+            stage100Paid: false,
+            milestoneStatus: "35_PERCENT_ADVANCE_RELEASED"
+          }
+        ]
+  );
+
+  // Pending Queues for Admin 5-Point Approval Checklist
   const [pendingMerchants, setPendingMerchants] = useState(
     savedCloud?.pendingMerchants || []
   );
-
-  // REQ 7: Server-Persisted Pending Service Providers Queue (Awaiting Admin 5-Point Checklist)
   const [pendingServiceProviders, setPendingServiceProviders] = useState(
-    savedCloud?.pendingServiceProviders && savedCloud.pendingServiceProviders.length > 0
-      ? savedCloud.pendingServiceProviders
+    savedCloud?.pendingServiceProviders || []
+  );
+  const [pendingDecorators, setPendingDecorators] = useState(
+    savedCloud?.pendingDecorators && savedCloud.pendingDecorators.length > 0
+      ? savedCloud.pendingDecorators
       : [
           {
-            id: 951,
-            serviceCategoryId: "srv_ac_appliance",
-            providerName: "Kiran CoolCare AC & Electricals",
-            maskedId: "Verified Pro #951",
-            serviceCategory: "AC, Fridge & Appliance Repair",
-            specialization: "Split AC Gas Charging, PCB & Inverter Repair",
-            visitingFee: 99,
-            hourlyRate: 180,
-            emergencyFee: 249,
-            phone: "9848077665",
-            govId: "7744-2211-9988 [Verified]",
-            area: "Subhash Nagar, Adilabad",
-            kycDocName: "ITI_Electrical_License_Adilabad.pdf",
-            workImageUrl:
-              "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80",
-            upiId: "kirancoolcare@ybl",
+            id: 981,
+            decoratorSubRole: "flower_decorator",
+            businessName: "Mayuri Fresh Floral & Stage Creations",
+            providerName: "Mayuri Fresh Floral & Stage Creations",
+            specialization: "Imported Orchid Mandaps, LED Walkways & Car Decor",
+            phone: "9848066778",
+            govId: "6655-4433-2211 [Verified]",
+            area: "Cinema Road, Adilabad",
+            upiId: "mayurifloral@ybl",
             bankName: "State Bank of India",
-            accountNumber: "30987766554",
+            accountNumber: "30981122990",
             ifscCode: "SBIN0000801",
+            kycDocName: "Decorator_Trade_License_Adilabad.pdf",
+            workImageUrl:
+              "https://images.unsplash.com/photo-1519741497674-611481863552?w=300&auto=format&fit=crop&q=80",
             tcAccepted: true,
-            acceptedAt: "2026-10-29 09:45 PM",
-            digitalSignatureText: "Kiran Kumar (Signed)",
-            availableSlots: [
-              "09:00 AM - 10:00 AM",
-              "10:00 AM - 11:00 AM",
-              "11:00 AM - 12:00 PM",
-              "02:00 PM - 03:00 PM",
-              "04:00 PM - 05:00 PM"
-            ],
-            rateCardItems: [
-              { id: "rc_951_1", title: "AC Foam Jet Servicing", price: 499, unit: "Per AC" },
-              { id: "rc_951_2", title: "Compressor & Gas Top-Up", price: 1450, unit: "Full Fill" }
-            ],
+            acceptedAt: "2026-10-30 08:15 AM",
+            digitalSignatureText: "Mayuri Verma (Digitally Signed)",
             status: "Pending_Admin_Approval",
-            isPublished: false,
             isPublishedToPublic: false
           }
         ]
@@ -516,13 +538,8 @@ function AppContent() {
   const [pendingSubCategories, setPendingSubCategories] = useState(
     savedCloud?.pendingSubCategories || []
   );
-  const [rejectedItems, setRejectedItems] = useState(savedCloud?.rejectedItems || []);
   const [monetizationConfig, setMonetizationConfig] = useState(
-    savedCloud?.monetizationConfig || {
-      globalPlatformFee: 0,
-      serviceBookingSurcharge: 0,
-      productSpecificFee: 0
-    }
+    savedCloud?.monetizationConfig || { globalPlatformFee: 0, serviceBookingSurcharge: 0 }
   );
 
   const [splitScreens, setSplitScreens] = useState([
@@ -533,71 +550,21 @@ function AppContent() {
     { id: 5, role: "rider" }
   ]);
 
-  const [addressBook, setAddressBook] = useState(
-    savedCloud?.addressBook || [
-      { id: "addr_home", label: "Home", fullAddress: "Subhash Nagar, Adilabad", distanceKm: 1.8, verified: true },
-      { id: "addr_office", label: "Office", fullAddress: "Collectorate Chowk, Adilabad", distanceKm: 3.2, verified: true }
-    ]
-  );
-  const [selectedAddressId, setSelectedAddressId] = useState("addr_home");
-  const [showAddAddressModal, setShowAddAddressModal] = useState(false);
-  const [newAddressForm, setNewAddressForm] = useState({
-    label: "Other",
-    fullAddress: "",
-    generatedOtp: "",
-    enteredOtp: ""
-  });
-  const activeAddressObj =
-    addressBook.find((a) => a.id === selectedAddressId) || addressBook[0];
+  const [addressBook] = useState([
+    { id: "addr_home", label: "Home", fullAddress: "Subhash Nagar, Adilabad", distanceKm: 1.8, verified: true }
+  ]);
+  const activeAddressObj = addressBook[0];
 
-  const [customerHomeSubTab, setCustomerHomeSubTab] = useState("stores");
+  const [customerHomeSubTab, setCustomerHomeSubTab] = useState("events");
   const [selectedCategory, setSelectedCategory] = useState("daily_needs");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedVariantMap, setSelectedVariantMap] = useState({});
-  const [selectedMerchantByProduct, setSelectedMerchantByProduct] = useState({});
-  const [expandedCompareProdId, setExpandedCompareProdId] = useState(null);
-
-  const [serviceFilterDate, setServiceFilterDate] = useState("2026-10-29");
-  const [serviceFilterSlot, setServiceFilterSlot] = useState("10:00 AM - 11:00 AM");
-
   const [merchantCart, setMerchantCart] = useState(savedCloud?.merchantCart || []);
   const [serviceCart, setServiceCart] = useState(savedCloud?.serviceCart || []);
   const [decorCart, setDecorCart] = useState(savedCloud?.decorCart || []);
-  const [taxiCart, setTaxiCart] = useState(savedCloud?.taxiCart || []);
-
-  const [taxiBookingForm, setTaxiBookingForm] = useState({
-    pickupPin: "Subhash Nagar, Adilabad (19.6641, 78.5320)",
-    dropPin: "Collectorate Chowk, Adilabad (19.6710, 78.5390)",
-    distanceKm: 2.8
-  });
-
+  const [taxiCart] = useState([]);
   const [orders, setOrders] = useState(savedCloud?.orders || []);
-  const [activeOrderId, setActiveOrderId] = useState(null);
-  const [liveOrderDrawerOpen, setLiveOrderDrawerOpen] = useState(false);
-  const [serviceBookings, setServiceBookings] = useState(
-    savedCloud?.serviceBookings && savedCloud.serviceBookings.length > 0
-      ? savedCloud.serviceBookings
-      : [
-          {
-            id: "SRV-4082",
-            providerName: "Raju Master Technician",
-            maskedId: "Verified Pro #108",
-            customerName: "Prashanth Sharma (Adilabad)",
-            address: "Subhash Nagar, Adilabad",
-            bookedDate: "2026-10-29",
-            bookedSlot: "10:00 AM - 11:00 AM",
-            visitingFee: 99,
-            hourlyRate: 150,
-            escrowVisitingAmount: 99,
-            happyCode: "4488",
-            periodTag: "TODAY",
-            escrowStatus: "VISITING_FEE_HELD_IN_ESCROW",
-            status: "CONFIRMED_PROVIDER_EN_ROUTE"
-          }
-        ]
-  );
-
-  const [hallScheduleDateInput, setHallScheduleDateInput] = useState("2026-11-05");
+  const [serviceBookings, setServiceBookings] = useState(savedCloud?.serviceBookings || []);
 
   useEffect(() => {
     saveCloudAndLocalState({
@@ -610,19 +577,20 @@ function AppContent() {
       merchants,
       serviceProviders,
       decorators,
+      decorPortfolio,
+      decorReverseBids,
+      decorEscrowBookings,
       registeredUsers,
       products,
       functionHalls,
       pendingMerchants,
       pendingServiceProviders,
+      pendingDecorators,
       pendingSubCategories,
-      rejectedItems,
       monetizationConfig,
-      addressBook,
       merchantCart,
       serviceCart,
       decorCart,
-      taxiCart,
       orders,
       serviceBookings
     });
@@ -636,19 +604,20 @@ function AppContent() {
     merchants,
     serviceProviders,
     decorators,
+    decorPortfolio,
+    decorReverseBids,
+    decorEscrowBookings,
     registeredUsers,
     products,
     functionHalls,
     pendingMerchants,
     pendingServiceProviders,
+    pendingDecorators,
     pendingSubCategories,
-    rejectedItems,
     monetizationConfig,
-    addressBook,
     merchantCart,
     serviceCart,
     decorCart,
-    taxiCart,
     orders,
     serviceBookings
   ]);
@@ -657,18 +626,22 @@ function AppContent() {
     return subscribeToRealtimeUpdates((remoteState) => {
       if (remoteState.orders) setOrders(remoteState.orders);
       if (remoteState.serviceBookings) setServiceBookings(remoteState.serviceBookings);
-      if (remoteState.products) setProducts(remoteState.products);
-      if (remoteState.merchants) setMerchants(remoteState.merchants);
-      if (remoteState.serviceProviders) setServiceProviders(remoteState.serviceProviders);
-      if (remoteState.pendingServiceProviders)
-        setPendingServiceProviders(remoteState.pendingServiceProviders);
+      if (remoteState.decorPortfolio) setDecorPortfolio(remoteState.decorPortfolio);
+      if (remoteState.decorReverseBids) setDecorReverseBids(remoteState.decorReverseBids);
+      if (remoteState.decorEscrowBookings) setDecorEscrowBookings(remoteState.decorEscrowBookings);
       if (remoteState.appUpdateInfo) {
         setAppUpdateInfo((prev) => {
           const incomingVer = remoteState.appUpdateInfo.latestAvailableVersion;
           if (incomingVer && incomingVer !== prev?.latestAvailableVersion) {
-            triggerToast(
-              `\uD83D\uDD14 OTA UPDATE PUSH: WE4ALL v${incomingVer} is now available! Tap Update & Restart.`
-            );
+            setNotificationsList((n) => [
+              {
+                id: Date.now(),
+                text: `OTA Update v${incomingVer} is ready! Tap to install in-app.`,
+                time: "Just now",
+                isOtaUpdate: true
+              },
+              ...n
+            ]);
           }
           return remoteState.appUpdateInfo;
         });
@@ -682,179 +655,13 @@ function AppContent() {
     decorCart.length +
     taxiCart.length;
 
-  const activeOrder =
-    orders.find((o) => o.id === activeOrderId && !o.status.includes("CANCELLED")) ||
-    orders[0] ||
-    null;
-
-  const getProductBestOffer = (product) => {
-    const offers =
-      product.merchantOffers && product.merchantOffers.length > 0
-        ? [...product.merchantOffers].sort((a, b) => a.price - b.price)
-        : [{ merchantId: 1, merchantName: product.shopName, price: product.variants[0]?.price || 100, area: "Adilabad" }];
-    const chosenId = selectedMerchantByProduct[product.id];
-    const activeOffer = offers.find((o) => o.merchantId === chosenId) || offers[0];
-    return { offers, bestOffer: offers[0], activeOffer };
-  };
-
-  const handleAddToUnifiedMerchantCart = (product) => {
-    const chosenVarId = selectedVariantMap[product.id] || product.variants[0].id;
-    const variant = product.variants.find((v) => v.id === chosenVarId) || product.variants[0];
-    const { activeOffer } = getProductBestOffer(product);
-    const existing = merchantCart.find(
-      (i) => i.productId === product.id && i.variantId === variant.id && i.merchantId === activeOffer.merchantId
-    );
-    const updated = existing
-      ? merchantCart.map((i) =>
-          i.productId === product.id && i.variantId === variant.id && i.merchantId === activeOffer.merchantId
-            ? { ...i, qty: i.qty + 1 }
-            : i
-        )
-      : [
-          ...merchantCart,
-          {
-            productId: product.id,
-            categoryId: product.categoryId,
-            variantId: variant.id,
-            name: `${product.subCategoryBrand} (${variant.label})`,
-            merchantId: activeOffer.merchantId,
-            merchantName: activeOffer.merchantName || product.shopName,
-            price: activeOffer.price || variant.price,
-            weightGrams: variant.weightGrams || 1000,
-            qty: 1
-          }
-        ];
-    setMerchantCart(updated);
-    triggerToast(`Added ${product.subCategoryBrand} (${activeOffer.merchantName}) to Cart!`);
-  };
-
-  const handlePlaceOrderForMerchantApproval = () => {
-    if (merchantCart.length === 0) return;
-    const itemsTotal = merchantCart.reduce((s, i) => s + i.price * i.qty, 0);
-    const { totalWeightGrams, totalRouteKm, vehicle, deliveryFee } =
-      calculateOrderLogistics(merchantCart, activeAddressObj.distanceKm);
-    const silentFee = Number(monetizationConfig.globalPlatformFee || 0);
-    const gst = Number(((itemsTotal + deliveryFee + silentFee) * 0.05).toFixed(2));
-    const grandTotal = Number((itemsTotal + deliveryFee + silentFee + gst).toFixed(2));
-
-    const newOrder = {
-      id: `VFL-${Math.floor(1000 + Math.random() * 9000)}`,
-      dateStr: "2026-10-29",
-      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      periodTag: "TODAY",
-      customerName: currentUser.fullName,
-      address: activeAddressObj.fullAddress,
-      distanceKm: totalRouteKm,
-      totalWeightGrams,
-      vehicle,
-      shopName: Array.from(new Set(merchantCart.map((i) => i.merchantName))).join(" + "),
-      items: merchantCart.map((it) => ({ ...it, approvalStatus: "PENDING_MERCHANT" })),
-      itemsTotal,
-      deliveryFee,
-      gst,
-      grandTotal,
-      riderName: riders[0].name,
-      status: "AWAITING_MERCHANT_APPROVAL",
-      secretOtp: String(Math.floor(1000 + Math.random() * 9000))
-    };
-
-    setOrders([newOrder, ...orders]);
-    setActiveOrderId(newOrder.id);
-    setMerchantCart([]);
-    setFooterTab("orders");
-    triggerToast(`Order #${newOrder.id} sent to Merchant Queue for approval!`);
-  };
-
-  const handleCompleteUpiPayment = (chosenUpiAppName) => {
-    if (!pendingUpiPayment) return;
-    if (pendingUpiPayment.type === "APPROVED_MERCHANT_ORDER") {
-      setOrders(
-        orders.map((o) =>
-          o.id === pendingUpiPayment.orderId
-            ? { ...o, paidViaApp: chosenUpiAppName, status: "PAID_PACKING_STARTED" }
-            : o
-        )
-      );
-      setPendingUpiPayment(null);
-      setFooterTab("orders");
-      setLiveOrderDrawerOpen(true);
-      triggerToast(`Paid via ${chosenUpiAppName}! Merchant packing started.`);
-    } else if (pendingUpiPayment.type === "SERVICE_ESCROW") {
-      const created = serviceCart.map((sc) => ({
-        ...sc,
-        id: `SRV-${Math.floor(1000 + Math.random() * 9000)}`,
-        customerName: currentUser.fullName,
-        escrowVisitingAmount: sc.visitingFee + (monetizationConfig.serviceBookingSurcharge || 0),
-        paidViaApp: chosenUpiAppName,
-        happyCode: String(Math.floor(1000 + Math.random() * 9000)),
-        periodTag: "TODAY",
-        escrowStatus: "VISITING_FEE_HELD_IN_ESCROW",
-        status: "CONFIRMED_PROVIDER_EN_ROUTE"
-      }));
-      setServiceBookings([...created, ...serviceBookings]);
-      setServiceCart([]);
-      setPendingUpiPayment(null);
-      setFooterTab("orders");
-      triggerToast(`Paid via ${chosenUpiAppName}! Visiting Fee held in Escrow.`);
-    } else if (pendingUpiPayment.type === "SERVICE_FINAL_BILL") {
-      setServiceBookings(
-        serviceBookings.map((sb) =>
-          sb.id === pendingUpiPayment.bookingId
-            ? { ...sb, paidViaApp: chosenUpiAppName, status: "SERVICE_PAID_COMPLETED" }
-            : sb
-        )
-      );
-      setPendingUpiPayment(null);
-      triggerToast(`Final Service & Spare Parts Bill paid via ${chosenUpiAppName}!`);
-    }
-  };
-
-  const renderPermissionsGateway = () => (
-    <MobilePhoneShell
-      title="Permissions Gateway"
-      badge="Step 1 of 2"
-      activePortal={activePortal}
-      footerTab={footerTab}
-      setFooterTab={setFooterTab}
-      totalCartCount={totalCartCount}
-      totalOrdersCount={orders.length}
-      brightTheme={brightTheme}
-      lang={lang}
-      setLang={setLang}
-      appUpdateInfo={appUpdateInfo}
-      onTriggerOtaUpdate={handleRunOtaUpdate}
-      showFooter={false}
-    >
-      <div className="space-y-4 text-xs py-2">
-        <div className="bg-slate-900 text-white border border-emerald-500/40 rounded-3xl p-4 space-y-3 text-center shadow-lg">
-          <div className="flex justify-center">
-            <FounderLogoBadge logoUrl={founderLogoUrl} />
-          </div>
-          <h2 className="text-base font-black text-amber-400">WE4ALL PERMISSIONS GATEWAY</h2>
-          <button
-            type="button"
-            onClick={() => {
-              const next = { location: true, notifications: true, camera: true, storage: true };
-              setPermissionsState(next);
-              localStorage.setItem("we4all_permissions_granted_v4", JSON.stringify(next));
-              setOnboardingStep("auth");
-            }}
-            className="w-full bg-emerald-400 text-slate-950 font-black py-3 rounded-2xl text-xs cursor-pointer"
-          >
-            Auto-Allow All & Continue to Security Vault &rarr;
-          </button>
-        </div>
-      </div>
-    </MobilePhoneShell>
-  );
-
   // ==========================================================================
-  // REQ 1, 7, 9: 3-STEP REGISTRATION WITH DOC (PDF/IMAGE) UPLOAD & SIGNATURE IMAGE
+  // REQ 1, 7, 9: 3-STEP REGISTRATION WITH CAMERA/GALLERY DOCS & SIGNATURE
   // ==========================================================================
   const renderAuthVault = () => (
     <MobilePhoneShell
       title="Security & KYC Vault"
-      badge="Step 2 of 2"
+      badge="v2.9.3"
       activePortal={activePortal}
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -864,7 +671,8 @@ function AppContent() {
       lang={lang}
       setLang={setLang}
       appUpdateInfo={appUpdateInfo}
-      onTriggerOtaUpdate={handleRunOtaUpdate}
+      notificationsCount={notificationsList.length}
+      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
       showFooter={false}
     >
       <div className="space-y-3 text-xs">
@@ -874,7 +682,7 @@ function AppContent() {
               <FounderLogoBadge logoUrl={founderLogoUrl} />
               <div>
                 <h2 className="font-black text-amber-400 text-xs">WE4ALL SECURITY & KYC VAULT</h2>
-                <p className="text-[10px] text-slate-300">Select Role to Sign In or Register</p>
+                <p className="text-[10px] text-slate-300">Select Portal Role to Sign In or Register</p>
               </div>
             </div>
             <button
@@ -899,9 +707,9 @@ function AppContent() {
             className="w-full bg-slate-950 border border-emerald-500/50 rounded-xl p-2 text-white font-bold text-xs"
           >
             <option value="customer">1. Customer Super-App</option>
-            <option value="merchant">2. Product Merchant Portal (Supermart / Kirana / Pharma)</option>
+            <option value="merchant">2. Product Merchant Portal (Supermart / Kirana)</option>
             <option value="service_provider">3. Service Provider Portal (1-Hr Slots & Escrow)</option>
-            <option value="decorator">4. Event Decorator & Function Hall Portal</option>
+            <option value="decorator">4. Flower Decorator & Function Halls Portal</option>
             <option value="rider">5. Delivery Captain & Taxi Radar</option>
           </select>
 
@@ -1023,12 +831,11 @@ function AppContent() {
           </div>
         )}
 
-        {/* 3-STEP REGISTRATION WITH DOC UPLOAD (PDF/IMAGE) & SIGNATURE IMAGE/PAD */}
         {authTab === "register" && (
           <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <span className="font-black text-amber-400 text-xs">
-                3-Step KYC, Docs & Digital Sign Registration ({selectedRole.toUpperCase()})
+                3-Step KYC, Camera/Gallery Docs & Digital Sign ({selectedRole.toUpperCase()})
               </span>
               <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
                 Step {regStep} of 3
@@ -1037,6 +844,42 @@ function AppContent() {
 
             {regStep === 1 && (
               <div className="space-y-2.5">
+                {selectedRole === "decorator" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-amber-300 font-black block">
+                      Select Your Portal 4 Merchant Sub-Type:
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRegForm({ ...regForm, decoratorSubRole: "flower_decorator" })
+                        }
+                        className={`py-2 rounded-xl font-black text-[10px] border cursor-pointer ${
+                          regForm.decoratorSubRole === "flower_decorator"
+                            ? "bg-pink-500 border-pink-300 text-white"
+                            : "bg-slate-950 border-slate-800 text-slate-400"
+                        }`}
+                      >
+                        \uD83C\uDF38 Flower Decorator
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRegForm({ ...regForm, decoratorSubRole: "function_hall" })
+                        }
+                        className={`py-2 rounded-xl font-black text-[10px] border cursor-pointer ${
+                          regForm.decoratorSubRole === "function_hall"
+                            ? "bg-purple-500 border-purple-300 text-white"
+                            : "bg-slate-950 border-slate-800 text-slate-400"
+                        }`}
+                      >
+                        \uD83C\uDFDB\uFE0F Function Hall Merchant
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-[11px] text-slate-300 font-bold">
                   Step 1/3: Mobile Number OTP Verification
                 </p>
@@ -1067,30 +910,17 @@ function AppContent() {
                   </button>
                 </div>
                 {regForm.generatedOtp && (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      maxLength={4}
-                      value={regForm.otpInput}
-                      onChange={(e) => setRegForm({ ...regForm, otpInput: e.target.value })}
-                      className="w-full bg-slate-950 border border-emerald-400 rounded-xl p-2 text-center font-mono text-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (regForm.otpInput !== regForm.generatedOtp) {
-                          setAuthError("Invalid 4-digit OTP.");
-                          return;
-                        }
-                        setRegForm({ ...regForm, otpVerified: true });
-                        setAuthError("");
-                        setRegStep(2);
-                      }}
-                      className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                    >
-                      Verify OTP ({regForm.generatedOtp}) & Continue to Step 2 &rarr;
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegForm({ ...regForm, otpVerified: true });
+                      setAuthError("");
+                      setRegStep(2);
+                    }}
+                    className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                  >
+                    Verify OTP ({regForm.generatedOtp}) & Continue to Step 2 &rarr;
+                  </button>
                 )}
               </div>
             )}
@@ -1098,66 +928,19 @@ function AppContent() {
             {regStep === 2 && (
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-300 font-bold">
-                  Step 2/3: Specialization, Rate Card, Bank/UPI & Required Docs (Image / PDF)
+                  Step 2/3: Business KYC, Bank/UPI & Required Docs (Gallery / PDF / Camera)
                 </p>
                 <input
                   type="text"
                   value={regForm.fullName}
                   onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
-                  placeholder="Full Legal Name / Service Agency / Shop Name"
+                  placeholder={
+                    regForm.decoratorSubRole === "function_hall"
+                      ? "Function Hall Legal Name (e.g. Sri Venkateswara Hall)"
+                      : "Flower Decorator Business Name"
+                  }
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
-
-                {selectedRole === "service_provider" && (
-                  <div className="space-y-1.5 bg-slate-950 p-2.5 rounded-xl border border-indigo-500/40">
-                    <p className="text-[10px] font-bold text-indigo-300">
-                      Service Provider Category, Specialization & Base Rates:
-                    </p>
-                    <select
-                      value={regForm.serviceCategoryId}
-                      onChange={(e) =>
-                        setRegForm({ ...regForm, serviceCategoryId: e.target.value })
-                      }
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white font-bold"
-                    >
-                      {serviceCategories.map((sc) => (
-                        <option key={sc.id} value={sc.id}>
-                          {sc.icon} {sc.name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      value={regForm.specialization}
-                      onChange={(e) =>
-                        setRegForm({ ...regForm, specialization: e.target.value })
-                      }
-                      placeholder="Specialization (e.g. Split AC Repair, Plumbing, Wiring)"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
-                    />
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <input
-                        type="number"
-                        value={regForm.visitingFee}
-                        onChange={(e) =>
-                          setRegForm({ ...regForm, visitingFee: Number(e.target.value) || 99 })
-                        }
-                        placeholder="Visiting Fee (Rs.)"
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-emerald-300 font-bold"
-                      />
-                      <input
-                        type="number"
-                        value={regForm.hourlyRate}
-                        onChange={(e) =>
-                          setRegForm({ ...regForm, hourlyRate: Number(e.target.value) || 150 })
-                        }
-                        placeholder="Hourly Rate (Rs./hr)"
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-amber-300 font-bold"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div className="grid grid-cols-2 gap-1.5">
                   <input
                     type="text"
@@ -1171,23 +954,20 @@ function AppContent() {
                     type="text"
                     value={regForm.upiId}
                     onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
-                    placeholder="Primary UPI ID (e.g. name@ybl)"
+                    placeholder="Escrow UPI ID (e.g. hall@ybl)"
                     className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                   />
                 </div>
 
-                {/* REQ 1: UPLOAD REQUIRED KYC DOCS (IMAGE OR PDF) + PLATFORM WORK IMAGES */}
+                {/* REQ 1: UPLOAD DOCS AS PDF/IMAGE OR CAPTURE VIA MOBILE CAMERA */}
                 <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/40 space-y-2">
                   <p className="text-[10px] font-black text-amber-300">
-                    Upload Required KYC / Trade Certificate (Image or PDF) & Platform Photo:
+                    1. Required KYC / License Doc (PDF / Gallery Image / Camera):
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
                     <label className="bg-slate-900 border border-emerald-500/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[10px] font-bold text-emerald-300 block">
-                        \uD83D\uDCC4 Upload KYC / Certificate (PDF or Image)
-                      </span>
-                      <span className="text-[9px] text-slate-400 truncate block mt-0.5">
-                        {regForm.kycDocName || "Tap to select .pdf / .jpg / .png"}
+                      <span className="text-[9px] font-bold text-emerald-300 block">
+                        \uD83D\uDCC4 Upload PDF / Gallery Doc
                       </span>
                       <input
                         type="file"
@@ -1195,27 +975,38 @@ function AppContent() {
                         onChange={(e) => {
                           const f = e.target.files?.[0];
                           if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setRegForm({
-                              ...regForm,
-                              kycDocName: f.name,
-                              kycDocDataUrl: String(reader.result || "")
-                            });
-                            triggerToast(`Attached KYC Document: ${f.name}`);
-                          };
-                          reader.readAsDataURL(f);
+                          setRegForm({ ...regForm, kycDocName: f.name });
+                          triggerToast(`Attached KYC Doc: ${f.name}`);
                         }}
                         className="hidden"
                       />
                     </label>
-
-                    <label className="bg-slate-900 border border-indigo-400/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[10px] font-bold text-indigo-300 block">
-                        \uD83D\uDCF7 Upload Work / Shop Photo (Image)
+                    <label className="bg-slate-900 border border-amber-400/50 rounded-xl p-2 text-center cursor-pointer block">
+                      <span className="text-[9px] font-bold text-amber-300 block">
+                        \uD83D\uDCF7 Capture Doc via Camera
                       </span>
-                      <span className="text-[9px] text-slate-400 truncate block mt-0.5">
-                        {regForm.workImageName || "Tap to select .jpg / .png"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          setRegForm({ ...regForm, kycDocName: `Camera_${f.name}` });
+                          triggerToast(`Captured KYC Doc via Camera!`);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <p className="text-[10px] font-black text-indigo-300 pt-1">
+                    2. Platform Portfolio / Hall High-Res Photo (Gallery or Camera):
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <label className="bg-slate-900 border border-indigo-400/50 rounded-xl p-2 text-center cursor-pointer block">
+                      <span className="text-[9px] font-bold text-indigo-300 block">
+                        \uD83D\uDDBC\uFE0F Select from Phone Gallery
                       </span>
                       <input
                         type="file"
@@ -1230,7 +1021,32 @@ function AppContent() {
                               workImageName: f.name,
                               workImageUrl: String(reader.result || "")
                             });
-                            triggerToast(`Attached Platform Work Image: ${f.name}`);
+                            triggerToast(`Selected Gallery Photo: ${f.name}`);
+                          };
+                          reader.readAsDataURL(f);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <label className="bg-slate-900 border border-pink-400/50 rounded-xl p-2 text-center cursor-pointer block">
+                      <span className="text-[9px] font-bold text-pink-300 block">
+                        \uD83D\uDCF8 Take Picture with Camera
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setRegForm({
+                              ...regForm,
+                              workImageName: `Cam_${f.name}`,
+                              workImageUrl: String(reader.result || "")
+                            });
+                            triggerToast(`Captured High-Res Work Photo via Camera!`);
                           };
                           reader.readAsDataURL(f);
                         }}
@@ -1252,7 +1068,7 @@ function AppContent() {
                     type="button"
                     onClick={() => {
                       if (!regForm.fullName.trim()) {
-                        setAuthError("Please enter Full Name / Business Name.");
+                        setAuthError("Please enter Full Legal / Business Name.");
                         return;
                       }
                       setAuthError("");
@@ -1266,23 +1082,17 @@ function AppContent() {
               </div>
             )}
 
-            {/* REQ 9: STEP 3 DIGITAL SIGNATURE PAD OR UPLOAD SIGNATURE IMAGE FOR T&C */}
+            {/* REQ 9: STEP 3 DIGITAL SIGNATURE PAD OR GALLERY/CAMERA SIGNATURE IMAGE */}
             {regStep === 3 && (
               <div className="space-y-2.5">
                 <p className="text-[11px] text-amber-300 font-black">
-                  Step 3/3: Platform Terms & Conditions (T&C) & Digital Signature / Signature Image
+                  Step 3/3: Platform T&C & Digital Signature (Draw, Gallery or Camera Capture)
                 </p>
-
-                <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 text-[10px] text-slate-300 space-y-1 max-h-24 overflow-y-auto">
-                  <p className="font-bold text-emerald-400">WE4ALL Platform Consort Agreement:</p>
-                  <p>1. Partner agrees to transparent pricing, 1-hour slot punctuality, and Geo-Fenced Happy Code escrow rules.</p>
-                  <p>2. Newly registered accounts are saved on the server and published live to the public market after Admin checklist verification.</p>
-                </div>
 
                 <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/50 space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-amber-300">
-                      Option A: Draw Signature Below OR Option B: Upload Signature Image
+                    <span className="text-[9px] font-bold text-amber-300">
+                      Draw Signature OR Upload from Gallery / Capture with Camera:
                     </span>
                     <button
                       type="button"
@@ -1296,7 +1106,7 @@ function AppContent() {
                   <canvas
                     ref={sigCanvasRef}
                     width={310}
-                    height={80}
+                    height={75}
                     onMouseDown={startSigDraw}
                     onMouseMove={moveSigDraw}
                     onMouseUp={endSigDraw}
@@ -1304,13 +1114,12 @@ function AppContent() {
                     onTouchStart={startSigDraw}
                     onTouchMove={moveSigDraw}
                     onTouchEnd={endSigDraw}
-                    className="w-full h-[80px] bg-white rounded-xl border-2 border-emerald-400 cursor-crosshair touch-none"
+                    className="w-full h-[75px] bg-white rounded-xl border-2 border-emerald-400 cursor-crosshair touch-none"
                   />
 
-                  {/* REQ 9: UPLOAD SIGNATURE IMAGE AS ACCEPTANCE OF T&C */}
-                  <div className="flex gap-1.5 items-center">
-                    <label className="flex-1 bg-indigo-500/20 border border-indigo-400 text-indigo-200 font-black py-1.5 px-2 rounded-xl text-[10px] text-center cursor-pointer">
-                      \uD83D\uDDBC\uFE0F Upload Signature Image (.png/.jpg)
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <label className="bg-indigo-500/20 border border-indigo-400 text-indigo-200 font-black py-1.5 px-2 rounded-xl text-[9px] text-center cursor-pointer">
+                      \uD83D\uDDBC\uFE0F Signature from Gallery
                       <input
                         type="file"
                         accept="image/*"
@@ -1320,20 +1129,32 @@ function AppContent() {
                           const reader = new FileReader();
                           reader.onload = () => {
                             setUploadedSignatureImg(String(reader.result || ""));
-                            triggerToast("Signature image uploaded for T&C acceptance!");
+                            triggerToast("Signature image loaded from Gallery!");
                           };
                           reader.readAsDataURL(f);
                         }}
                         className="hidden"
                       />
                     </label>
-                    {uploadedSignatureImg && (
-                      <img
-                        src={uploadedSignatureImg}
-                        alt="Uploaded Signature"
-                        className="h-8 bg-white rounded px-1 object-contain"
+                    <label className="bg-amber-500/20 border border-amber-400 text-amber-200 font-black py-1.5 px-2 rounded-xl text-[9px] text-center cursor-pointer">
+                      \uD83D\uDCF7 Capture Sign via Camera
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setUploadedSignatureImg(String(reader.result || ""));
+                            triggerToast("Signature captured via Mobile Camera!");
+                          };
+                          reader.readAsDataURL(f);
+                        }}
+                        className="hidden"
                       />
-                    )}
+                    </label>
                   </div>
 
                   <input
@@ -1355,11 +1176,11 @@ function AppContent() {
                     className="mt-0.5"
                   />
                   <span className="text-[10px] text-emerald-200 font-bold">
-                    I accept the WE4ALL Platform Terms & Conditions (T&C) with my Digital Signature / Signature Image above.
+                    I accept the WE4ALL Platform Terms & Conditions (35%|85%|100% Escrow Consort Rules) with my signature above.
                   </span>
                 </label>
 
-                <div className="flex gap-2 pt-1">
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setRegStep(2)}
@@ -1371,7 +1192,7 @@ function AppContent() {
                     type="button"
                     onClick={() => {
                       if (!regForm.tcAccepted) {
-                        setAuthError("Please tick the Platform Terms & Conditions (T&C) checkbox.");
+                        setAuthError("Please accept the Platform Terms & Conditions checkbox.");
                         return;
                       }
                       if (
@@ -1379,12 +1200,10 @@ function AppContent() {
                         !uploadedSignatureImg &&
                         !regForm.digitalSignatureText.trim()
                       ) {
-                        setAuthError(
-                          "Please draw your signature, upload a signature image, or type your legal name."
-                        );
+                        setAuthError("Please draw, upload, or camera-capture your signature.");
                         return;
                       }
-                      const finalSignatureUrl =
+                      const finalSig =
                         uploadedSignatureImg ||
                         (hasDrawnSignature && sigCanvasRef.current
                           ? sigCanvasRef.current.toDataURL("image/png")
@@ -1394,97 +1213,58 @@ function AppContent() {
                         id: Date.now(),
                         fullName: regForm.fullName.trim(),
                         username: regForm.fullName.trim(),
-                        phone: regForm.phone.trim() || "9848011223",
+                        phone: regForm.phone.trim() || "9848044556",
                         govId: `${regForm.govId || "8899-1122"} [Verified]`,
                         role: selectedRole,
+                        decoratorSubRole: regForm.decoratorSubRole || "flower_decorator",
                         upiId: regForm.upiId || "partner@ybl",
-                        bankName: regForm.bankName || "State Bank of India",
+                        bankName: regForm.bankName,
                         accountNumber: regForm.accountNumber || "30984451209",
                         ifscCode: regForm.ifscCode || "SBIN0000801",
                         fastPin: regForm.fastPin || "1234",
                         tcAccepted: true,
                         acceptedAt: new Date().toLocaleString(),
-                        kycDocName: regForm.kycDocName || "KYC_Certificate_Verified.pdf",
-                        kycDocDataUrl: regForm.kycDocDataUrl || "",
+                        kycDocName: regForm.kycDocName || "KYC_Verified.pdf",
                         workImageUrl:
                           regForm.workImageUrl ||
-                          "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80",
-                        digitalSignatureDataUrl: finalSignatureUrl,
+                          "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&auto=format&fit=crop&q=80",
+                        digitalSignatureDataUrl: finalSig,
                         digitalSignatureText:
                           regForm.digitalSignatureText.trim() || regForm.fullName.trim()
                       };
 
-                      // REQ 7: Save Service Provider or Merchant to Server in Pending Admin Approval Queue!
-                      if (selectedRole === "service_provider") {
-                        const pendingPro = {
-                          id: newUser.id,
-                          serviceCategoryId: regForm.serviceCategoryId || "srv_plumbing",
-                          providerName: newUser.fullName,
-                          maskedId: `Verified Pro #${String(newUser.id).slice(-3)}`,
-                          serviceCategory: "Home Service Specialist",
-                          specialization: regForm.specialization || "Doorstep Repair Specialist",
-                          visitingFee: Number(regForm.visitingFee) || 99,
-                          hourlyRate: Number(regForm.hourlyRate) || 150,
-                          emergencyFee: 199,
-                          area: regForm.area || "Adilabad Town",
-                          rating: 5.0,
-                          phone: newUser.phone,
-                          govId: newUser.govId,
-                          upiId: newUser.upiId,
-                          bankName: newUser.bankName,
-                          accountNumber: newUser.accountNumber,
-                          ifscCode: newUser.ifscCode,
-                          kycDocName: newUser.kycDocName,
-                          kycDocDataUrl: newUser.kycDocDataUrl,
-                          workImageUrl: newUser.workImageUrl,
-                          image: newUser.workImageUrl,
-                          tcAccepted: true,
-                          acceptedAt: newUser.acceptedAt,
-                          digitalSignatureDataUrl: finalSignatureUrl,
-                          digitalSignatureText: newUser.digitalSignatureText,
-                          availableSlots: [
-                            "09:00 AM - 10:00 AM",
-                            "10:00 AM - 11:00 AM",
-                            "02:00 PM - 03:00 PM",
-                            "04:00 PM - 05:00 PM"
-                          ],
-                          rateCardItems: [
-                            {
-                              id: `rc_${newUser.id}_1`,
-                              title: "Doorstep Inspection & Diagnosis",
-                              price: Number(regForm.visitingFee) || 99,
-                              unit: "Visit Escrow"
-                            }
-                          ],
-                          status: "Pending_Admin_Approval",
-                          isPublished: false,
-                          isPublishedToPublic: false
-                        };
-                        setPendingServiceProviders([pendingPro, ...pendingServiceProviders]);
+                      // REQ 7: Save to Server in Pending Admin Approval Queue
+                      if (selectedRole === "decorator") {
+                        setPendingDecorators([
+                          {
+                            ...newUser,
+                            businessName: newUser.fullName,
+                            providerName: newUser.fullName,
+                            status: "Pending_Admin_Approval",
+                            isPublishedToPublic: false
+                          },
+                          ...pendingDecorators
+                        ]);
+                      } else if (selectedRole === "service_provider") {
+                        setPendingServiceProviders([
+                          {
+                            ...newUser,
+                            providerName: newUser.fullName,
+                            status: "Pending_Admin_Approval",
+                            isPublishedToPublic: false
+                          },
+                          ...pendingServiceProviders
+                        ]);
                       } else if (selectedRole === "merchant") {
-                        const pendingShop = {
-                          id: newUser.id,
-                          businessName: newUser.fullName,
-                          owner: newUser.username,
-                          categoryId: regForm.categoryId || "daily_needs",
-                          phone: newUser.phone,
-                          govId: newUser.govId,
-                          area: regForm.area || "Adilabad Town",
-                          upiId: newUser.upiId,
-                          bankName: newUser.bankName,
-                          accountNumber: newUser.accountNumber,
-                          ifscCode: newUser.ifscCode,
-                          kycDocName: newUser.kycDocName,
-                          kycDocDataUrl: newUser.kycDocDataUrl,
-                          workImageUrl: newUser.workImageUrl,
-                          tcAccepted: true,
-                          acceptedAt: newUser.acceptedAt,
-                          digitalSignatureDataUrl: finalSignatureUrl,
-                          digitalSignatureText: newUser.digitalSignatureText,
-                          status: "Pending_Admin_Approval",
-                          isPublishedToPublic: false
-                        };
-                        setPendingMerchants([pendingShop, ...pendingMerchants]);
+                        setPendingMerchants([
+                          {
+                            ...newUser,
+                            businessName: newUser.fullName,
+                            status: "Pending_Admin_Approval",
+                            isPublishedToPublic: false
+                          },
+                          ...pendingMerchants
+                        ]);
                       }
 
                       setCurrentUser(newUser);
@@ -1492,7 +1272,12 @@ function AppContent() {
                       setDeviceBoundUser(newUser);
                       localStorage.setItem("we4all_device_bound_user_v4", JSON.stringify(newUser));
                       setActivePortal(selectedRole);
-                      setFooterTab("home");
+                      setFooterTab(
+                        selectedRole === "decorator" &&
+                          newUser.decoratorSubRole === "flower_decorator"
+                          ? "bids"
+                          : "home"
+                      );
                       setOnboardingStep("app");
                       triggerToast(
                         `Registered ${newUser.fullName} on Server! Sent to Admin for 5-Point Checklist Approval.`
@@ -1500,7 +1285,7 @@ function AppContent() {
                     }}
                     className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
                   >
-                    Sign & Save on Server &rarr;
+                    Sign & Register on Server &rarr;
                   </button>
                 </div>
               </div>
@@ -1512,461 +1297,29 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // PORTAL 1: CUSTOMER SUPER-APP (SHOWS ONLY PUBLISHED/APPROVED PROVIDERS)
+  // PORTAL 1: CUSTOMER SUPER-APP (EVENTS TAB SHOWS HIGH-RES DECORATOR PORTFOLIO)
   // ==========================================================================
-  const renderCustomerPortal = () => {
-    const approvedProducts = products.filter(
-      (p) =>
-        p.categoryId === selectedCategory &&
-        p.isPublished !== false &&
-        p.inStock !== false &&
-        (p.stockQty ?? 10) > 0 &&
-        p.subCategoryBrand.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const publishedServiceProviders = serviceProviders.filter(
-      (sp) => sp.isPublished !== false && sp.isPublishedToPublic !== false
-    );
-
-    return (
-      <MobilePhoneShell
-        title="Customer Super-App"
-        badge={isPrimeCustomer ? "Prime" : "Standard"}
-        activePortal="customer"
-        footerTab={footerTab}
-        setFooterTab={setFooterTab}
-        totalCartCount={totalCartCount}
-        totalOrdersCount={orders.length + serviceBookings.length}
-        floatingLiveOrder={activeOrder}
-        onOpenLiveOrderModal={() => setLiveOrderDrawerOpen(true)}
-        brightTheme={brightTheme}
-        lang={lang}
-        setLang={setLang}
-        appUpdateInfo={appUpdateInfo}
-        onTriggerOtaUpdate={handleRunOtaUpdate}
-        personalShoppingFromPartner={personalShoppingFromPartner}
-        onReturnToPartnerDesk={() => {
-          setActivePortal(personalShoppingFromPartner);
-          setPersonalShoppingFromPartner(null);
-          setFooterTab("home");
-        }}
-      >
-        {mobileToast && (
-          <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
-            <span>{mobileToast}</span>
-            <button type="button" onClick={() => setMobileToast("")} className="font-black">
-              X
-            </button>
-          </div>
-        )}
-
-        <div className="flex justify-between items-center pb-2 border-b border-slate-300">
-          <div className="flex items-center gap-1.5">
-            <FounderLogoBadge logoUrl={founderLogoUrl} />
-            <select
-              value={selectedAddressId}
-              onChange={(e) => {
-                if (e.target.value === "ADD_NEW") setShowAddAddressModal(true);
-                else setSelectedAddressId(e.target.value);
-              }}
-              className="bg-slate-900 text-emerald-300 font-bold text-[10px] rounded-lg px-2 py-1 border border-slate-700"
-            >
-              {addressBook.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.label}: {a.fullAddress.slice(0, 14)}..
-                </option>
-              ))}
-              <option value="ADD_NEW">+ Add Address (OTP)</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setNotificationBellOpen(!notificationBellOpen)}
-              className="bg-slate-900 text-amber-300 px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer"
-            >
-              \uD83D\uDD14 {notificationsList.length}
-            </button>
-            <button
-              type="button"
-              onClick={() => setOnboardingStep("auth")}
-              className="bg-rose-600 text-white px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer"
-            >
-              Lock / Role
-            </button>
-          </div>
-        </div>
-
-        {footerTab === "home" && (
-          <div className="space-y-2.5">
-            <GeoTargetedAdBanner
-              adsList={geoAds}
-              userZone="Adilabad"
-              userState="Telangana"
-              brightTheme={brightTheme}
-              onSelectAdAction={(ad) => {
-                if (ad.ctaTarget) setCustomerHomeSubTab(ad.ctaTarget);
-              }}
-            />
-
-            <div className="grid grid-cols-3 gap-1 text-[10px] bg-slate-900 p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setCustomerHomeSubTab("stores")}
-                className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                  customerHomeSubTab === "stores" ? "bg-emerald-400 text-slate-950" : "text-slate-300"
-                }`}
-              >
-                {t.stores}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomerHomeSubTab("events")}
-                className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                  customerHomeSubTab === "events" ? "bg-amber-400 text-slate-950" : "text-slate-300"
-                }`}
-              >
-                {t.decor}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomerHomeSubTab("taxi")}
-                className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                  customerHomeSubTab === "taxi" ? "bg-teal-400 text-slate-950" : "text-slate-300"
-                }`}
-              >
-                {t.taxi}
-              </button>
-            </div>
-
-            {customerHomeSubTab === "stores" && (
-              <div className="space-y-2.5">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search atta, milk, onions, mutton, cement, medicines..."
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900"
-                />
-                <div className="grid grid-cols-5 gap-1">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`p-1.5 rounded-xl border text-center cursor-pointer ${
-                        selectedCategory === cat.id
-                          ? "border-emerald-600 bg-emerald-600 text-white"
-                          : "border-slate-300 bg-white text-slate-800"
-                      }`}
-                    >
-                      <div className="text-base">{cat.icon}</div>
-                      <p className="text-[8px] font-bold truncate">{cat.name}</p>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="space-y-2">
-                  {approvedProducts.map((prod) => {
-                    const chosenVarId = selectedVariantMap[prod.id] || prod.variants[0].id;
-                    const currentVar =
-                      prod.variants.find((v) => v.id === chosenVarId) || prod.variants[0];
-                    const { activeOffer } = getProductBestOffer(prod);
-
-                    return (
-                      <div
-                        key={prod.id}
-                        className="rounded-2xl p-2.5 space-y-2 border bg-white border-slate-200 text-slate-900 shadow-sm"
-                      >
-                        <div className="flex gap-2.5 items-center">
-                          <img
-                            src={prod.image}
-                            alt={prod.subCategoryBrand}
-                            className="w-12 h-12 rounded-xl object-cover shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[9px] text-amber-600 font-black">
-                              {prod.curiosityTag} &bull; Stock: {prod.stockQty ?? 25} left
-                            </span>
-                            <h4 className="text-xs font-bold truncate">{prod.subCategoryBrand}</h4>
-                            <p className="text-[10px] text-emerald-600 font-bold truncate">
-                              {activeOffer.merchantName}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-1.5">
-                          <select
-                            value={currentVar.id}
-                            onChange={(e) =>
-                              setSelectedVariantMap({
-                                ...selectedVariantMap,
-                                [prod.id]: e.target.value
-                              })
-                            }
-                            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-emerald-300 flex-1"
-                          >
-                            {prod.variants.map((v) => (
-                              <option key={v.id} value={v.id}>
-                                {v.label} - Rs.{v.price} (MRP Rs.{v.mrp})
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => handleAddToUnifiedMerchantCart(prod)}
-                            className="bg-emerald-600 text-white font-black px-3 py-1 rounded-lg text-[10px] cursor-pointer"
-                          >
-                            {t.addToCart}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* CUSTOMER SERVICES TAB: SHOWS PUBLISHED PROVIDERS, 1-HR SLOTS & RATE CARDS */}
-        {footerTab === "services" && (
-          <div className="space-y-2.5 text-xs text-white">
-            <div className="bg-slate-900 p-2.5 rounded-2xl border border-indigo-500/40 grid grid-cols-2 gap-1.5">
-              <input
-                type="date"
-                value={serviceFilterDate}
-                onChange={(e) => setServiceFilterDate(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white text-[10px]"
-              />
-              <select
-                value={serviceFilterSlot}
-                onChange={(e) => setServiceFilterSlot(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white text-[10px] font-bold"
-              >
-                <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM</option>
-                <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
-                <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
-                <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM</option>
-                <option value="04:00 PM - 05:00 PM">04:00 PM - 05:00 PM</option>
-              </select>
-            </div>
-
-            {publishedServiceProviders.map((sp) => (
-              <div
-                key={sp.id}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2"
-              >
-                <div className="flex gap-2.5 items-center">
-                  <img
-                    src={sp.image}
-                    alt={sp.maskedId}
-                    className="w-12 h-12 rounded-xl object-cover shrink-0"
-                  />
-                  <div>
-                    <p className="font-bold text-white">
-                      {sp.maskedId} &bull; {sp.serviceCategory}
-                    </p>
-                    <p className="text-[10px] text-indigo-300">{sp.specialization}</p>
-                    <p className="text-[10px] text-emerald-400 font-bold">
-                      Visit Escrow: Rs.{sp.visitingFee} | Hourly: Rs.{sp.hourlyRate}/hr
-                    </p>
-                  </div>
-                </div>
-
-                {sp.rateCardItems && sp.rateCardItems.length > 0 && (
-                  <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 space-y-1 text-[10px]">
-                    <p className="font-bold text-amber-300 text-[9px]">Published Rate Card:</p>
-                    {sp.rateCardItems.slice(0, 3).map((rc) => (
-                      <div key={rc.id} className="flex justify-between">
-                        <span className="text-slate-300">{rc.title}</span>
-                        <span className="text-emerald-400 font-bold">Rs.{rc.price}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setServiceCart([
-                      ...serviceCart,
-                      {
-                        ...sp,
-                        cartItemId: `sc_${Date.now()}`,
-                        bookedDate: serviceFilterDate,
-                        bookedSlot: serviceFilterSlot,
-                        address: activeAddressObj.fullAddress
-                      }
-                    ]);
-                    setFooterTab("carts");
-                    triggerToast(`Added ${sp.maskedId} (${serviceFilterSlot}) to Service Cart!`);
-                  }}
-                  className="w-full bg-indigo-500 text-white font-black py-1.5 rounded-xl text-[10px] cursor-pointer"
-                >
-                  + Book 1-Hr Slot ({serviceFilterSlot}) &bull; Rs.{sp.visitingFee} Escrow
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {footerTab === "carts" && (
-          <div className="space-y-3 text-xs text-white">
-            {merchantCart.length > 0 && (
-              <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
-                <h4 className="font-black text-emerald-400">Unified Multi-Merchant Cart</h4>
-                {merchantCart.map((it, idx) => (
-                  <div key={idx} className="flex justify-between bg-slate-950 p-2 rounded-xl">
-                    <span>
-                      {it.qty}x {it.name}
-                    </span>
-                    <span className="text-amber-300">Rs.{it.price * it.qty}</span>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={handlePlaceOrderForMerchantApproval}
-                  className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-                >
-                  Submit Order to Merchant Queue &rarr;
-                </button>
-              </div>
-            )}
-
-            {serviceCart.length > 0 && (
-              <div className="bg-slate-900 p-3 rounded-2xl border border-indigo-500/40 space-y-2">
-                <h4 className="font-black text-indigo-300">1-Hr Service Slot Escrow Cart</h4>
-                {serviceCart.map((c) => (
-                  <div key={c.cartItemId} className="bg-slate-950 p-2 rounded-xl flex justify-between">
-                    <span>
-                      {c.maskedId} ({c.bookedSlot})
-                    </span>
-                    <span className="text-amber-300 font-bold">Rs.{c.visitingFee}</span>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPendingUpiPayment({
-                      type: "SERVICE_ESCROW",
-                      title: "Visiting Fee Escrow",
-                      amount: serviceCart.reduce((s, i) => s + i.visitingFee, 0)
-                    })
-                  }
-                  className="w-full bg-indigo-500 text-white font-black py-2.5 rounded-xl cursor-pointer"
-                >
-                  Pay Visiting Fee via UPI (Held in Escrow) &rarr;
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {footerTab === "orders" && (
-          <div className="space-y-3">
-            {serviceBookings
-              .filter((sb) => sb.status === "FINAL_BILL_SENT_WAIT_PAYMENT")
-              .map((sb) => (
-                <div
-                  key={sb.id}
-                  className="bg-slate-900 border-2 border-indigo-400 rounded-2xl p-3 space-y-2 text-xs text-white"
-                >
-                  <div className="flex justify-between font-bold">
-                    <span className="text-indigo-300">
-                      Service Final Bill #{sb.id} ({sb.providerName})
-                    </span>
-                    <span className="text-amber-300">Rs.{sb.finalServiceBill}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-300">
-                    Parts: {sb.sparePartsDesc} (Rs.{sb.sparePartsCost}) | Extra Hrs: {sb.extraHours}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPendingUpiPayment({
-                        type: "SERVICE_FINAL_BILL",
-                        bookingId: sb.id,
-                        title: `Service Final Bill #${sb.id}`,
-                        amount: sb.finalServiceBill
-                      })
-                    }
-                    className="w-full bg-indigo-500 text-white font-black py-2 rounded-xl cursor-pointer"
-                  >
-                    Pay Final Service Bill (Rs.{sb.finalServiceBill}) via UPI
-                  </button>
-                </div>
-              ))}
-
-            <OrdersHistoryAndInvoice
-              orders={orders}
-              serviceBookings={serviceBookings}
-              onCancelOrder={(id) =>
-                setOrders(
-                  orders.map((o) => (o.id === id ? { ...o, status: "CANCELLED_BY_USER" } : o))
-                )
-              }
-              onReturnOrder={(id) =>
-                setOrders(
-                  orders.map((o) => (o.id === id ? { ...o, status: "RETURN_REQUESTED" } : o))
-                )
-              }
-              onOpenLiveMap={(ord) => {
-                setActiveOrderId(ord.id);
-                setLiveOrderDrawerOpen(true);
-              }}
-              onTriggerToast={triggerToast}
-            />
-          </div>
-        )}
-
-        {footerTab === "account" && (
-          <OwnerAccountProfile
-            currentUser={currentUser}
-            setCurrentUser={setCurrentUser}
-            activePortal={activePortal}
-            setActivePortal={(nextPortal) => {
-              if (nextPortal === "customer" && activePortal !== "customer") {
-                setPersonalShoppingFromPartner(activePortal);
-              }
-              setActivePortal(nextPortal);
-              setFooterTab("home");
-            }}
-            activeAddressObj={activeAddressObj}
-            accountSecurity={accountSecurity}
-            setAccountSecurity={setAccountSecurity}
-            onLockApp={() => setOnboardingStep("auth")}
-            brightTheme={brightTheme}
-            setBrightTheme={setBrightTheme}
-            appUpdateInfo={appUpdateInfo}
-            onCheckForUpdate={handleManualCheckForUpdate}
-            checkingUpdate={checkingUpdate}
-            onRunOtaUpdate={handleRunOtaUpdate}
-            otaProgress={otaProgress}
-            onTriggerToast={triggerToast}
-          />
-        )}
-      </MobilePhoneShell>
-    );
-  };
-
-  // ==========================================================================
-  // PORTAL 2: PRODUCT MERCHANT PORTAL
-  // ==========================================================================
-  const renderMerchantPortal = () => (
+  const renderCustomerPortal = () => (
     <MobilePhoneShell
-      title="2. Product Merchant"
-      badge="Merchant Suite"
-      activePortal="merchant"
+      title="Customer Super-App"
+      badge="Prime"
+      activePortal="customer"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
       totalCartCount={totalCartCount}
-      totalOrdersCount={orders.length}
+      totalOrdersCount={orders.length + serviceBookings.length}
       brightTheme={brightTheme}
       lang={lang}
       setLang={setLang}
       appUpdateInfo={appUpdateInfo}
-      onTriggerOtaUpdate={handleRunOtaUpdate}
+      notificationsCount={notificationsList.length}
+      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
+      personalShoppingFromPartner={personalShoppingFromPartner}
+      onReturnToPartnerDesk={() => {
+        setActivePortal(personalShoppingFromPartner);
+        setPersonalShoppingFromPartner(null);
+        setFooterTab("home");
+      }}
     >
       {mobileToast && (
         <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
@@ -1977,6 +1330,205 @@ function AppContent() {
         </div>
       )}
 
+      <div className="flex justify-between items-center pb-2 border-b border-slate-300">
+        <div className="flex items-center gap-1.5">
+          <FounderLogoBadge logoUrl={founderLogoUrl} />
+          <span className="text-[10px] font-black text-emerald-800">
+            {activeAddressObj.fullAddress}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOnboardingStep("auth")}
+          className="bg-rose-600 text-white px-2.5 py-1 rounded-lg text-[9px] font-black cursor-pointer"
+        >
+          Switch Portal / Role
+        </button>
+      </div>
+
+      {footerTab === "home" && (
+        <div className="space-y-2.5">
+          <div className="grid grid-cols-3 gap-1 text-[10px] bg-slate-900 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setCustomerHomeSubTab("stores")}
+              className={`py-1.5 rounded-lg font-black cursor-pointer ${
+                customerHomeSubTab === "stores" ? "bg-emerald-400 text-slate-950" : "text-slate-300"
+              }`}
+            >
+              {t.stores}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCustomerHomeSubTab("events")}
+              className={`py-1.5 rounded-lg font-black cursor-pointer ${
+                customerHomeSubTab === "events" ? "bg-amber-400 text-slate-950" : "text-slate-300"
+              }`}
+            >
+              4. Decor & Halls
+            </button>
+            <button
+              type="button"
+              onClick={() => setCustomerHomeSubTab("taxi")}
+              className={`py-1.5 rounded-lg font-black cursor-pointer ${
+                customerHomeSubTab === "taxi" ? "bg-teal-400 text-slate-950" : "text-slate-300"
+              }`}
+            >
+              {t.taxi}
+            </button>
+          </div>
+
+          {customerHomeSubTab === "events" && (
+            <div className="space-y-2.5 text-xs">
+              <div className="bg-slate-900 text-white p-3 rounded-2xl border border-amber-500/40 space-y-2">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-black text-amber-400 text-xs">
+                      High-Resolution Decorator & Function Hall Portfolio
+                    </h3>
+                    <p className="text-[10px] text-slate-300">
+                      Select designs into your Decor Cart and launch a Reverse Bid to get the lowest quote!
+                    </p>
+                  </div>
+                  {decorCart.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newRfq = {
+                          id: `BID-${Math.floor(1000 + Math.random() * 9000)}`,
+                          customerName: currentUser.fullName,
+                          eventDate: "2026-11-15",
+                          venueName: activeAddressObj.fullAddress,
+                          selectedDesigns: decorCart.map((c) => c.title),
+                          estimatedBudget: decorCart.reduce(
+                            (s, c) => s + Number(c.baseEstimate || 20000),
+                            0
+                          ),
+                          lowestBidSoFar: decorCart.reduce(
+                            (s, c) => s + Number(c.baseEstimate || 20000),
+                            0
+                          ),
+                          status: "OPEN_FOR_REVERSE_BIDS"
+                        };
+                        setDecorReverseBids([newRfq, ...decorReverseBids]);
+                        setDecorCart([]);
+                        triggerToast(
+                          `Launched Reverse Bid #${newRfq.id} to all Flower Decorators!`
+                        );
+                      }}
+                      className="bg-emerald-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[10px] cursor-pointer shrink-0"
+                    >
+                      Launch Bid ({decorCart.length}) &rarr;
+                    </button>
+                  )}
+                </div>
+
+                {decorPortfolio.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex gap-2.5 items-center"
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-16 h-16 rounded-xl object-cover border border-amber-400/50 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[9px] text-amber-300 font-black">
+                        {item.albumName} &bull; {item.decorType}
+                      </span>
+                      <h4 className="font-bold text-white text-xs truncate">{item.title}</h4>
+                      <p className="text-[10px] text-slate-400 truncate">
+                        Material: {item.materialUsed} | Size: {item.dimensionsSize}
+                      </p>
+                      <p className="text-[10px] text-emerald-400 font-bold">
+                        By {item.merchantName} &bull; Approx Rs.
+                        {Number(item.baseEstimate).toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDecorCart([...decorCart, item]);
+                        triggerToast(`Added "${item.title}" to Decor Cart for Reverse Bidding!`);
+                      }}
+                      className="bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[9px] cursor-pointer shrink-0"
+                    >
+                      + Decor Cart
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {customerHomeSubTab === "stores" && (
+            <div className="space-y-2">
+              {products.slice(0, 6).map((prod) => (
+                <div
+                  key={prod.id}
+                  className="bg-white border border-slate-200 rounded-2xl p-2.5 flex justify-between items-center text-slate-900"
+                >
+                  <div>
+                    <p className="font-bold text-xs">{prod.subCategoryBrand}</p>
+                    <p className="text-[10px] text-emerald-600 font-bold">{prod.shopName}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => triggerToast(`Added ${prod.subCategoryBrand} to Cart!`)}
+                    className="bg-emerald-600 text-white font-black px-3 py-1 rounded-lg text-[10px] cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {footerTab === "account" && (
+        <OwnerAccountProfile
+          currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
+          activePortal={activePortal}
+          setActivePortal={(nextPortal) => {
+            setActivePortal(nextPortal);
+            setFooterTab("home");
+          }}
+          activeAddressObj={activeAddressObj}
+          accountSecurity={accountSecurity}
+          setAccountSecurity={setAccountSecurity}
+          onLockApp={() => setOnboardingStep("auth")}
+          brightTheme={brightTheme}
+          setBrightTheme={setBrightTheme}
+          appUpdateInfo={appUpdateInfo}
+          onCheckForUpdate={handleManualCheckForUpdate}
+          checkingUpdate={checkingUpdate}
+          onRunOtaUpdate={handleRunOtaUpdate}
+          otaProgress={otaProgress}
+          onTriggerToast={triggerToast}
+        />
+      )}
+    </MobilePhoneShell>
+  );
+
+  const renderMerchantPortal = () => (
+    <MobilePhoneShell
+      title="2. Product Merchant"
+      badge="Merchant"
+      activePortal="merchant"
+      footerTab={footerTab}
+      setFooterTab={setFooterTab}
+      totalCartCount={totalCartCount}
+      totalOrdersCount={orders.length}
+      brightTheme={brightTheme}
+      lang={lang}
+      setLang={setLang}
+      appUpdateInfo={appUpdateInfo}
+      notificationsCount={notificationsList.length}
+      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
+    >
       <MerchantPortal
         footerTab={footerTab}
         setFooterTab={setFooterTab}
@@ -1994,7 +1546,6 @@ function AppContent() {
           setPersonalShoppingFromPartner("merchant");
           setActivePortal("customer");
           setFooterTab("home");
-          triggerToast("Switched to Personal Shopping Mode!");
         }}
         onTriggerToast={triggerToast}
         renderAccountTab={() => (
@@ -2002,11 +1553,7 @@ function AppContent() {
             currentUser={currentUser}
             setCurrentUser={setCurrentUser}
             activePortal={activePortal}
-            setActivePortal={(nextPortal) => {
-              if (nextPortal === "customer") setPersonalShoppingFromPartner("merchant");
-              setActivePortal(nextPortal);
-              setFooterTab("home");
-            }}
+            setActivePortal={setActivePortal}
             activeAddressObj={activeAddressObj}
             accountSecurity={accountSecurity}
             setAccountSecurity={setAccountSecurity}
@@ -2025,13 +1572,10 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
-  // ==========================================================================
-  // PORTAL 3: COMPLETE SERVICE PROVIDER PORTAL (ALL 4 BOTTOM TABS ACTIVE)
-  // ==========================================================================
   const renderServiceProviderPortal = () => (
     <MobilePhoneShell
       title="3. Service Provider"
-      badge="v2.9.0 Suite"
+      badge="Service Pro"
       activePortal="service_provider"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -2041,17 +1585,9 @@ function AppContent() {
       lang={lang}
       setLang={setLang}
       appUpdateInfo={appUpdateInfo}
-      onTriggerOtaUpdate={handleRunOtaUpdate}
+      notificationsCount={notificationsList.length}
+      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
     >
-      {mobileToast && (
-        <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
-          <span>{mobileToast}</span>
-          <button type="button" onClick={() => setMobileToast("")} className="font-black">
-            X
-          </button>
-        </div>
-      )}
-
       <ServiceProviderPortal
         footerTab={footerTab}
         setFooterTab={setFooterTab}
@@ -2066,6 +1602,78 @@ function AppContent() {
           setPersonalShoppingFromPartner("service_provider");
           setActivePortal("customer");
           setFooterTab("home");
+        }}
+        onTriggerToast={triggerToast}
+        renderAccountTab={() => (
+          <OwnerAccountProfile
+            currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
+            activePortal={activePortal}
+            setActivePortal={setActivePortal}
+            activeAddressObj={activeAddressObj}
+            accountSecurity={accountSecurity}
+            setAccountSecurity={setAccountSecurity}
+            onLockApp={() => setOnboardingStep("auth")}
+            brightTheme={brightTheme}
+            setBrightTheme={setBrightTheme}
+            appUpdateInfo={appUpdateInfo}
+            onCheckForUpdate={handleManualCheckForUpdate}
+            checkingUpdate={checkingUpdate}
+            onRunOtaUpdate={handleRunOtaUpdate}
+            otaProgress={otaProgress}
+            onTriggerToast={triggerToast}
+          />
+        )}
+      />
+    </MobilePhoneShell>
+  );
+
+  // ==========================================================================
+  // PORTAL 4: COMPLETE FLOWER DECORATOR & FUNCTION HALLS PORTAL
+  // ==========================================================================
+  const renderDecoratorPortal = () => (
+    <MobilePhoneShell
+      title="4. Decorator & Halls"
+      badge="v2.9.3 Suite"
+      activePortal="decorator"
+      footerTab={footerTab}
+      setFooterTab={setFooterTab}
+      totalCartCount={totalCartCount}
+      totalOrdersCount={decorReverseBids.length}
+      brightTheme={brightTheme}
+      lang={lang}
+      setLang={setLang}
+      appUpdateInfo={appUpdateInfo}
+      notificationsCount={notificationsList.length}
+      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
+    >
+      {mobileToast && (
+        <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
+          <span>{mobileToast}</span>
+          <button type="button" onClick={() => setMobileToast("")} className="font-black">
+            X
+          </button>
+        </div>
+      )}
+
+      <DecoratorPortal
+        footerTab={footerTab}
+        setFooterTab={setFooterTab}
+        currentUser={currentUser}
+        setCurrentUser={setCurrentUser}
+        functionHalls={functionHalls}
+        setFunctionHalls={setFunctionHalls}
+        decorPortfolio={decorPortfolio}
+        setDecorPortfolio={setDecorPortfolio}
+        decorReverseBids={decorReverseBids}
+        setDecorReverseBids={setDecorReverseBids}
+        decorEscrowBookings={decorEscrowBookings}
+        setDecorEscrowBookings={setDecorEscrowBookings}
+        pendingDecorators={pendingDecorators}
+        onSwitchToPersonalShop={() => {
+          setPersonalShoppingFromPartner("decorator");
+          setActivePortal("customer");
+          setFooterTab("home");
           triggerToast("Switched to Personal Shopping Mode!");
         }}
         onTriggerToast={triggerToast}
@@ -2075,8 +1683,7 @@ function AppContent() {
             setCurrentUser={setCurrentUser}
             activePortal={activePortal}
             setActivePortal={(nextPortal) => {
-              if (nextPortal === "customer")
-                setPersonalShoppingFromPartner("service_provider");
+              if (nextPortal === "customer") setPersonalShoppingFromPartner("decorator");
               setActivePortal(nextPortal);
               setFooterTab("home");
             }}
@@ -2098,58 +1705,10 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
-  const renderDecoratorPortal = () => (
-    <MobilePhoneShell
-      title="4. Decorator & Halls"
-      badge="Schedule & Bids"
-      activePortal="decorator"
-      footerTab={footerTab}
-      setFooterTab={setFooterTab}
-      totalCartCount={totalCartCount}
-      totalOrdersCount={0}
-      brightTheme={brightTheme}
-      lang={lang}
-      setLang={setLang}
-      appUpdateInfo={appUpdateInfo}
-      onTriggerOtaUpdate={handleRunOtaUpdate}
-    >
-      {footerTab === "account" ? (
-        <OwnerAccountProfile
-          currentUser={currentUser}
-          setCurrentUser={setCurrentUser}
-          activePortal={activePortal}
-          setActivePortal={setActivePortal}
-          activeAddressObj={activeAddressObj}
-          accountSecurity={accountSecurity}
-          setAccountSecurity={setAccountSecurity}
-          onLockApp={() => setOnboardingStep("auth")}
-          brightTheme={brightTheme}
-          setBrightTheme={setBrightTheme}
-          appUpdateInfo={appUpdateInfo}
-          onCheckForUpdate={handleManualCheckForUpdate}
-          checkingUpdate={checkingUpdate}
-          onRunOtaUpdate={handleRunOtaUpdate}
-          otaProgress={otaProgress}
-          onTriggerToast={triggerToast}
-        />
-      ) : (
-        <div className="bg-slate-900 p-3 rounded-2xl border border-amber-500/40 space-y-2 text-xs text-white">
-          <h3 className="font-bold text-amber-400">Function Hall Availability Schedule</h3>
-          <input
-            type="date"
-            value={hallScheduleDateInput}
-            onChange={(e) => setHallScheduleDateInput(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white"
-          />
-        </div>
-      )}
-    </MobilePhoneShell>
-  );
-
   const renderRiderPortal = () => (
     <MobilePhoneShell
       title="5. Delivery Captain"
-      badge="3-Pt Live Map"
+      badge="Live Map"
       activePortal="rider"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -2159,7 +1718,8 @@ function AppContent() {
       lang={lang}
       setLang={setLang}
       appUpdateInfo={appUpdateInfo}
-      onTriggerOtaUpdate={handleRunOtaUpdate}
+      notificationsCount={notificationsList.length}
+      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
     >
       {footerTab === "account" ? (
         <OwnerAccountProfile
@@ -2182,20 +1742,9 @@ function AppContent() {
         />
       ) : (
         <div className="space-y-3 text-xs text-white">
-          {orders.map((ord) => (
-            <div key={ord.id} className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
-              <p className="font-bold text-emerald-400">
-                #{ord.id} | Route: Captain GPS &rarr; {ord.shopName} &rarr; {ord.address}
-              </p>
-              <LiveRouteMap
-                pickupLabel={ord.shopName}
-                dropLabel={ord.address}
-                riderName={ord.riderName}
-                vehicle={ord.vehicle}
-                distanceKm={ord.distanceKm || 1.8}
-              />
-            </div>
-          ))}
+          <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800">
+            <p className="font-bold text-emerald-400">Delivery Captain Radar Ready</p>
+          </div>
         </div>
       )}
     </MobilePhoneShell>
@@ -2204,24 +1753,12 @@ function AppContent() {
   const renderAdminAuthGate = () => (
     <div className="min-h-screen bg-[#04090e] flex items-center justify-center p-4 text-white">
       <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-5 space-y-3 shadow-2xl text-xs">
-        <div className="flex items-center gap-3">
-          <FounderLogoBadge logoUrl={founderLogoUrl} />
-          <div>
-            <h2 className="text-sm font-black text-amber-400">
-              WE4ALL 2-STEP FOUNDER ADMIN GATE
-            </h2>
-            <p className="text-[10px] text-slate-400">
-              Step {adminAuthStep} of 2: {adminAuthStep === 1 ? "Founder Credentials" : "4-Digit Founder PIN"}
-            </p>
-          </div>
-        </div>
-
+        <h2 className="text-sm font-black text-amber-400">WE4ALL 2-STEP FOUNDER ADMIN GATE</h2>
         {adminLoginError && (
           <div className="bg-rose-950 border border-rose-500 text-rose-200 p-2 rounded-xl text-center font-bold">
             {adminLoginError}
           </div>
         )}
-
         {adminAuthStep === 1 ? (
           <div className="space-y-3">
             <input
@@ -2256,57 +1793,40 @@ function AppContent() {
                     setAdminAuthStep(2);
                     setAdminLoginError("");
                   } else {
-                    setAdminLoginError("Invalid Founder Username or Password.");
+                    setAdminLoginError("Invalid Founder Credentials.");
                   }
                 }}
                 className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
               >
-                Step 1: Verify Credentials &rarr;
+                Step 1: Verify &rarr;
               </button>
             </div>
           </div>
         ) : (
-          <div className="space-y-3 text-center pt-1">
-            <p className="font-bold text-emerald-400 text-[11px]">
-              Credentials Verified! Enter 4-Digit Founder PIN (9999) to Unlock Console:
-            </p>
+          <div className="space-y-3 text-center">
             <input
               type="password"
               maxLength={4}
               value={adminPinInput}
               onChange={(e) => setAdminPinInput(e.target.value)}
-              placeholder="Enter 4-Digit Founder PIN"
-              className="w-full bg-slate-950 border border-amber-400 rounded-xl p-3 text-center font-mono text-base text-white tracking-widest"
+              placeholder="4-Digit Founder PIN (9999)"
+              className="w-full bg-slate-950 border border-amber-400 rounded-xl p-3 text-center font-mono text-white"
             />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setAdminAuthStep(1);
+            <button
+              type="button"
+              onClick={() => {
+                if (adminPinInput.trim() === "9999") {
+                  setIsAdminAuthenticated(true);
                   setAdminPinInput("");
-                  setAdminLoginError("");
-                }}
-                className="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl font-bold cursor-pointer"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (adminPinInput.trim() === "9999") {
-                    setIsAdminAuthenticated(true);
-                    setAdminLoginError("");
-                    setAdminPinInput("");
-                    setAdminAuthStep(1);
-                  } else {
-                    setAdminLoginError("Invalid 4-Digit Founder PIN.");
-                  }
-                }}
-                className="flex-1 bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-              >
-                Step 2: Unlock Admin Console
-              </button>
-            </div>
+                  setAdminAuthStep(1);
+                } else {
+                  setAdminLoginError("Invalid PIN.");
+                }
+              }}
+              className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+            >
+              Step 2: Unlock Admin Suite
+            </button>
           </div>
         )}
       </div>
@@ -2321,51 +1841,34 @@ function AppContent() {
         ) : (
           <FounderAdminSuite
             founderLogoUrl={founderLogoUrl}
-            onUploadFounderPhoto={handleUploadFounderPhoto}
             apkIconUrl={apkIconUrl}
-            onUploadApkIcon={handleUploadApkIcon}
-            geoZones={GEO_ZONES}
-            selectedZoneFilter={selectedZoneFilter}
-            setSelectedZoneFilter={setSelectedZoneFilter}
-            killedCategoriesByZone={killedCategoriesByZone}
-            setKilledCategoriesByZone={setKilledCategoriesByZone}
             geoAds={geoAds}
-            setGeoAds={setGeoAds}
             categories={categories}
-            setCategories={setCategories}
             merchants={merchants}
             setMerchants={setMerchants}
             serviceProviders={serviceProviders}
             setServiceProviders={setServiceProviders}
             decorators={decorators}
             setDecorators={setDecorators}
-            registeredUsers={registeredUsers}
-            setRegisteredUsers={setRegisteredUsers}
-            products={products}
-            setProducts={setProducts}
-            functionHalls={functionHalls}
-            setFunctionHalls={setFunctionHalls}
+            decorPortfolio={decorPortfolio}
+            setDecorPortfolio={setDecorPortfolio}
             orders={orders}
-            setOrders={setOrders}
             serviceBookings={serviceBookings}
             pendingMerchants={pendingMerchants}
             setPendingMerchants={setPendingMerchants}
             pendingServiceProviders={pendingServiceProviders}
             setPendingServiceProviders={setPendingServiceProviders}
-            pendingSubCategories={pendingSubCategories}
-            setPendingSubCategories={setPendingSubCategories}
-            rejectedItems={rejectedItems}
-            setRejectedItems={setRejectedItems}
+            pendingDecorators={pendingDecorators}
+            setPendingDecorators={setPendingDecorators}
             monetizationConfig={monetizationConfig}
             setMonetizationConfig={setMonetizationConfig}
             splitScreens={splitScreens}
-            setSplitScreens={setSplitScreens}
             appUpdateInfo={appUpdateInfo}
             setAppUpdateInfo={setAppUpdateInfo}
             onBroadcastOtaPushNotification={(nextInfo) => {
               saveCloudAndLocalState({ appUpdateInfo: nextInfo });
               triggerToast(
-                `\uD83D\uDD14 PUSH NOTIFICATION SENT: WE4ALL v${nextInfo.latestAvailableVersion} is now live on all phones!`
+                `OTA v${nextInfo.latestAvailableVersion} pushed to Notification Bell & Account on all devices!`
               );
             }}
             onLaunchMultiPhoneView={() => {
@@ -2381,12 +1884,9 @@ function AppContent() {
               }
               setOnboardingStep("app");
               setFooterTab("home");
-              if (flowId === "cust_stores") setActivePortal("customer");
-              else if (flowId === "cust_services") {
-                setActivePortal("customer");
-                setFooterTab("services");
-              } else if (flowId === "portal_merchant") setActivePortal("merchant");
+              if (flowId === "portal_decorator") setActivePortal("decorator");
               else if (flowId === "portal_service") setActivePortal("service_provider");
+              else if (flowId === "portal_merchant") setActivePortal("merchant");
             }}
             onExitAdminToApp={() => setViewMode("mobile_app")}
             onTriggerToast={triggerToast}
@@ -2394,7 +1894,6 @@ function AppContent() {
         )
       ) : (
         <main className="flex-1 flex flex-col justify-center items-center">
-          {onboardingStep === "permissions" && renderPermissionsGateway()}
           {onboardingStep === "auth" && renderAuthVault()}
           {onboardingStep === "app" && activePortal === "customer" && renderCustomerPortal()}
           {onboardingStep === "app" && activePortal === "merchant" && renderMerchantPortal()}
@@ -2422,50 +1921,94 @@ function AppContent() {
         </main>
       )}
 
+      {/* REQ 12: NOTIFICATION BELL DRAWER WITH IN-APP OTA UPDATE INSTALLER */}
+      {notificationBellOpen && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+              <h3 className="font-black text-amber-400">
+                \uD83D\uDD14 Notifications & In-App OTA Updates
+              </h3>
+              <button
+                type="button"
+                onClick={() => setNotificationBellOpen(false)}
+                className="bg-slate-800 px-2.5 py-1 rounded-xl font-black cursor-pointer"
+              >
+                X
+              </button>
+            </div>
+
+            <div className="bg-slate-950 p-3 rounded-2xl border border-emerald-500/50 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-black text-emerald-400">
+                  WE4ALL OTA v{appUpdateInfo?.latestAvailableVersion || "2.9.3"}
+                </span>
+                <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded text-[9px] font-black">
+                  IN-APP INSTALLER
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-300">{appUpdateInfo?.releaseNotes}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleRunOtaUpdate}
+                  className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                >
+                  Install Update In-App Now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationBellOpen(false);
+                    setFooterTab("account");
+                  }}
+                  className="bg-slate-800 text-amber-300 font-bold px-3 py-2 rounded-xl cursor-pointer"
+                >
+                  Open Account
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-48 overflow-y-auto space-y-1.5">
+              {notificationsList.map((n) => (
+                <div key={n.id} className="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                  <p className="text-[10px] text-slate-200">{n.text}</p>
+                  <span className="text-[8px] text-slate-500">{n.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* IN-APP OTA PROGRESS OVERLAY */}
+      {otaProgress && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6">
+          <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-5 text-center space-y-3 text-xs">
+            <h3 className="font-black text-emerald-400 text-sm">
+              Installing In-App Update ({otaProgress.pct}%)
+            </h3>
+            <p className="text-slate-300">{otaProgress.msg}</p>
+            <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
+              <div
+                className="bg-emerald-400 h-full transition-all"
+                style={{ width: `${otaProgress.pct}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <UpiPaymentModal
         paymentRequest={pendingUpiPayment}
         userBankDetails={currentUser}
         onClose={() => setPendingUpiPayment(null)}
-        onPaymentSuccess={handleCompleteUpiPayment}
+        onPaymentSuccess={() => setPendingUpiPayment(null)}
       />
     </div>
   );
 }
 
-class GlobalErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-[#071118] flex flex-col items-center justify-center p-6 text-white text-center">
-          <div className="bg-slate-900 border-2 border-rose-500 rounded-3xl p-6 max-w-sm">
-            <h2 className="text-lg font-black text-rose-400">Application Error Caught</h2>
-            <p className="text-xs text-rose-200 mt-2">{this.state.error?.toString()}</p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-4 w-full bg-emerald-500 text-slate-950 py-2.5 rounded-xl font-black cursor-pointer"
-            >
-              Reload WE4ALL
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 export default function App() {
-  return (
-    <GlobalErrorBoundary>
-      <AppContent />
-    </GlobalErrorBoundary>
-  );
+  return <AppContent />;
 }

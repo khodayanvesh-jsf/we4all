@@ -216,3 +216,12 @@ INITIAL_PRODUCTS.forEach((p, idx) => {
   p.fssaiVerified = true;
   p.isPublished = true;
 });
+
+
+// ============================================================================
+// v2.9.3 OVERRIDES: DECORATOR & FUNCTION HALLS PORTAL, PORTFOLIO & 35%|85% ESCROW
+// ============================================================================
+INITIAL_APP_UPDATE_INFO.currentVersion = "2.9.2";
+INITIAL_APP_UPDATE_INFO.latestAvailableVersion = "2.9.3";
+INITIAL_APP_UPDATE_INFO.updateAvailable = true;
+INITIAL_APP_UPDATE_INFO.releaseNotes = "WE4ALL v2.9.3: Complete Flower Decorator & Function Halls Portal (Role-Gated Hall Calendar & Reverse Bids, 35%|85%|100% Milestone Escrow Ledger, High-Res Camera/Gallery Portfolio Stock, In-App Silent Updater & Bell Alerts).";
