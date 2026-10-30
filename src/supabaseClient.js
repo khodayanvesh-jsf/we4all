@@ -1,16 +1,21 @@
+// ============================================================================
+// MODULE: src/supabaseClient.js
+// PURPOSE: Real-time state persistence, 20-row pagination helper, and strict
+// In-App Silent OTA Update installer (never opens an external browser).
+// ============================================================================
 const LIVE_CLOUD_ORIGIN = "https://we-4-all-super-app.vercel.app";
-const CURRENT_SCHEMA_VERSION = "2.9.6";
+const CURRENT_SCHEMA_VERSION = "2.9.5";
 const STORAGE_KEY = "we4all_master_cloud_state_v4";
 const BACKUP_KEY = "we4all_zero_loss_user_backup_v4";
 const INSTALLED_VER_KEY = "we4all_device_installed_version_v4";
-const SCHEMA_MIGRATED_KEY = "we4all_schema_migrated_v296";
+const SCHEMA_MIGRATED_KEY = "we4all_schema_migrated_v295";
 
 const syncChannel =
   typeof window !== "undefined" && "BroadcastChannel" in window
     ? new BroadcastChannel("we4all_realtime_bus_v4")
     : null;
 
-export function getDeviceInstalledVersion(fallback = "2.9.3") {
+export function getDeviceInstalledVersion(fallback = "2.9.4") {
   if (typeof window === "undefined") return fallback;
   return localStorage.getItem(INSTALLED_VER_KEY) || fallback;
 }
@@ -19,7 +24,11 @@ export function saveCloudAndLocalState(stateSlice) {
   if (typeof window === "undefined") return;
   try {
     const existing = loadCloudAndLocalState() || {};
-    const merged = { ...existing, ...stateSlice, lastSyncedAt: new Date().toISOString() };
+    const merged = {
+      ...existing,
+      ...stateSlice,
+      lastSyncedAt: new Date().toISOString()
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     localStorage.setItem(BACKUP_KEY, JSON.stringify(merged));
     if (syncChannel) {
@@ -38,7 +47,8 @@ export function loadCloudAndLocalState() {
       localStorage.removeItem(BACKUP_KEY);
       return null;
     }
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BACKUP_KEY);
+    const raw =
+      localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BACKUP_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (e) {
@@ -48,13 +58,13 @@ export function loadCloudAndLocalState() {
 
 export async function checkLiveCloudOtaManifest(callback) {
   try {
-    const res = await fetch(`${LIVE_CLOUD_ORIGIN}/ota-manifest.json?_cb=${Date.now()}`, {
-      method: "GET",
-      cache: "no-store"
-    });
+    const res = await fetch(
+      `${LIVE_CLOUD_ORIGIN}/ota-manifest.json?_cb=${Date.now()}`,
+      { method: "GET", cache: "no-store" }
+    );
     if (!res.ok) return null;
     const remoteOta = await res.json();
-    const installedVer = getDeviceInstalledVersion("2.9.3");
+    const installedVer = getDeviceInstalledVersion("2.9.4");
     if (remoteOta?.latestAvailableVersion) {
       const hasNewer = remoteOta.latestAvailableVersion !== installedVer;
       const updatedInfo = {
@@ -88,12 +98,10 @@ export function subscribeToRealtimeUpdates(callback) {
   };
   if (syncChannel) syncChannel.addEventListener("message", handler);
   window.addEventListener("storage", storageHandler);
-
   checkLiveCloudOtaManifest(callback);
   const pollTimer = setInterval(() => {
     checkLiveCloudOtaManifest(callback);
   }, 7000);
-
   return () => {
     if (syncChannel) syncChannel.removeEventListener("message", handler);
     window.removeEventListener("storage", storageHandler);
@@ -101,8 +109,13 @@ export function subscribeToRealtimeUpdates(callback) {
   };
 }
 
-// STRICT IN-APP OTA INSTALLER (NEVER OPENS EXTERNAL BROWSER)
-export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress, onComplete) {
+// STRICT IN-APP SILENT OTA INSTALLER (Executes 100% inside the app WebView)
+export function performZeroLossOtaUpdate(
+  targetVersion,
+  releaseNotes,
+  onProgress,
+  onComplete
+) {
   const currentData = loadCloudAndLocalState() || {};
   const updatedAppInfo = {
     ...(currentData.appUpdateInfo || {}),
@@ -111,21 +124,23 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
     updateAvailable: false,
     releaseNotes
   };
-
   localStorage.setItem(INSTALLED_VER_KEY, targetVersion);
   localStorage.setItem(SCHEMA_MIGRATED_KEY, targetVersion);
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(BACKUP_KEY);
 
   if (typeof window !== "undefined" && "caches" in window) {
-    caches.keys().then((names) => names.forEach((n) => caches.delete(n))).catch(() => {});
+    caches
+      .keys()
+      .then((names) => names.forEach((n) => caches.delete(n)))
+      .catch(() => {});
   }
 
   let step = 0;
   const stages = [
-    { pct: 25, msg: "1/4: Backing up Orders, Captain Trips & KYC Vault..." },
-    { pct: 60, msg: `2/4: Downloading WE4ALL v${targetVersion} Modules In-App...` },
-    { pct: 90, msg: "3/4: Installing Update Inside App WebView..." },
+    { pct: 25, msg: "1/4: Backing up Orders, Escrow & Portfolio Vault..." },
+    { pct: 60, msg: `2/4: Downloading WE4ALL v${targetVersion} Bundle In-App...` },
+    { pct: 90, msg: "3/4: Applying Updated Modules Inside App WebView..." },
     { pct: 100, msg: `4/4: WE4ALL v${targetVersion} Installed! Restarting In-App...` }
   ];
 
@@ -142,5 +157,5 @@ export function performZeroLossOtaUpdate(targetVersion, releaseNotes, onProgress
         }
       }, 300);
     }
-  }, 420);
+  }, 400);
 }

@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.9.5",
-  "latestAvailableVersion": "2.9.6",
+  "currentVersion": "2.9.4",
+  "latestAvailableVersion": "2.9.5",
   "updateAvailable": true,
-  "publishedAt": "2026-10-30T11:50:00Z",
+  "publishedAt": "2026-10-30T23:55:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
-  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.6",
-  "releaseNotes": "WE4ALL v2.9.6: Restored complete Consumer Shopping Console (Local Stores, Categories, Shop Price Comparison, 1-Hr Services, Multi-Merchant Carts with T&C Vehicle Chooser & Orders) alongside all 5 Partner Portals."
+  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.5",
+  "releaseNotes": "WE4ALL v2.9.5 Master Release: Complete 6-Portal Ecosystem (Customer Storefront + Best-Price Buy Box + Prime Merge + Voice Review Gate, Product Merchant, Service Provider, Decorator & Function Halls, Delivery Captain Radar & Route Map, 9-Tab Admin Console & Account-Only In-App Updater)."
 }
