@@ -11,7 +11,6 @@ import {
   INITIAL_DECORATORS,
   INITIAL_PRODUCTS,
   INITIAL_FUNCTION_HALLS,
-  DECORATION_SERVICE_MODULES,
   INITIAL_RIDERS,
   DELIVERY_REVIEW_QUESTIONS
 } from "./data";
@@ -25,7 +24,8 @@ import FounderAdminSuite from "./modules/FounderAdminSuite";
 import MerchantPortal from "./modules/MerchantPortal";
 import ServiceProviderPortal from "./modules/ServiceProviderPortal";
 import DecoratorPortal from "./modules/DecoratorPortal";
-import RiderCaptainPortal from "./modules/RiderCaptainPortal";
+import RiderCaptainPortal, { VEHICLE_CONSORT_RULES } from "./modules/RiderCaptainPortal";
+import LiveRouteMap from "./modules/LiveRouteMap";
 import {
   saveCloudAndLocalState,
   loadCloudAndLocalState,
@@ -33,19 +33,26 @@ import {
   checkLiveCloudOtaManifest,
   performZeroLossOtaUpdate
 } from "./supabaseClient";
+import {
+  linkMobileHardwareServicesSilently,
+  sendMobileOsTrayNotification,
+  verifyPhoneHardwareBiometric,
+  recordUserActivityTelemetry,
+  getPersonalizedRecommendations
+} from "./modules/native/MobileHardwareBridge";
 
 function FounderLogoBadge({ logoUrl }) {
   return (
     <div
       title="WE4ALL Official Emblem"
-      className="relative w-10 h-10 rounded-full border-2 border-amber-400 ring-2 ring-emerald-500/50 bg-gradient-to-b from-[#07261e] to-[#04120e] flex flex-col items-center justify-center overflow-hidden shadow-lg shrink-0 select-none"
+      className="relative w-9 h-9 rounded-full border-2 border-amber-400 ring-2 ring-emerald-500/50 bg-gradient-to-b from-[#07261e] to-[#04120e] flex flex-col items-center justify-center overflow-hidden shadow-lg shrink-0 select-none"
     >
       {logoUrl ? (
         <img src={logoUrl} alt="WE4ALL" className="w-full h-full object-cover" />
       ) : (
         <div className="flex flex-col items-center justify-center text-center leading-none">
           <span className="text-[7px] font-black text-amber-400">WE4ALL</span>
-          <span className="text-[6px] font-extrabold text-emerald-300">FOUNDER</span>
+          <span className="text-[5px] font-extrabold text-emerald-300">FOUNDER</span>
           <span className="text-[5px] font-bold text-white">ANVESH</span>
         </div>
       )}
@@ -53,7 +60,7 @@ function FounderLogoBadge({ logoUrl }) {
   );
 }
 
-// Clean Mobile Smartphone Shell (Zero top update banner; updates in Bell & Account only)
+// Clean Amazon-Style Mobile Shell (No top notification clutter; includes RoleFooterNav with lang)
 function MobilePhoneShell({
   title,
   badge,
@@ -67,20 +74,11 @@ function MobilePhoneShell({
   brightTheme,
   lang,
   setLang,
-  appUpdateInfo,
-  notificationsCount = 0,
-  onOpenNotificationsBell,
-  onCloudCall,
   personalShoppingFromPartner,
   onReturnToPartnerDesk,
   showFooter = true,
   children
 }) {
-  const hasUpdatePending = Boolean(
-    appUpdateInfo?.updateAvailable ||
-      (appUpdateInfo?.latestAvailableVersion &&
-        appUpdateInfo?.currentVersion !== appUpdateInfo?.latestAvailableVersion)
-  );
   return (
     <div
       className={`w-full max-w-[420px] mx-auto overflow-hidden flex flex-col min-h-screen sm:min-h-[850px] sm:max-h-[92vh] sm:my-2 sm:rounded-[40px] sm:border-[8px] relative transition-all shadow-2xl ${
@@ -89,44 +87,23 @@ function MobilePhoneShell({
           : "bg-[#071118] text-white sm:border-slate-800"
       }`}
     >
+      {/* Clean Amazon-Style Top Header Bar */}
       <div
         className={`px-3 py-2 flex justify-between items-center text-[11px] border-b shrink-0 ${
           brightTheme
-            ? "bg-emerald-950 text-white border-emerald-800"
+            ? "bg-[#131921] text-white border-slate-800"
             : "bg-slate-950 text-slate-100 border-emerald-950/60"
         }`}
       >
         <span className="font-extrabold text-amber-400 tracking-wide flex items-center gap-1.5 truncate">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-          WE4ALL | {title}
+          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+          WE4ALL.in | {title}
         </span>
-        <div className="flex items-center gap-1">
-          {onCloudCall && (
-            <button
-              type="button"
-              onClick={onCloudCall}
-              title="Privacy Masked Cloud Call"
-              className="bg-emerald-900/90 border border-emerald-400/40 text-emerald-200 px-1.5 py-0.5 rounded-lg text-[9px] font-bold cursor-pointer"
-            >
-              \uD83D\uDCDE Call
-            </button>
-          )}
-          {onOpenNotificationsBell && (
-            <button
-              type="button"
-              onClick={onOpenNotificationsBell}
-              className="relative bg-slate-900 border border-slate-700 text-amber-300 px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer"
-            >
-              \uD83D\uDD14 {notificationsCount + (hasUpdatePending ? 1 : 0)}
-              {hasUpdatePending && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-              )}
-            </button>
-          )}
+        <div className="flex items-center gap-1.5">
           <select
             value={lang}
             onChange={(e) => setLang(e.target.value)}
-            className="bg-slate-900 text-amber-300 border border-slate-700 rounded-lg px-1 py-0.5 text-[10px] font-black outline-none cursor-pointer"
+            className="bg-slate-800 text-amber-300 border border-slate-600 rounded-lg px-1.5 py-0.5 text-[10px] font-black outline-none cursor-pointer"
           >
             {INDIAN_LANGUAGES.map((l) => (
               <option key={l.code} value={l.code}>
@@ -134,7 +111,7 @@ function MobilePhoneShell({
               </option>
             ))}
           </select>
-          <span className="bg-emerald-900/80 border border-emerald-500/40 text-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-semibold truncate max-w-[65px]">
+          <span className="bg-emerald-900/80 border border-emerald-500/40 text-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-semibold truncate max-w-[70px]">
             {badge}
           </span>
         </div>
@@ -142,7 +119,9 @@ function MobilePhoneShell({
 
       {personalShoppingFromPartner && (
         <div className="bg-indigo-600 text-white px-3 py-1.5 flex justify-between items-center text-[10px] font-black shrink-0">
-          <span>Shopping Mode (Partner: {personalShoppingFromPartner.toUpperCase()})</span>
+          <span>
+            Shopping Mode (Partner: {personalShoppingFromPartner.toUpperCase()})
+          </span>
           <button
             type="button"
             onClick={onReturnToPartnerDesk}
@@ -172,10 +151,12 @@ function MobilePhoneShell({
           >
             <div className="text-left">
               <p className="text-[10px] font-black leading-tight">
-                LIVE ORDER #{floatingLiveOrder.id}: {floatingLiveOrder.status.replace(/_/g, " ")}
+                LIVE ORDER #{floatingLiveOrder.id}:{" "}
+                {floatingLiveOrder.status.replace(/_/g, " ")}
               </p>
               <p className="text-[9px] font-bold text-amber-200">
-                Captain: {floatingLiveOrder.riderName} &bull; OTP: {floatingLiveOrder.secretOtp}
+                Captain: {floatingLiveOrder.riderName} &bull; OTP:{" "}
+                {floatingLiveOrder.secretOtp}
               </p>
             </div>
             <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-1 rounded-xl">
@@ -193,6 +174,7 @@ function MobilePhoneShell({
           totalCartCount={totalCartCount}
           totalOrdersCount={totalOrdersCount}
           brightTheme={brightTheme}
+          lang={lang}
         />
       )}
     </div>
@@ -208,7 +190,10 @@ function AppContent() {
   );
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminAuthStep, setAdminAuthStep] = useState(1);
-  const [adminLoginForm, setAdminLoginForm] = useState({ username: "", password: "" });
+  const [adminLoginForm, setAdminLoginForm] = useState({
+    username: "",
+    password: ""
+  });
   const [adminPinInput, setAdminPinInput] = useState("");
   const [adminLoginError, setAdminLoginError] = useState("");
 
@@ -219,7 +204,7 @@ function AppContent() {
   const [founderLogoUrl, setFounderLogoUrl] = useState(
     () => localStorage.getItem("we4all_founder_original_photo") || "/logo.png"
   );
-  const [apkIconUrl, setApkIconUrl] = useState(
+  const [apkIconUrl] = useState(
     () => localStorage.getItem("we4all_apk_launcher_icon") || "/logo.png"
   );
 
@@ -235,12 +220,59 @@ function AppContent() {
     reader.readAsDataURL(file);
   };
 
+  // Universal Live Diagnostic Error Popup Modal State (Catches any problem at any point of time)
+  const [diagnosticErrorModal, setDiagnosticErrorModal] = useState(null);
+
+  const reportAppError = (
+    title,
+    details,
+    hint = "Verify input values or tap Auto-Fix below.",
+    autoFixCallback = null
+  ) => {
+    setDiagnosticErrorModal({
+      title: title || "Application Diagnostic Alert",
+      details: details || "An unexpected operation issue occurred.",
+      hint,
+      time: new Date().toLocaleTimeString(),
+      autoFixCallback
+    });
+  };
+
+  useEffect(() => {
+    linkMobileHardwareServicesSilently();
+    const onWinError = (event) => {
+      reportAppError(
+        "Runtime Script Exception Caught",
+        event?.message || "Unknown runtime error",
+        `File: ${event?.filename || "App.jsx"} (Line ${event?.lineno || "N/A"})`
+      );
+    };
+    const onPromiseReject = (event) => {
+      reportAppError(
+        "Async Action Warning",
+        event?.reason?.message || String(event?.reason || "Promise rejected"),
+        "The app prevented a screen freeze and logged the exact cause above."
+      );
+    };
+    window.addEventListener("error", onWinError);
+    window.addEventListener("unhandledrejection", onPromiseReject);
+    return () => {
+      window.removeEventListener("error", onWinError);
+      window.removeEventListener("unhandledrejection", onPromiseReject);
+    };
+  }, []);
+
   const [deviceBoundUser, setDeviceBoundUser] = useState(() => {
     const raw = localStorage.getItem("we4all_device_bound_user_v4");
     return raw ? JSON.parse(raw) : null;
   });
 
-  const [onboardingStep, setOnboardingStep] = useState("app");
+  // Persistent Login like Amazon: stays logged into 'app' until user explicitly clicks Logout
+  const [onboardingStep, setOnboardingStep] = useState(() => {
+    return localStorage.getItem("we4all_persistent_session_v4") === "logged_out"
+      ? "auth"
+      : "app";
+  });
   const [authTab, setAuthTab] = useState("register");
   const [regStep, setRegStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState(
@@ -254,7 +286,7 @@ function AppContent() {
   const [footerTab, setFooterTab] = useState("home");
   const [authError, setAuthError] = useState("");
 
-  // Digital Signature Pad + Gallery/Camera Signature State
+  // Digital Signature Pad
   const sigCanvasRef = useRef(null);
   const [isDrawingSig, setIsDrawingSig] = useState(false);
   const [hasDrawnSignature, setHasDrawnSignature] = useState(false);
@@ -299,31 +331,27 @@ function AppContent() {
     setUploadedSignatureImg("");
   };
 
-  // OTA Update Engine (Bell Notification + Account Section Installation ONLY)
   const [appUpdateInfo, setAppUpdateInfo] = useState(
     savedCloud?.appUpdateInfo || {
       ...(INITIAL_APP_UPDATE_INFO || {}),
-      currentVersion: "2.9.4",
-      latestAvailableVersion: "2.9.5",
+      currentVersion: "2.9.5",
+      latestAvailableVersion: "2.9.6",
       updateAvailable: true,
       releaseNotes:
-        "WE4ALL v2.9.5 Master Consolidation: Restored Full Storefront, Multi-Shop Best-Price Buy Box, Prime Merge, Trilingual Voice Review Gate, 9-Tab Admin Console & Account-Only In-App Updater."
+        "WE4ALL v2.9.6: Fixed Captain OTP Verification, Universal Error Diagnostic Popup Modal, 5-Language App-Wide Localization & Persistent Biometric Session."
     }
   );
   const [otaProgress, setOtaProgress] = useState(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [notificationBellOpen, setNotificationBellOpen] = useState(false);
-  const [notificationsList, setNotificationsList] = useState([
-    {
-      id: 1,
-      text: "WE4ALL v2.9.5 Update Available in your Account Section!",
-      time: "Just now"
-    }
-  ]);
+
+  // Dispatches alerts directly to the Mobile OS Notification Bar (Zero top bar clutter)
+  const triggerToast = (msg) => {
+    sendMobileOsTrayNotification("WE4ALL Super-App", msg, `we4all-${Date.now()}`);
+  };
 
   const handleManualCheckForUpdate = async () => {
     setCheckingUpdate(true);
-    triggerToast("Checking WE4ALL Cloud Server for v2.9.5...");
+    triggerToast("Checking WE4ALL Cloud Server for v2.9.6...");
     const latest = await checkLiveCloudOtaManifest((payload) => {
       if (payload?.appUpdateInfo) setAppUpdateInfo(payload.appUpdateInfo);
     });
@@ -332,21 +360,20 @@ function AppContent() {
       const targetVer =
         latest?.latestAvailableVersion ||
         appUpdateInfo?.latestAvailableVersion ||
-        "2.9.5";
+        "2.9.6";
       setAppUpdateInfo((prev) => ({
         ...prev,
         ...(latest || {}),
         latestAvailableVersion: targetVer,
         updateAvailable: true
       }));
-      triggerToast(`Update v${targetVer} Ready! Tap 'Download & Install' below.`);
+      triggerToast(`Update v${targetVer} Ready in Account Section!`);
     }, 500);
   };
 
   const handleRunOtaUpdate = () => {
-    setNotificationBellOpen(false);
     performZeroLossOtaUpdate(
-      appUpdateInfo.latestAvailableVersion || "2.9.5",
+      appUpdateInfo.latestAvailableVersion || "2.9.6",
       appUpdateInfo.releaseNotes,
       (stage) => setOtaProgress(stage),
       (updatedInfo) => {
@@ -376,8 +403,12 @@ function AppContent() {
         username: "anvesh_k",
         phone: "9848011223",
         role: "customer",
+        vehicleCode: "2W",
+        vehicleClass: "2W Bike Captain (Up to 45 kg)",
+        vehicleModel: "Hero Splendor Plus 125cc",
+        dlNumber: "TS-01-2022009812",
+        rcPlate: "TS-01-EF-4599",
         decoratorSubRole: "flower_decorator",
-        vehicleClass: "2W Bike Captain (Up to 45kg)",
         bankName: "State Bank of India",
         accountNumber: "30984451209",
         ifscCode: "SBIN0000801",
@@ -389,11 +420,16 @@ function AppContent() {
   const [registeredUsers, setRegisteredUsers] = useState(
     savedCloud?.registeredUsers || [currentUser]
   );
-  const [loginForm, setLoginForm] = useState({ usernameOrPhone: "", password: "" });
+  const [loginForm, setLoginForm] = useState({
+    usernameOrPhone: "",
+    password: ""
+  });
   const [regForm, setRegForm] = useState({
     role: "customer",
     decoratorSubRole: "flower_decorator",
-    vehicleClass: "2W Bike Captain (Up to 45kg)",
+    vehicleCode: "2W",
+    vehicleModel: "Hero Splendor / Honda Activa",
+    fuelType: "Petrol / EV",
     dlNumber: "",
     rcPlate: "",
     phone: "",
@@ -404,9 +440,6 @@ function AppContent() {
     govId: "",
     area: "Adilabad Town",
     kycDocName: "",
-    kycDocDataUrl: "",
-    workImageName: "",
-    workImageUrl: "",
     upiId: "",
     bankName: "State Bank of India",
     accountNumber: "",
@@ -418,24 +451,7 @@ function AppContent() {
 
   const [pendingUpiPayment, setPendingUpiPayment] = useState(null);
   const [isPrimeCustomer, setIsPrimeCustomer] = useState(true);
-  const [mobileToast, setMobileToast] = useState("");
 
-  const triggerToast = (msg) => {
-    setMobileToast(msg);
-    setNotificationsList((prev) => [
-      { id: Date.now(), text: msg, time: "Just now" },
-      ...prev
-    ]);
-    setTimeout(() => setMobileToast(""), 4000);
-  };
-
-  const triggerMaskedCloudCall = (partyLabel) => {
-    triggerToast(
-      `Cloud Privacy Bridge Active: Calling ${partyLabel} via Masked Virtual Line (+91-80-4029-3000)`
-    );
-  };
-
-  // Master Data State
   const [selectedZoneFilter, setSelectedZoneFilter] = useState("ALL_INDIA");
   const [killedCategoriesByZone, setKilledCategoriesByZone] = useState({});
   const [geoAds, setGeoAds] = useState(savedCloud?.geoAds || INITIAL_GEO_ADS);
@@ -460,35 +476,38 @@ function AppContent() {
   );
   const [riders, setRiders] = useState(savedCloud?.riders || INITIAL_RIDERS);
 
-  // Captain Radar Jobs
   const [captainRadarJobs, setCaptainRadarJobs] = useState(
     savedCloud?.captainRadarJobs && savedCloud.captainRadarJobs.length > 0
       ? savedCloud.captainRadarJobs
       : [
           {
-            id: "RDR-801",
-            rideType: "BIKE_TAXI_PASSENGER",
-            badge: "2W Bike Taxi (Consumer Self Ride)",
-            bookedBy: "Consumer: Rameshwar Reddy (For Self)",
-            pickupPin: "Subhash Nagar Chowk, Adilabad",
-            dropPin: "Adilabad Railway Station",
-            distFromCaptainKm: 0.5,
-            distanceKm: 2.6,
-            captainPayout: 45,
+            id: "RDR-2W-101",
+            requiredVehicleCode: "2W",
+            vehicleLabel: "2W Bike Captain (Up to 45 kg)",
+            weightKg: 6,
+            badge: "2W Bike Taxi / Kirana Pack (6 kg)",
+            bookedBy: "Customer: Rameshwar Reddy (Chose 2W Bike)",
+            pickupPin: "Sri Laxmi Supermart, Main Bazar",
+            dropPin: "Subhash Nagar, Adilabad",
+            distFromCaptainKm: 0.4,
+            distanceKm: 2.5,
+            captainPayout: 42,
             secretOtp: "3388",
             status: "OPEN_ON_RADAR",
             paymentReqStatus: "PENDING_TRIP_COMPLETION"
           },
           {
-            id: "RDR-802",
-            rideType: "P2P_PARCEL_DROP",
-            badge: "P2P Parcel & Lunch Box (Booked for Family)",
-            bookedBy: "Consumer: Kavitha Sharma (For Brother)",
-            pickupPin: "Vidya Nagar H.No 2-11, Adilabad",
-            dropPin: "Collectorate Office, Adilabad",
-            distFromCaptainKm: 0.8,
-            distanceKm: 3.2,
-            captainPayout: 55,
+            id: "RDR-3W-202",
+            requiredVehicleCode: "3W",
+            vehicleLabel: "3W Auto Captain (Up to 300 kg)",
+            weightKg: 140,
+            badge: "3W Cargo Auto Wholesale Bags (140 kg)",
+            bookedBy: "Customer: Annapurna Hotel (Chose 3W Auto)",
+            pickupPin: "Adilabad Wholesale Gunj",
+            dropPin: "Collectorate Road, Adilabad",
+            distFromCaptainKm: 0.9,
+            distanceKm: 3.4,
+            captainPayout: 165,
             secretOtp: "7744",
             status: "OPEN_ON_RADAR",
             paymentReqStatus: "PENDING_TRIP_COMPLETION"
@@ -496,7 +515,6 @@ function AppContent() {
         ]
   );
 
-  // Portfolio, Reverse Bids & Milestone Escrow for Decorators & Halls
   const [decorPortfolio, setDecorPortfolio] = useState(
     savedCloud?.decorPortfolio && savedCloud.decorPortfolio.length > 0
       ? savedCloud.decorPortfolio
@@ -516,69 +534,16 @@ function AppContent() {
             image:
               "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop&q=85",
             isApproved: true
-          },
-          {
-            id: "pf_102",
-            ownerId: 402,
-            ownerPhone: "9848055667",
-            merchantName: "Sri Venkateswara Grand Function Hall",
-            subRole: "function_hall",
-            title: "Grand AC Main Marriage Hall & Dining Lawn",
-            decorType: "AC Banquet & Marriage Hall",
-            materialUsed: "Central AC, Crystal Chandeliers, 800 Banquet Chairs",
-            albumName: "2026 Hall Interior & Lawn Album",
-            dimensionsSize: "12,000 sq.ft (800 Pax)",
-            baseEstimate: 35000,
-            image:
-              "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&auto=format&fit=crop&q=85",
-            isApproved: true
           }
         ]
   );
 
   const [decorReverseBids, setDecorReverseBids] = useState(
-    savedCloud?.decorReverseBids && savedCloud.decorReverseBids.length > 0
-      ? savedCloud.decorReverseBids
-      : [
-          {
-            id: "BID-7721",
-            customerName: "Rajeshwar Reddy (Adilabad)",
-            eventDate: "2026-11-05",
-            venueName: "Sri Venkateswara Function Hall, Adilabad",
-            selectedDesigns: [
-              "Royal Imported Orchid & Dutch Rose Wedding Mandap"
-            ],
-            estimatedBudget: 26500,
-            lowestBidSoFar: 24500,
-            mySubmittedBid: null,
-            status: "OPEN_FOR_REVERSE_BIDS"
-          }
-        ]
+    savedCloud?.decorReverseBids || []
   );
-
   const [decorEscrowBookings, setDecorEscrowBookings] = useState(
-    savedCloud?.decorEscrowBookings && savedCloud.decorEscrowBookings.length > 0
-      ? savedCloud.decorEscrowBookings
-      : [
-          {
-            id: "ESC-5091",
-            ownerId: 401,
-            subRole: "flower_decorator",
-            merchantName: "Padmavathi Royal Flower Decorators",
-            customerName: "Vikram Rathod (Adilabad)",
-            venueAddress: "Subhash Nagar Function Hall, Adilabad",
-            eventDate: "2026-11-05",
-            packageTitle: "Royal Imported Orchid & Dutch Rose Wedding Mandap",
-            totalContractAmount: 26500,
-            stage35Paid: true,
-            stage85Paid: false,
-            stage100Paid: false,
-            milestoneStatus: "35_PERCENT_ADVANCE_RELEASED"
-          }
-        ]
+    savedCloud?.decorEscrowBookings || []
   );
-
-  // Pending Partner Queues for Admin 5-Point Checklists
   const [pendingMerchants, setPendingMerchants] = useState(
     savedCloud?.pendingMerchants || []
   );
@@ -589,32 +554,7 @@ function AppContent() {
     savedCloud?.pendingDecorators || []
   );
   const [pendingRiders, setPendingRiders] = useState(
-    savedCloud?.pendingRiders && savedCloud.pendingRiders.length > 0
-      ? savedCloud.pendingRiders
-      : [
-          {
-            id: 991,
-            captainName: "Salman Khan Captain",
-            vehicleClass: "2W Bike Captain (Up to 45kg)",
-            dlNumber: "TS-01-2023004411",
-            rcPlate: "TS-01-GH-8821",
-            phone: "9848033221",
-            govId: "[Gov ID Verified]",
-            area: "Station Road, Adilabad",
-            upiId: "salmancaptain@ybl",
-            bankName: "State Bank of India",
-            accountNumber: "30985544332",
-            ifscCode: "SBIN0000801",
-            kycDocName: "Driving_License_RC_Fitness_Adilabad.pdf",
-            workImageUrl:
-              "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=300&auto=format&fit=crop&q=80",
-            tcAccepted: true,
-            acceptedAt: "2026-10-30 09:00 AM",
-            digitalSignatureText: "Salman Khan (Digitally Signed)",
-            status: "Pending_Admin_Approval",
-            isPublishedToPublic: false
-          }
-        ]
+    savedCloud?.pendingRiders || []
   );
   const [pendingSubCategories, setPendingSubCategories] = useState(
     savedCloud?.pendingSubCategories || []
@@ -642,7 +582,6 @@ function AppContent() {
     { id: 5, role: "rider" }
   ]);
 
-  // Customer OTP-Verified Address Book (Restored)
   const [addressBook, setAddressBook] = useState(
     savedCloud?.addressBook || [
       {
@@ -658,13 +597,6 @@ function AppContent() {
         fullAddress: "Collectorate Chowk, Adilabad",
         distanceKm: 2.5,
         verified: true
-      },
-      {
-        id: "addr_site",
-        label: "Work Site",
-        fullAddress: "Mavala Bypass, Adilabad",
-        distanceKm: 3.4,
-        verified: true
       }
     ]
   );
@@ -679,7 +611,6 @@ function AppContent() {
   const activeAddressObj =
     addressBook.find((a) => a.id === selectedAddressId) || addressBook[0];
 
-  // Customer Discovery, Multi-Shop Price Comparison & 4 Isolated Module Carts
   const [customerHomeSubTab, setCustomerHomeSubTab] = useState("stores");
   const [selectedCategory, setSelectedCategory] = useState("daily_needs");
   const [searchQuery, setSearchQuery] = useState("");
@@ -688,45 +619,27 @@ function AppContent() {
   const [selectedMerchantByProduct, setSelectedMerchantByProduct] = useState({});
   const [expandedCompareProdId, setExpandedCompareProdId] = useState(null);
 
-  // Customer Event Date & Dynamic 5-Day 35% vs. 85% Escrow Math
   const [eventDate, setEventDate] = useState("2026-11-05");
-  const getDaysUntilEvent = () => {
-    const today = new Date("2026-10-30T00:00:00");
-    const selected = new Date(`${eventDate}T00:00:00`);
-    return Math.max(Math.ceil((selected - today) / (1000 * 60 * 60 * 24)), 1);
-  };
-  const daysAway = getDaysUntilEvent();
-  const advancePercentage = daysAway >= 5 ? 35 : 85;
-
-  // Customer Home Services Filter
   const [serviceFilterDate, setServiceFilterDate] = useState("2026-10-30");
   const [serviceFilterSlot, setServiceFilterSlot] = useState(
     "10:00 AM - 11:00 AM"
   );
 
-  // Customer Taxi & P2P Form
-  const [taxiBookingForm, setTaxiBookingForm] = useState({
-    rideMode: "BIKE_TAXI_PASSENGER",
-    forWhom: "For Self",
+  const [customerBookingForm, setCustomerBookingForm] = useState({
+    forWhom: "For Myself",
+    weightKg: 10,
+    chosenVehicleCode: "2W",
     pickupPin: "Subhash Nagar, Adilabad",
     dropPin: "Collectorate Chowk, Adilabad",
     distanceKm: 2.8
   });
 
-  // 4 Isolated Module Carts
-  const [categoryCarts, setCategoryCarts] = useState(
-    savedCloud?.categoryCarts || {
-      daily_needs: [],
-      veg_fruits: [],
-      non_veg: [],
-      construction: [],
-      medicines: []
-    }
+  const [merchantCart, setMerchantCart] = useState(
+    savedCloud?.merchantCart || []
   );
   const [serviceCart, setServiceCart] = useState(savedCloud?.serviceCart || []);
   const [decorCart, setDecorCart] = useState(savedCloud?.decorCart || []);
-  const [taxiCart, setTaxiCart] = useState(savedCloud?.taxiCart || []);
-  const [activeCartViewTab, setActiveCartViewTab] = useState("merchant_cart");
+  const [cartChosenVehicleCode, setCartChosenVehicleCode] = useState("2W");
 
   const [orders, setOrders] = useState(savedCloud?.orders || []);
   const [activeOrderId, setActiveOrderId] = useState(null);
@@ -735,27 +648,7 @@ function AppContent() {
     savedCloud?.serviceBookings || []
   );
 
-  // Mandatory 3-Question YES/NO Delivery Review Gate + Trilingual Voice Assist
   const [reviewAnswers, setReviewAnswers] = useState({});
-  const [isSpeakingNow, setIsSpeakingNow] = useState(false);
-
-  const speakTextAloud = (textToSpeak) => {
-    try {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.rate = 0.95;
-        utterance.onstart = () => setIsSpeakingNow(true);
-        utterance.onend = () => setIsSpeakingNow(false);
-        utterance.onerror = () => setIsSpeakingNow(false);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        triggerToast(`Voice Assist: ${textToSpeak}`);
-      }
-    } catch (e) {
-      setIsSpeakingNow(false);
-    }
-  };
 
   useEffect(() => {
     saveCloudAndLocalState({
@@ -765,7 +658,6 @@ function AppContent() {
       currentUser,
       geoAds,
       categories,
-      categoryCarts,
       merchants,
       serviceProviders,
       decorators,
@@ -785,9 +677,9 @@ function AppContent() {
       rejectedItems,
       monetizationConfig,
       addressBook,
+      merchantCart,
       serviceCart,
       decorCart,
-      taxiCart,
       orders,
       serviceBookings
     });
@@ -798,7 +690,6 @@ function AppContent() {
     currentUser,
     geoAds,
     categories,
-    categoryCarts,
     merchants,
     serviceProviders,
     decorators,
@@ -818,9 +709,9 @@ function AppContent() {
     rejectedItems,
     monetizationConfig,
     addressBook,
+    merchantCart,
     serviceCart,
     decorCart,
-    taxiCart,
     orders,
     serviceBookings
   ]);
@@ -828,38 +719,21 @@ function AppContent() {
   useEffect(() => {
     return subscribeToRealtimeUpdates((remoteState) => {
       if (remoteState.orders) setOrders(remoteState.orders);
+      if (remoteState.serviceBookings)
+        setServiceBookings(remoteState.serviceBookings);
       if (remoteState.captainRadarJobs)
         setCaptainRadarJobs(remoteState.captainRadarJobs);
-      if (remoteState.pendingRiders) setPendingRiders(remoteState.pendingRiders);
-      if (remoteState.appUpdateInfo) {
-        setAppUpdateInfo((prev) => {
-          const incomingVer = remoteState.appUpdateInfo.latestAvailableVersion;
-          if (incomingVer && incomingVer !== prev?.latestAvailableVersion) {
-            setNotificationsList((n) => [
-              {
-                id: Date.now(),
-                text: `OTA Update v${incomingVer} is ready! Open your Account Section to install in-app.`,
-                time: "Just now"
-              },
-              ...n
-            ]);
-          }
-          return remoteState.appUpdateInfo;
-        });
-      }
+      if (remoteState.pendingRiders)
+        setPendingRiders(remoteState.pendingRiders);
+      if (remoteState.appUpdateInfo)
+        setAppUpdateInfo(remoteState.appUpdateInfo);
     });
   }, []);
 
-  const currentCategoryCart = categoryCarts[selectedCategory] || [];
-  const allMerchantCartCount = Object.values(categoryCarts).reduce(
-    (sum, arr) => sum + (arr || []).reduce((s, i) => s + (i.qty || 1), 0),
-    0
-  );
   const totalCartCount =
-    allMerchantCartCount +
+    merchantCart.reduce((s, i) => s + (i.qty || 1), 0) +
     serviceCart.length +
-    decorCart.length +
-    taxiCart.length;
+    decorCart.length;
   const activeOrder =
     orders.find(
       (o) => o.id === activeOrderId && !o.status?.includes("CANCELLED")
@@ -867,7 +741,6 @@ function AppContent() {
     orders[0] ||
     null;
 
-  // Multi-Shop Price Comparison Helper ("Best Price Buy Box")
   const getProductBestOffer = (product) => {
     const offers =
       product.merchantOffers && product.merchantOffers.length > 0
@@ -887,74 +760,24 @@ function AppContent() {
     return { offers, lowestOffer: offers[0], activeOffer };
   };
 
-  // Add to Isolated Category Cart OR Silent Prime Order Merge (+Rs.0 Extra Delivery Fee)
-  const handleAddToProductCart = (product) => {
+  const handleAddToUnifiedMerchantCart = (product) => {
+    recordUserActivityTelemetry("PRODUCT_INTERACT", {
+      productId: product.id,
+      categoryId: product.categoryId
+    });
     const chosenVarId =
       selectedVariantMap[product.id] || product.variants[0].id;
     const variant =
       product.variants.find((v) => v.id === chosenVarId) || product.variants[0];
     const { activeOffer } = getProductBestOffer(product);
-
-    // Check if Prime Mergeable Order exists before rider pickup token handover
-    const mergeableOrder = orders.find(
-      (o) =>
-        o.categoryId === product.categoryId &&
-        [
-          "PAID_PACKING_STARTED",
-          "AWAITING_MERCHANT_APPROVAL",
-          "READY_FOR_PICKUP_AGENT_ALERTED"
-        ].includes(o.status) &&
-        !o.tokenHandedOver
-    );
-
-    if (isPrimeCustomer && mergeableOrder) {
-      const updatedItems = [...(mergeableOrder.items || [])];
-      const existingIdx = updatedItems.findIndex(
-        (i) => i.productId === product.id && i.variantId === variant.id
-      );
-      if (existingIdx > -1) {
-        updatedItems[existingIdx].qty += 1;
-      } else {
-        updatedItems.push({
-          productId: product.id,
-          variantId: variant.id,
-          name: `${product.subCategoryBrand} (${variant.label})`,
-          merchantName: activeOffer.merchantName,
-          price: activeOffer.price || variant.price,
-          weightGrams: variant.weightGrams || 1000,
-          qty: 1,
-          addedLater: true
-        });
-      }
-      const itemsTotal = updatedItems.reduce((s, i) => s + i.price * i.qty, 0);
-      const gst = Number(
-        ((itemsTotal + (mergeableOrder.deliveryFee || 25)) * 0.05).toFixed(2)
-      );
-      const grandTotal = Number(
-        (itemsTotal + (mergeableOrder.deliveryFee || 25) + gst).toFixed(2)
-      );
-      setOrders(
-        orders.map((o) =>
-          o.id === mergeableOrder.id
-            ? { ...o, items: updatedItems, itemsTotal, gst, grandTotal }
-            : o
-        )
-      );
-      triggerToast(
-        `Prime Merge (+Rs.0 Extra Delivery): Added ${product.subCategoryBrand} into Active Order #${mergeableOrder.id}!`
-      );
-      return;
-    }
-
-    const curr = categoryCarts[product.categoryId] || [];
-    const existing = curr.find(
+    const existing = merchantCart.find(
       (i) =>
         i.productId === product.id &&
         i.variantId === variant.id &&
         i.merchantId === activeOffer.merchantId
     );
     const updated = existing
-      ? curr.map((i) =>
+      ? merchantCart.map((i) =>
           i.productId === product.id &&
           i.variantId === variant.id &&
           i.merchantId === activeOffer.merchantId
@@ -962,74 +785,120 @@ function AppContent() {
             : i
         )
       : [
-          ...curr,
+          ...merchantCart,
           {
             productId: product.id,
             categoryId: product.categoryId,
             variantId: variant.id,
             name: `${product.subCategoryBrand} (${variant.label})`,
             merchantId: activeOffer.merchantId,
-            merchantName: activeOffer.merchantName,
+            merchantName: activeOffer.merchantName || product.shopName,
             price: activeOffer.price || variant.price,
             weightGrams: variant.weightGrams || 1000,
             qty: 1
           }
         ];
-    setCategoryCarts({ ...categoryCarts, [product.categoryId]: updated });
+    setMerchantCart(updated);
     triggerToast(
-      `Added ${product.subCategoryBrand} from ${activeOffer.merchantName} (Rs.${
-        activeOffer.price || variant.price
-      }) to ${product.categoryId} Cart!`
+      `Added ${product.subCategoryBrand} (${activeOffer.merchantName}) to Cart!`
+    );
+  };
+
+  const handlePlaceOrderForMerchantApproval = (
+    enforcedVehCode,
+    deliveryFee,
+    totalWeightKg
+  ) => {
+    if (merchantCart.length === 0) return;
+    const vRule =
+      VEHICLE_CONSORT_RULES[enforcedVehCode] || VEHICLE_CONSORT_RULES["2W"];
+    const itemsTotal = merchantCart.reduce((s, i) => s + i.price * i.qty, 0);
+    const gst = Number(((itemsTotal + deliveryFee) * 0.05).toFixed(2));
+    const grandTotal = Number((itemsTotal + deliveryFee + gst).toFixed(2));
+    const shopNames = Array.from(
+      new Set(merchantCart.map((i) => i.merchantName))
+    ).join(" + ");
+    const generatedOtp = String(Math.floor(1000 + Math.random() * 9000));
+    const newOrder = {
+      id: `VFL-${Math.floor(1000 + Math.random() * 9000)}`,
+      dateStr: "2026-10-31",
+      createdAt: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+      }),
+      periodTag: "TODAY",
+      customerName: currentUser.fullName,
+      address: activeAddressObj.fullAddress,
+      distanceKm: activeAddressObj.distanceKm,
+      totalWeightGrams: totalWeightKg * 1000,
+      weightKg: totalWeightKg,
+      requiredVehicleCode: enforcedVehCode,
+      vehicle: vRule.label,
+      shopName: shopNames,
+      items: merchantCart.map((it) => ({
+        ...it,
+        approvalStatus: "PENDING_MERCHANT"
+      })),
+      itemsTotal,
+      deliveryFee,
+      gst,
+      grandTotal,
+      riderName: riders[0]?.name || "Raju Local Rider",
+      status: "AWAITING_MERCHANT_APPROVAL",
+      secretOtp: generatedOtp
+    };
+
+    const radarDispatch = {
+      id: newOrder.id,
+      requiredVehicleCode: enforcedVehCode,
+      vehicleLabel: vRule.label,
+      weightKg: totalWeightKg,
+      badge: `Store Order (${totalWeightKg} kg | ${vRule.shortLabel})`,
+      bookedBy: `Customer: ${currentUser.fullName} (Shop: ${shopNames})`,
+      pickupPin: shopNames,
+      dropPin: activeAddressObj.fullAddress,
+      distFromCaptainKm: 0.5,
+      distanceKm: activeAddressObj.distanceKm,
+      captainPayout: deliveryFee,
+      secretOtp: generatedOtp,
+      status: "OPEN_ON_RADAR",
+      paymentReqStatus: "PENDING_TRIP_COMPLETION"
+    };
+
+    setOrders([newOrder, ...orders]);
+    setCaptainRadarJobs([radarDispatch, ...captainRadarJobs]);
+    setActiveOrderId(newOrder.id);
+    setMerchantCart([]);
+    setFooterTab("orders");
+    triggerToast(
+      `Order #${newOrder.id} sent to Merchant Queue & ${vRule.shortLabel} Captain Radar!`
     );
   };
 
   const handleCompleteUpiPayment = (chosenUpiAppName) => {
     if (!pendingUpiPayment) return;
-    if (pendingUpiPayment.type === "PRODUCT_ORDER") {
-      const newOrder = {
-        id: `VFL-${Math.floor(1000 + Math.random() * 9000)}`,
-        dateStr: "2026-10-30",
-        createdAt: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit"
-        }),
-        periodTag: "TODAY",
-        categoryId: pendingUpiPayment.catId,
-        categoryName: pendingUpiPayment.title,
-        customerName: currentUser.fullName,
-        addressLabel: activeAddressObj.label,
-        address: activeAddressObj.fullAddress,
-        distanceKm: activeAddressObj.distanceKm,
-        shopName:
-          pendingUpiPayment.items?.[0]?.merchantName || "Sri Laxmi Supermart",
-        items: pendingUpiPayment.items,
-        itemsTotal: pendingUpiPayment.itemsTotal,
-        deliveryFee: pendingUpiPayment.deliveryFee,
-        gst: pendingUpiPayment.gst,
-        grandTotal: pendingUpiPayment.amount,
-        paidViaApp: chosenUpiAppName,
-        riderName: riders[0]?.name || "Raju Local Rider",
-        vehicle: "2W Bike Captain (Up to 45kg)",
-        status: "PAID_PACKING_STARTED",
-        tokenHandedOver: false,
-        secretOtp: String(Math.floor(1000 + Math.random() * 9000))
-      };
-      setOrders([newOrder, ...orders]);
-      setActiveOrderId(newOrder.id);
-      setCategoryCarts({ ...categoryCarts, [pendingUpiPayment.catId]: [] });
+    if (pendingUpiPayment.type === "APPROVED_MERCHANT_ORDER") {
+      setOrders(
+        orders.map((o) =>
+          o.id === pendingUpiPayment.orderId
+            ? {
+                ...o,
+                paidViaApp: chosenUpiAppName,
+                status: "PAID_PACKING_STARTED"
+              }
+            : o
+        )
+      );
       setPendingUpiPayment(null);
       setFooterTab("orders");
       setLiveOrderDrawerOpen(true);
-      triggerToast(
-        `Paid via ${chosenUpiAppName}! Order #${newOrder.id} sent straight to Merchant Packing.`
-      );
+      triggerToast(`Paid via ${chosenUpiAppName}! Merchant packing started.`);
     } else if (pendingUpiPayment.type === "SERVICE_ESCROW") {
       const created = serviceCart.map((sc) => ({
         ...sc,
         id: `SRV-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: currentUser.fullName,
-        escrowVisitingAmount:
-          sc.visitingFee + (monetizationConfig.serviceBookingSurcharge || 0),
+        escrowVisitingAmount: sc.visitingFee,
         paidViaApp: chosenUpiAppName,
         happyCode: String(Math.floor(1000 + Math.random() * 9000)),
         periodTag: "TODAY",
@@ -1040,19 +909,17 @@ function AppContent() {
       setServiceCart([]);
       setPendingUpiPayment(null);
       setFooterTab("orders");
-      triggerToast(
-        `Paid via ${chosenUpiAppName}! Visiting Fee held in Escrow until Geo-Fenced Happy Code verification.`
-      );
+      triggerToast(`Paid via ${chosenUpiAppName}! Visiting Fee held in Escrow.`);
     }
   };
 
   // ==========================================================================
-  // SCREEN: 3-STEP KYC REGISTRATION VAULT WITH PDF/CAMERA DOCS & DIGITAL SIGN
+  // SECURITY & KYC VAULT (WITH HARDWARE BIOMETRICS & PERSISTENT SESSION)
   // ==========================================================================
   const renderAuthVault = () => (
     <MobilePhoneShell
       title="Security & KYC Vault"
-      badge="v2.9.5"
+      badge="v2.9.6"
       activePortal={activePortal}
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -1061,9 +928,6 @@ function AppContent() {
       brightTheme={brightTheme}
       lang={lang}
       setLang={setLang}
-      appUpdateInfo={appUpdateInfo}
-      notificationsCount={notificationsList.length}
-      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
       showFooter={false}
     >
       <div className="space-y-3 text-xs">
@@ -1073,10 +937,10 @@ function AppContent() {
               <FounderLogoBadge logoUrl={founderLogoUrl} />
               <div>
                 <h2 className="font-black text-amber-400 text-xs">
-                  WE4ALL SECURITY &amp; KYC VAULT
+                  WE4ALL SECURITY &amp; BIOMETRIC VAULT
                 </h2>
                 <p className="text-[10px] text-slate-300">
-                  Select Portal Role to Sign In or Register
+                  {t.biometricProtected}
                 </p>
               </div>
             </div>
@@ -1101,630 +965,345 @@ function AppContent() {
             className="w-full bg-slate-950 border border-emerald-500/50 rounded-xl p-2 text-white font-bold text-xs"
           >
             <option value="customer">1. Customer Super-App</option>
-            <option value="merchant">
-              2. Product Merchant Portal (Supermart / Kirana)
-            </option>
-            <option value="service_provider">
-              3. Service Provider Portal (1-Hr Slots &amp; Escrow)
-            </option>
-            <option value="decorator">
-              4. Flower Decorator &amp; Function Halls Portal
-            </option>
-            <option value="rider">
-              5. Delivery Captain Portal (Delivery, Taxi &amp; P2P)
-            </option>
+            <option value="merchant">2. Product Merchant Portal</option>
+            <option value="service_provider">3. Service Provider Portal</option>
+            <option value="decorator">4. Flower Decorator &amp; Function Halls</option>
+            <option value="rider">5. Delivery Captain Portal (2W/3W/4W)</option>
           </select>
-          <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl">
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
             <button
               type="button"
-              onClick={() => {
-                setAuthTab("pin_biometric");
-                setAuthError("");
+              onClick={async () => {
+                await verifyPhoneHardwareBiometric(
+                  currentUser?.fullName || "WE4ALL User"
+                );
+                localStorage.setItem("we4all_persistent_session_v4", "active");
+                setActivePortal(selectedRole);
+                if (selectedRole === "customer") setCustomerHomeSubTab("stores");
+                setFooterTab("home");
+                setOnboardingStep("app");
+                triggerToast(
+                  `Biometric Verified! Logged in to ${selectedRole.toUpperCase()} Portal.`
+                );
               }}
-              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
-                authTab === "pin_biometric"
-                  ? "bg-teal-400 text-slate-950"
-                  : "text-slate-400"
-              }`}
+              className="py-2 rounded-xl font-black text-[10px] bg-emerald-400 text-slate-950 cursor-pointer shadow"
             >
-              PIN / Biometric
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAuthTab("login");
-                setAuthError("");
-              }}
-              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
-                authTab === "login"
-                  ? "bg-emerald-400 text-slate-950"
-                  : "text-slate-400"
-              }`}
-            >
-              Sign In
+              1-Tap Biometric Login &rarr;
             </button>
             <button
               type="button"
               onClick={() => {
                 setAuthTab("register");
                 setRegStep(1);
-                setAuthError("");
               }}
-              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
-                authTab === "register"
-                  ? "bg-amber-400 text-slate-950"
-                  : "text-slate-400"
-              }`}
+              className="py-2 rounded-xl font-black text-[10px] bg-amber-400 text-slate-950 cursor-pointer"
             >
-              New Register
+              New KYC Registration
             </button>
           </div>
         </div>
 
-        {authError && (
-          <div className="bg-rose-950 border border-rose-500 text-rose-200 p-2 rounded-xl text-center font-bold">
-            {authError}
+        {/* 3-Step Registration */}
+        <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
+          <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+            <span className="font-black text-amber-400 text-xs">
+              3-Step Registration ({selectedRole.toUpperCase()})
+            </span>
+            <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
+              Step {regStep} of 3
+            </span>
           </div>
-        )}
 
-        {authTab === "pin_biometric" && (
-          <div className="bg-slate-900 text-white border border-teal-500/40 rounded-2xl p-4 space-y-3 text-center">
-            <h3 className="font-black text-teal-300 text-xs">
-              Instant PIN &amp; Biometric Unlock ({selectedRole.toUpperCase()})
-            </h3>
-            <button
-              type="button"
-              onClick={() => {
-                setActivePortal(selectedRole);
-                setFooterTab("home");
-                setOnboardingStep("app");
-                triggerToast(`Opened ${selectedRole.toUpperCase()} Portal!`);
-              }}
-              className="w-full bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
-            >
-              1-Tap Biometric Login (Fingerprint / Face ID)
-            </button>
-            <div className="flex gap-2 pt-2 border-t border-slate-800">
-              <input
-                type="password"
-                maxLength={4}
-                value={pinUnlockInput}
-                onChange={(e) => setPinUnlockInput(e.target.value)}
-                placeholder="4-Digit PIN"
-                className="w-32 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if (pinUnlockInput === "9999") {
-                    setPinUnlockInput("");
-                    setIsAdminAuthenticated(false);
-                    setAdminAuthStep(1);
-                    setViewMode("founder_web");
-                    return;
-                  }
-                  setPinUnlockInput("");
-                  setActivePortal(selectedRole);
-                  setFooterTab("home");
-                  setOnboardingStep("app");
-                  triggerToast(`Unlocked ${selectedRole.toUpperCase()} Portal!`);
-                }}
-                className="flex-1 bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer"
-              >
-                Unlock with PIN
-              </button>
-            </div>
-          </div>
-        )}
-
-        {authTab === "login" && (
-          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
-            <input
-              type="text"
-              value={loginForm.usernameOrPhone}
-              onChange={(e) =>
-                setLoginForm({ ...loginForm, usernameOrPhone: e.target.value })
-              }
-              placeholder="Registered Username or 10-Digit Mobile"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-            <input
-              type="password"
-              value={loginForm.password}
-              onChange={(e) =>
-                setLoginForm({ ...loginForm, password: e.target.value })
-              }
-              placeholder="Password"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setActivePortal(selectedRole);
-                setFooterTab("home");
-                setOnboardingStep("app");
-                triggerToast(`Signed in to ${selectedRole.toUpperCase()} Portal!`);
-              }}
-              className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-            >
-              Verify &amp; Open Portal &rarr;
-            </button>
-          </div>
-        )}
-
-        {authTab === "register" && (
-          <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-              <span className="font-black text-amber-400 text-xs">
-                3-Step KYC, PDF/Camera Docs &amp; Digital Sign ({selectedRole.toUpperCase()})
-              </span>
-              <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
-                Step {regStep} of 3
-              </span>
-            </div>
-
-            {regStep === 1 && (
-              <div className="space-y-2.5">
-                {selectedRole === "decorator" && (
-                  <div className="grid grid-cols-2 gap-1.5">
+          {regStep === 1 && (
+            <div className="space-y-2.5">
+              {selectedRole === "rider" && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {Object.values(VEHICLE_CONSORT_RULES).map((vr) => (
                     <button
+                      key={vr.code}
                       type="button"
                       onClick={() =>
-                        setRegForm({
-                          ...regForm,
-                          decoratorSubRole: "flower_decorator"
-                        })
+                        setRegForm({ ...regForm, vehicleCode: vr.code })
                       }
-                      className={`py-2 rounded-xl font-black text-[10px] border cursor-pointer ${
-                        regForm.decoratorSubRole === "flower_decorator"
-                          ? "bg-pink-500 border-pink-300 text-white"
-                          : "bg-slate-950 border-slate-800 text-slate-400"
+                      className={`p-2 rounded-xl border text-center cursor-pointer ${
+                        regForm.vehicleCode === vr.code
+                          ? "bg-teal-400 text-slate-950 border-white font-black"
+                          : "bg-slate-950 text-slate-300 border-slate-800"
                       }`}
                     >
-                      \uD83C\uDF38 Flower Decorator
+                      <div className="text-[10px] font-black">
+                        {vr.shortLabel}
+                      </div>
+                      <div className="text-[8px]">Max {vr.maxWeightKg} kg</div>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setRegForm({
-                          ...regForm,
-                          decoratorSubRole: "function_hall"
-                        })
-                      }
-                      className={`py-2 rounded-xl font-black text-[10px] border cursor-pointer ${
-                        regForm.decoratorSubRole === "function_hall"
-                          ? "bg-purple-500 border-purple-300 text-white"
-                          : "bg-slate-950 border-slate-800 text-slate-400"
-                      }`}
-                    >
-                      \uD83C\uDFDB\uFE0F Function Hall Merchant
-                    </button>
-                  </div>
-                )}
-                {selectedRole === "rider" && (
-                  <select
-                    value={regForm.vehicleClass}
-                    onChange={(e) =>
-                      setRegForm({ ...regForm, vehicleClass: e.target.value })
-                    }
-                    className="w-full bg-slate-950 border border-teal-400/60 rounded-xl p-2 text-white font-bold"
-                  >
-                    <option value="2W Bike Captain (Up to 45kg)">
-                      2W Bike Taxi, Parcel &amp; Store Delivery (Up to 45kg)
-                    </option>
-                    <option value="3W Cargo & Passenger Auto (Up to 300kg)">
-                      3W Auto Passenger &amp; Cargo Captain (Up to 300kg)
-                    </option>
-                    <option value="4W Mini Truck / Heavy Transport (Over 300kg)">
-                      4W Mini Truck / Heavy Transport Captain (Over 300kg)
-                    </option>
-                  </select>
-                )}
-                <div className="flex gap-1.5">
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    value={regForm.phone}
-                    onChange={(e) =>
-                      setRegForm({ ...regForm, phone: e.target.value })
-                    }
-                    placeholder="Enter 10-Digit Mobile Number"
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (regForm.phone.trim().length < 10) {
-                        setAuthError("Enter a valid 10-digit mobile number.");
-                        return;
-                      }
-                      const otp = String(
-                        Math.floor(1000 + Math.random() * 9000)
-                      );
-                      setRegForm({
-                        ...regForm,
-                        generatedOtp: otp,
-                        otpInput: otp
-                      });
-                      setAuthError("");
-                      triggerToast(`Registration OTP Sent: ${otp}`);
-                    }}
-                    className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
-                  >
-                    Send OTP
-                  </button>
+                  ))}
                 </div>
-                {regForm.generatedOtp && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRegForm({ ...regForm, otpVerified: true });
-                      setAuthError("");
-                      setRegStep(2);
-                    }}
-                    className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                  >
-                    Verify OTP ({regForm.generatedOtp}) &amp; Continue to Step 2 &rarr;
-                  </button>
-                )}
-              </div>
-            )}
-
-            {regStep === 2 && (
-              <div className="space-y-2">
+              )}
+              <div className="flex gap-1.5">
                 <input
-                  type="text"
-                  value={regForm.fullName}
+                  type="tel"
+                  maxLength={10}
+                  value={regForm.phone}
                   onChange={(e) =>
-                    setRegForm({ ...regForm, fullName: e.target.value })
+                    setRegForm({ ...regForm, phone: e.target.value })
                   }
-                  placeholder="Full Legal Name / Business Name"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                  placeholder="Enter 10-Digit Mobile Number"
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
-                {selectedRole === "rider" && (
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <input
-                      type="text"
-                      value={regForm.dlNumber}
-                      onChange={(e) =>
-                        setRegForm({ ...regForm, dlNumber: e.target.value })
-                      }
-                      placeholder="Driving License (DL) No."
-                      className="bg-slate-950 border border-teal-500/50 rounded-xl p-2 text-white"
-                    />
-                    <input
-                      type="text"
-                      value={regForm.rcPlate}
-                      onChange={(e) =>
-                        setRegForm({ ...regForm, rcPlate: e.target.value })
-                      }
-                      placeholder="Vehicle Plate (TS-01-EF-4599)"
-                      className="bg-slate-950 border border-teal-500/50 rounded-xl p-2 text-white"
-                    />
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const otp = String(Math.floor(1000 + Math.random() * 9000));
+                    setRegForm({
+                      ...regForm,
+                      generatedOtp: otp,
+                      otpInput: otp
+                    });
+                    triggerToast(`Registration OTP Sent: ${otp}`);
+                  }}
+                  className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
+                >
+                  Send OTP
+                </button>
+              </div>
+              {regForm.generatedOtp && (
+                <button
+                  type="button"
+                  onClick={() => setRegStep(2)}
+                  className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                >
+                  Verify OTP ({regForm.generatedOtp}) &amp; Continue &rarr;
+                </button>
+              )}
+            </div>
+          )}
+
+          {regStep === 2 && (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={regForm.fullName}
+                onChange={(e) =>
+                  setRegForm({ ...regForm, fullName: e.target.value })
+                }
+                placeholder="Full Legal / Business Name"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+              />
+              {selectedRole === "rider" && (
                 <div className="grid grid-cols-2 gap-1.5">
                   <input
                     type="text"
-                    maxLength={12}
-                    value={regForm.govId}
+                    value={regForm.vehicleModel}
                     onChange={(e) =>
-                      setRegForm({ ...regForm, govId: e.target.value })
+                      setRegForm({ ...regForm, vehicleModel: e.target.value })
                     }
-                    placeholder="12-Character Gov ID Proof"
+                    placeholder="Vehicle Make & Model"
                     className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                   />
                   <input
                     type="text"
-                    value={regForm.upiId}
+                    value={regForm.rcPlate}
                     onChange={(e) =>
-                      setRegForm({ ...regForm, upiId: e.target.value })
+                      setRegForm({ ...regForm, rcPlate: e.target.value })
                     }
-                    placeholder="Instant Payout UPI ID"
-                    className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                    placeholder="RC Plate (TS-01-EF-4599)"
+                    className="bg-slate-950 border border-amber-400/50 rounded-xl p-2 text-amber-300 font-bold"
                   />
                 </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/40 space-y-2">
-                  <p className="text-[10px] font-black text-amber-300">
-                    Upload Required KYC / License Doc (PDF, Gallery or Camera) &amp; Platform Photo:
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <label className="bg-slate-900 border border-emerald-500/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[9px] font-bold text-emerald-300 block">
-                        \uD83D\uDCC4 Upload PDF / Gallery Doc
-                      </span>
-                      <input
-                        type="file"
-                        accept=".pdf,image/*"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          setRegForm({ ...regForm, kycDocName: f.name });
-                          triggerToast(`Attached Document: ${f.name}`);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    <label className="bg-slate-900 border border-amber-400/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[9px] font-bold text-amber-300 block">
-                        \uD83D\uDCF7 Capture via Mobile Camera
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          setRegForm({
-                            ...regForm,
-                            kycDocName: `Camera_${f.name}`
-                          });
-                          triggerToast("Captured KYC Document via Camera!");
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRegStep(1)}
-                    className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
-                  >
-                    &larr; Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!regForm.fullName.trim()) {
-                        setAuthError("Enter Full Legal Name.");
-                        return;
-                      }
-                      setAuthError("");
-                      setRegStep(3);
-                    }}
-                    className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                  >
-                    Continue to Step 3 (T&amp;C + Digital Sign) &rarr;
-                  </button>
-                </div>
+              )}
+              <div className="grid grid-cols-2 gap-1.5">
+                <input
+                  type="text"
+                  maxLength={12}
+                  value={regForm.govId}
+                  onChange={(e) =>
+                    setRegForm({ ...regForm, govId: e.target.value })
+                  }
+                  placeholder="12-Character Gov ID Proof"
+                  className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <input
+                  type="text"
+                  value={regForm.upiId}
+                  onChange={(e) =>
+                    setRegForm({ ...regForm, upiId: e.target.value })
+                  }
+                  placeholder="UPI ID (e.g. name@ybl)"
+                  className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
               </div>
-            )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRegStep(1)}
+                  className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
+                >
+                  &larr; Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegStep(3)}
+                  className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                >
+                  Continue to Step 3 &rarr;
+                </button>
+              </div>
+            </div>
+          )}
 
-            {regStep === 3 && (
-              <div className="space-y-2.5">
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/50 space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-bold text-amber-300">
-                      Draw Signature OR Upload from Gallery / Capture with Camera:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={clearSigCanvas}
-                      className="bg-slate-800 text-rose-300 px-2 py-0.5 rounded text-[9px] font-bold cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                  <canvas
-                    ref={sigCanvasRef}
-                    width={310}
-                    height={75}
-                    onMouseDown={startSigDraw}
-                    onMouseMove={moveSigDraw}
-                    onMouseUp={endSigDraw}
-                    onMouseLeave={endSigDraw}
-                    onTouchStart={startSigDraw}
-                    onTouchMove={moveSigDraw}
-                    onTouchEnd={endSigDraw}
-                    className="w-full h-[75px] bg-white rounded-xl border-2 border-emerald-400 cursor-crosshair touch-none"
-                  />
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <label className="bg-indigo-500/20 border border-indigo-400 text-indigo-200 font-black py-1.5 px-2 rounded-xl text-[9px] text-center cursor-pointer">
-                      \uD83D\uDDBC\uFE0F Signature from Gallery
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setUploadedSignatureImg(
-                              String(reader.result || "")
-                            );
-                            triggerToast("Signature loaded from Gallery!");
-                          };
-                          reader.readAsDataURL(f);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    <label className="bg-amber-500/20 border border-amber-400 text-amber-200 font-black py-1.5 px-2 rounded-xl text-[9px] text-center cursor-pointer">
-                      \uD83D\uDCF7 Capture Sign via Camera
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setUploadedSignatureImg(
-                              String(reader.result || "")
-                            );
-                            triggerToast("Signature captured via Camera!");
-                          };
-                          reader.readAsDataURL(f);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    value={regForm.digitalSignatureText}
-                    onChange={(e) =>
-                      setRegForm({
-                        ...regForm,
-                        digitalSignatureText: e.target.value
-                      })
-                    }
-                    placeholder="Or type Full Legal Name as Digital Signature"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-[11px] font-serif italic"
-                  />
-                </div>
-                <label className="flex items-start gap-2 bg-emerald-950/40 p-2 rounded-xl border border-emerald-500/40 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={regForm.tcAccepted}
-                    onChange={(e) =>
-                      setRegForm({ ...regForm, tcAccepted: e.target.checked })
-                    }
-                    className="mt-0.5"
-                  />
-                  <span className="text-[10px] text-emerald-200 font-bold">
-                    I accept the WE4ALL Platform Terms &amp; Conditions with my signature above.
-                  </span>
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRegStep(2)}
-                    className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
-                  >
-                    &larr; Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!regForm.tcAccepted) {
-                        setAuthError("Please accept the Platform T&C checkbox.");
-                        return;
-                      }
-                      const finalSig =
-                        uploadedSignatureImg ||
-                        (hasDrawnSignature && sigCanvasRef.current
-                          ? sigCanvasRef.current.toDataURL("image/png")
-                          : "");
-                      const newUser = {
-                        id: Date.now(),
-                        fullName: regForm.fullName.trim(),
-                        username: regForm.fullName.trim(),
-                        phone: regForm.phone.trim() || "9848055112",
-                        govId: "[Gov ID Verified]",
-                        role: selectedRole,
-                        vehicleClass: regForm.vehicleClass,
-                        dlNumber: regForm.dlNumber || "TS-01-2023009911",
-                        rcPlate: regForm.rcPlate || "TS-01-EF-4599",
-                        decoratorSubRole:
-                          regForm.decoratorSubRole || "flower_decorator",
-                        upiId: regForm.upiId || "partner@ybl",
-                        bankName: regForm.bankName,
-                        accountNumber: regForm.accountNumber || "30984451209",
-                        ifscCode: regForm.ifscCode || "SBIN0000801",
-                        fastPin: regForm.fastPin || "1990",
-                        tcAccepted: true,
-                        acceptedAt: new Date().toLocaleString(),
-                        kycDocName: regForm.kycDocName || "KYC_Verified.pdf",
-                        digitalSignatureDataUrl: finalSig,
-                        digitalSignatureText:
-                          regForm.digitalSignatureText.trim() ||
-                          regForm.fullName.trim()
-                      };
-                      if (selectedRole === "rider") {
-                        setPendingRiders([
-                          {
-                            ...newUser,
-                            captainName: newUser.fullName,
-                            status: "Pending_Admin_Approval",
-                            isPublishedToPublic: false
-                          },
-                          ...pendingRiders
-                        ]);
-                      } else if (selectedRole === "decorator") {
-                        setPendingDecorators([
-                          {
-                            ...newUser,
-                            businessName: newUser.fullName,
-                            providerName: newUser.fullName,
-                            status: "Pending_Admin_Approval",
-                            isPublishedToPublic: false
-                          },
-                          ...pendingDecorators
-                        ]);
-                      } else if (selectedRole === "service_provider") {
-                        setPendingServiceProviders([
-                          {
-                            ...newUser,
-                            providerName: newUser.fullName,
-                            status: "Pending_Admin_Approval",
-                            isPublishedToPublic: false
-                          },
-                          ...pendingServiceProviders
-                        ]);
-                      } else if (selectedRole === "merchant") {
-                        setPendingMerchants([
-                          {
-                            ...newUser,
-                            businessName: newUser.fullName,
-                            status: "Pending_Admin_Approval",
-                            isPublishedToPublic: false
-                          },
-                          ...pendingMerchants
-                        ]);
-                      }
-                      setCurrentUser(newUser);
-                      setRegisteredUsers([newUser, ...registeredUsers]);
-                      setDeviceBoundUser(newUser);
-                      localStorage.setItem(
-                        "we4all_device_bound_user_v4",
-                        JSON.stringify(newUser)
-                      );
-                      setActivePortal(selectedRole);
-                      setFooterTab("home");
-                      setOnboardingStep("app");
-                      triggerToast(
-                        `Registered ${newUser.fullName} on Server! Sent to Admin for 5-Point Checklist Approval.`
-                      );
-                    }}
-                    className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
-                  >
-                    Sign &amp; Register on Server &rarr;
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          {regStep === 3 && (
+            <div className="space-y-2.5">
+              <canvas
+                ref={sigCanvasRef}
+                width={310}
+                height={70}
+                onMouseDown={startSigDraw}
+                onMouseMove={moveSigDraw}
+                onMouseUp={endSigDraw}
+                onTouchStart={startSigDraw}
+                onTouchMove={moveSigDraw}
+                onTouchEnd={endSigDraw}
+                className="w-full h-[70px] bg-white rounded-xl border-2 border-emerald-400 cursor-crosshair touch-none"
+              />
+              <input
+                type="text"
+                value={regForm.digitalSignatureText}
+                onChange={(e) =>
+                  setRegForm({
+                    ...regForm,
+                    digitalSignatureText: e.target.value
+                  })
+                }
+                placeholder="Or type Full Legal Name as Digital Signature"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-white text-[11px] font-serif italic"
+              />
+              <label className="flex items-start gap-2 bg-emerald-950/40 p-2 rounded-xl border border-emerald-500/40 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={regForm.tcAccepted}
+                  onChange={(e) =>
+                    setRegForm({ ...regForm, tcAccepted: e.target.checked })
+                  }
+                  className="mt-0.5"
+                />
+                <span className="text-[10px] text-emerald-200 font-bold">
+                  I accept the WE4ALL Platform Terms &amp; Conditions.
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  const vRule =
+                    VEHICLE_CONSORT_RULES[regForm.vehicleCode] ||
+                    VEHICLE_CONSORT_RULES["2W"];
+                  const newUser = {
+                    id: Date.now(),
+                    fullName: regForm.fullName.trim() || "Verified User",
+                    phone: regForm.phone.trim() || "9848055112",
+                    govId: "[Gov ID Verified]",
+                    role: selectedRole,
+                    vehicleCode: vRule.code,
+                    vehicleClass: vRule.label,
+                    vehicleModel: regForm.vehicleModel || "Verified Vehicle",
+                    dlNumber: regForm.dlNumber || "TS-01-2023009911",
+                    rcPlate: regForm.rcPlate || "TS-01-EF-4599",
+                    upiId: regForm.upiId || "user@ybl",
+                    tcAccepted: true,
+                    acceptedAt: new Date().toLocaleString()
+                  };
+                  await linkMobileHardwareServicesSilently();
+                  localStorage.setItem("we4all_persistent_session_v4", "active");
+                  setCurrentUser(newUser);
+                  setDeviceBoundUser(newUser);
+                  localStorage.setItem(
+                    "we4all_device_bound_user_v4",
+                    JSON.stringify(newUser)
+                  );
+                  setActivePortal(selectedRole);
+                  if (selectedRole === "customer")
+                    setCustomerHomeSubTab("stores");
+                  setFooterTab("home");
+                  setOnboardingStep("app");
+                  triggerToast(
+                    `Registered & Opened ${selectedRole.toUpperCase()} Portal!`
+                  );
+                }}
+                className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+              >
+                Sign &amp; Open Portal &rarr;
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </MobilePhoneShell>
   );
 
   // ==========================================================================
-  // PORTAL 1: COMPLETE CUSTOMER SUPER-APP (ALL TABS, BUY BOX, PRIME MERGE, VOICE REVIEW)
+  // PORTAL 1: COMPLETE CUSTOMER SUPER-APP (AMAZON HEADER + TELEMETRY + STORES)
   // ==========================================================================
   const renderCustomerPortal = () => {
-    const isCategoryKilled = (killedCategoriesByZone["adilabad"] || []).includes(
-      selectedCategory
-    );
     const approvedProducts = products.filter(
       (p) =>
         p.categoryId === selectedCategory &&
-        p.status === "approved" &&
+        p.isPublished !== false &&
+        p.inStock !== false &&
+        (p.stockQty ?? 10) > 0 &&
         p.subCategoryBrand.toLowerCase().includes(searchQuery.toLowerCase())
     );
     const publishedServiceProviders = serviceProviders.filter(
       (sp) => sp.isPublished !== false && sp.isPublishedToPublic !== false
     );
+    const { topProducts } = getPersonalizedRecommendations(
+      products,
+      publishedServiceProviders
+    );
+
+    const cartTotalWeightGrams = merchantCart.reduce(
+      (sum, it) => sum + (it.weightGrams || 1000) * (it.qty || 1),
+      0
+    );
+    const cartWeightKg = Math.max(1, Math.ceil(cartTotalWeightGrams / 1000));
+    const cartAllow2W = cartWeightKg <= 45;
+    const cartAllow3W = cartWeightKg <= 300;
+    const effectiveCartVehCode =
+      !cartAllow2W && cartChosenVehicleCode === "2W"
+        ? cartAllow3W
+          ? "3W"
+          : "4W_HEAVY"
+        : !cartAllow3W && cartChosenVehicleCode === "3W"
+        ? "4W_HEAVY"
+        : cartChosenVehicleCode;
+    const cartVehRule =
+      VEHICLE_CONSORT_RULES[effectiveCartVehCode] ||
+      VEHICLE_CONSORT_RULES["2W"];
+    const cartDeliveryFee = Math.round(
+      cartVehRule.baseFare2Km +
+        activeAddressObj.distanceKm * cartVehRule.perKmRate
+    );
+
+    const wKg = Number(customerBookingForm.weightKg) || 1;
+    const is2WAllowed = wKg <= 45;
+    const is3WAllowed = wKg <= 300;
+    const activeVehCode =
+      !is2WAllowed && customerBookingForm.chosenVehicleCode === "2W"
+        ? is3WAllowed
+          ? "3W"
+          : "4W_HEAVY"
+        : !is3WAllowed && customerBookingForm.chosenVehicleCode === "3W"
+        ? "4W_HEAVY"
+        : customerBookingForm.chosenVehicleCode;
+    const chosenRule =
+      VEHICLE_CONSORT_RULES[activeVehCode] || VEHICLE_CONSORT_RULES["2W"];
+    const calculatedFare = Math.round(
+      chosenRule.baseFare2Km +
+        customerBookingForm.distanceKm * chosenRule.perKmRate
+    );
 
     return (
       <MobilePhoneShell
         title="Customer Super-App"
-        badge={isPrimeCustomer ? "Prime \u2605" : "Standard"}
+        badge={isPrimeCustomer ? "Prime \u2605" : "Std"}
         activePortal="customer"
         footerTab={footerTab}
         setFooterTab={setFooterTab}
@@ -1735,10 +1314,6 @@ function AppContent() {
         brightTheme={brightTheme}
         lang={lang}
         setLang={setLang}
-        appUpdateInfo={appUpdateInfo}
-        notificationsCount={notificationsList.length}
-        onOpenNotificationsBell={() => setNotificationBellOpen(true)}
-        onCloudCall={() => triggerMaskedCloudCall("Active Partner / Captain")}
         personalShoppingFromPartner={personalShoppingFromPartner}
         onReturnToPartnerDesk={() => {
           setActivePortal(personalShoppingFromPartner);
@@ -1746,83 +1321,56 @@ function AppContent() {
           setFooterTab("home");
         }}
       >
-        {mobileToast && (
-          <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
-            <span>{mobileToast}</span>
-            <button
-              type="button"
-              onClick={() => setMobileToast("")}
-              className="font-black"
-            >
-              X
-            </button>
-          </div>
-        )}
-
-        {/* Top Bar: OTP Address Book Selector + Prime Toggle + Role Switcher */}
-        <div className="flex justify-between items-center pb-2 border-b border-slate-300 gap-1">
-          <div className="flex items-center gap-1.5">
+        {/* Clean Amazon-Style Sub-Header Bar: Deliver To Location + Quick Portal Switcher */}
+        <div className="bg-[#232f3e] text-white px-2.5 py-1.5 rounded-xl flex justify-between items-center text-[10px]">
+          <div className="flex items-center gap-1.5 truncate">
             <FounderLogoBadge logoUrl={founderLogoUrl} />
-            <select
-              value={selectedAddressId}
-              onChange={(e) => {
-                if (e.target.value === "ADD_NEW_OTP")
-                  setShowAddAddressModal(true);
-                else setSelectedAddressId(e.target.value);
-              }}
-              className="bg-slate-900 text-emerald-300 font-bold text-[10px] rounded-lg px-2 py-1 border border-slate-700 max-w-[165px]"
-            >
-              {addressBook.map((a) => (
-                <option key={a.id} value={a.id}>
-                  \uD83D\uDCCD {a.label}: {a.fullAddress.slice(0, 16)}..
+            <div>
+              <span className="text-slate-300 block text-[8px]">
+                {t.deliverTo} {currentUser.fullName}
+              </span>
+              <select
+                value={selectedAddressId}
+                onChange={(e) => {
+                  if (e.target.value === "ADD_NEW_OTP")
+                    setShowAddAddressModal(true);
+                  else setSelectedAddressId(e.target.value);
+                }}
+                className="bg-transparent text-amber-300 font-black text-[10px] outline-none cursor-pointer"
+              >
+                {addressBook.map((a) => (
+                  <option key={a.id} value={a.id} className="bg-slate-900">
+                    \uD83D\uDCCD {a.label}: {a.fullAddress.slice(0, 18)}
+                  </option>
+                ))}
+                <option value="ADD_NEW_OTP" className="bg-slate-900">
+                  + Add New Address (OTP)
                 </option>
-              ))}
-              <option value="ADD_NEW_OTP">+ Add New Address (OTP)</option>
-            </select>
+              </select>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setIsPrimeCustomer(!isPrimeCustomer)}
-              className={`px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer ${
-                isPrimeCustomer
-                  ? "bg-amber-400 text-slate-950"
-                  : "bg-slate-800 text-slate-300"
-              }`}
-            >
-              {isPrimeCustomer ? "\u2605 PRIME" : "Std"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setOnboardingStep("auth")}
-              className="bg-rose-600 text-white px-2 py-1 rounded-lg text-[9px] font-black cursor-pointer"
-            >
-              Portals
-            </button>
-          </div>
+          <select
+            value={activePortal}
+            onChange={(e) => {
+              setActivePortal(e.target.value);
+              setFooterTab("home");
+            }}
+            className="bg-slate-900 text-emerald-300 border border-slate-700 rounded-lg px-2 py-1 text-[9px] font-black cursor-pointer"
+          >
+            <option value="customer">1. Customer</option>
+            <option value="merchant">2. Merchant</option>
+            <option value="service_provider">3. Service Pro</option>
+            <option value="decorator">4. Decor/Halls</option>
+            <option value="rider">5. Captain</option>
+          </select>
         </div>
 
-        {/* Mandatory Trilingual Voice YES/NO Delivery Review Gate (When Order is Delivered) */}
+        {/* Mandatory YES/NO Delivery Review Gate when an order is delivered */}
         {activeOrder && activeOrder.status === "DELIVERED_REVIEW_POPUP" && (
           <div className="bg-slate-900 border-2 border-amber-400 p-3 rounded-2xl text-white space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="font-black text-amber-300 text-[11px]">
-                Mandatory YES/NO Captain Review (#{activeOrder.id})
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  speakTextAloud(
-                    (DELIVERY_REVIEW_QUESTIONS || [])
-                      .map((q) => q.voiceText)
-                      .join(" ")
-                  )
-                }
-                className="bg-indigo-600 text-white px-2 py-0.5 rounded-lg text-[9px] font-black cursor-pointer"
-              >
-                \uD83D\uDD0A {isSpeakingNow ? "Speaking..." : "Speak Out (EN/TE/HI)"}
-              </button>
-            </div>
+            <span className="font-black text-amber-300 text-[11px] block">
+              Order #{activeOrder.id} Delivered! Quick YES/NO Captain Review:
+            </span>
             {(DELIVERY_REVIEW_QUESTIONS || []).map((q) => (
               <div
                 key={q.id}
@@ -1835,7 +1383,7 @@ function AppContent() {
                     onClick={() =>
                       setReviewAnswers({ ...reviewAnswers, [q.id]: "YES" })
                     }
-                    className={`px-2.5 py-1 rounded font-black text-[9px] cursor-pointer ${
+                    className={`px-2 py-0.5 rounded font-black text-[9px] cursor-pointer ${
                       reviewAnswers[q.id] === "YES"
                         ? "bg-emerald-400 text-slate-950"
                         : "bg-slate-800 text-slate-300"
@@ -1848,7 +1396,7 @@ function AppContent() {
                     onClick={() =>
                       setReviewAnswers({ ...reviewAnswers, [q.id]: "NO" })
                     }
-                    className={`px-2.5 py-1 rounded font-black text-[9px] cursor-pointer ${
+                    className={`px-2 py-0.5 rounded font-black text-[9px] cursor-pointer ${
                       reviewAnswers[q.id] === "NO"
                         ? "bg-rose-600 text-white"
                         : "bg-slate-800 text-slate-300"
@@ -1862,23 +1410,25 @@ function AppContent() {
             <button
               type="button"
               onClick={() => {
-                setOrders(orders.filter((o) => o.id !== activeOrder.id));
-                setActiveOrderId(null);
-                triggerToast(
-                  "Thank you! Captain YES/NO scorecard updated & ordering unlocked."
+                setOrders(
+                  orders.map((o) =>
+                    o.id === activeOrder.id
+                      ? { ...o, status: "DELIVERED_COMPLETED" }
+                      : o
+                  )
                 );
+                setActiveOrderId(null);
+                triggerToast("Thank you! Captain scorecard updated.");
               }}
               className="w-full bg-emerald-400 text-slate-950 font-black py-1.5 rounded-xl text-[10px] cursor-pointer"
             >
-              Submit YES/NO Review &amp; Unlock Next Order
+              Submit Review &amp; Continue
             </button>
           </div>
         )}
 
-        {/* FOOTER TAB 1: HOME (STORES, DECOR & HALLS, TAXI & P2P) */}
         {footerTab === "home" && (
           <div className="space-y-2.5">
-            {/* 3-Tier Geo-Location / State / Brand Ad Banner */}
             <GeoTargetedAdBanner
               adsList={geoAds}
               userTown="Adilabad"
@@ -1887,20 +1437,6 @@ function AppContent() {
               onOpenDealBox={() => setSurpriseBoxOpen(!surpriseBoxOpen)}
             />
 
-            {surpriseBoxOpen && (
-              <div className="bg-slate-900 border border-amber-400 rounded-2xl p-2.5 text-[10px] text-white space-y-1">
-                <p className="font-black text-amber-300">
-                  \u2728 Town Curiosity Deal Collections (0% Markup)
-                </p>
-                {(CURATED_COLLECTIONS || []).map((col) => (
-                  <p key={col.id} className="text-slate-200">
-                    <strong>{col.title}:</strong> {col.subtitle}
-                  </p>
-                ))}
-              </div>
-            )}
-
-            {/* Customer Mode Sub-Tabs */}
             <div className="grid grid-cols-3 gap-1 text-[10px] bg-slate-900 p-1 rounded-xl">
               <button
                 type="button"
@@ -1937,25 +1473,57 @@ function AppContent() {
               </button>
             </div>
 
-            {/* SUB-TAB A: HYPERLOCAL STOREFRONT WITH MULTI-SHOP BEST-PRICE BUY BOX */}
             {customerHomeSubTab === "stores" && (
               <div className="space-y-2.5">
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search atta, rice, onions, mutton, cement, medicines..."
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900"
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    recordUserActivityTelemetry("SEARCH", {
+                      query: e.target.value
+                    });
+                  }}
+                  placeholder={t.searchPlaceholder}
+                  className="w-full bg-white border-2 border-amber-400 rounded-xl px-3 py-1.5 text-xs text-slate-900 shadow-sm"
                 />
+
+                {/* Personalized Telemetry Recommendations Bar */}
+                {topProducts.length > 0 && (
+                  <div className="bg-emerald-950 text-white p-2 rounded-xl border border-emerald-500/40 space-y-1">
+                    <p className="text-[9px] font-black text-amber-300">
+                      \u2728 {t.recommendedForYou}
+                    </p>
+                    <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                      {topProducts.map((tp) => (
+                        <button
+                          key={tp.id}
+                          type="button"
+                          onClick={() => handleAddToUnifiedMerchantCart(tp)}
+                          className="bg-slate-900 border border-slate-700 px-2 py-1 rounded-lg text-[9px] font-bold shrink-0 cursor-pointer"
+                        >
+                          + {tp.subCategoryBrand.slice(0, 18)}.. (Rs.
+                          {tp.variants?.[0]?.price})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-5 gap-1">
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => setSelectedCategory(cat.id)}
+                      onClick={() => {
+                        setSelectedCategory(cat.id);
+                        recordUserActivityTelemetry("CATEGORY_VIEW", {
+                          categoryId: cat.id
+                        });
+                      }}
                       className={`p-1.5 rounded-xl border text-center cursor-pointer ${
                         selectedCategory === cat.id
-                          ? "border-emerald-600 bg-emerald-600 text-white"
+                          ? "border-emerald-600 bg-emerald-600 text-white shadow"
                           : "border-slate-300 bg-white text-slate-800"
                       }`}
                     >
@@ -1965,363 +1533,279 @@ function AppContent() {
                   ))}
                 </div>
 
-                {isCategoryKilled ? (
-                  <div className="bg-rose-950 border border-rose-500 p-4 rounded-2xl text-center text-rose-200 font-bold text-xs">
-                    This category is temporarily paused in Adilabad Zone by Founder Admin Kill-Switch.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {approvedProducts.map((prod) => {
-                      const chosenVarId =
-                        selectedVariantMap[prod.id] || prod.variants[0].id;
-                      const currentVar =
-                        prod.variants.find((v) => v.id === chosenVarId) ||
-                        prod.variants[0];
-                      const { offers, lowestOffer, activeOffer } =
-                        getProductBestOffer(prod);
-                      const isCompareOpen = expandedCompareProdId === prod.id;
-
-                      return (
-                        <div
-                          key={prod.id}
-                          className="rounded-2xl p-2.5 space-y-2 border bg-slate-900 border-slate-800 text-white shadow-sm"
-                        >
-                          <div className="flex gap-2.5 items-center">
-                            <img
-                              src={prod.image}
-                              alt={prod.subCategoryBrand}
-                              className="w-13 h-13 rounded-xl object-cover shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-center">
-                                <span className="text-[9px] text-amber-300 font-bold">
-                                  \u2605 {prod.curiosityTag || "Best Town Rate"}
-                                </span>
-                                <span className="text-[9px] text-slate-400">
-                                  {prod.distanceKm} km
-                                </span>
-                              </div>
-                              <h4 className="text-xs font-bold truncate">
-                                {prod.subCategoryBrand}
-                              </h4>
-                              <div className="flex items-center justify-between mt-0.5">
-                                <p className="text-[10px] text-emerald-400 font-semibold truncate">
-                                  {activeOffer.merchantName}{" "}
-                                  {activeOffer.merchantId ===
-                                    lowestOffer.merchantId && "(\uD83C\uDFC6 #1 Lowest)"}
-                                </p>
-                                {offers.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setExpandedCompareProdId(
-                                        isCompareOpen ? null : prod.id
-                                      )
-                                    }
-                                    className="text-[9px] text-teal-300 underline font-bold cursor-pointer"
-                                  >
-                                    {t.compareShops} ({offers.length})
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Expandable Multi-Shop Price Comparison Drawer */}
-                          {isCompareOpen && (
-                            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 space-y-1 text-[10px]">
-                              <p className="text-[9px] text-slate-400 font-bold uppercase">
-                                All Competing Local Shops (Tap to Switch):
+                <div className="space-y-2">
+                  {approvedProducts.map((prod) => {
+                    const chosenVarId =
+                      selectedVariantMap[prod.id] || prod.variants[0].id;
+                    const currentVar =
+                      prod.variants.find((v) => v.id === chosenVarId) ||
+                      prod.variants[0];
+                    const { offers, activeOffer } = getProductBestOffer(prod);
+                    const isCompareOpen = expandedCompareProdId === prod.id;
+                    return (
+                      <div
+                        key={prod.id}
+                        className="rounded-2xl p-2.5 space-y-2 border bg-white border-slate-200 text-slate-900 shadow-sm"
+                      >
+                        <div className="flex gap-2.5 items-center">
+                          <img
+                            src={prod.image}
+                            alt={prod.subCategoryBrand}
+                            className="w-12 h-12 rounded-xl object-cover shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[9px] text-amber-600 font-black">
+                              {prod.curiosityTag} &bull; Stock:{" "}
+                              {prod.stockQty ?? 25} left
+                            </span>
+                            <h4 className="text-xs font-bold truncate">
+                              {prod.subCategoryBrand}
+                            </h4>
+                            <div className="flex justify-between items-center">
+                              <p className="text-[10px] text-emerald-600 font-bold truncate">
+                                {activeOffer.merchantName}
                               </p>
-                              {offers.map((off, idx) => (
-                                <button
-                                  key={off.merchantId}
-                                  type="button"
-                                  onClick={() =>
-                                    setSelectedMerchantByProduct({
-                                      ...selectedMerchantByProduct,
-                                      [prod.id]: off.merchantId
-                                    })
-                                  }
-                                  className={`w-full p-1.5 rounded-lg border flex justify-between items-center cursor-pointer ${
-                                    off.merchantId === activeOffer.merchantId
-                                      ? "border-emerald-400 bg-emerald-500/15 text-white font-bold"
-                                      : "border-slate-800 text-slate-400"
-                                  }`}
-                                >
-                                  <span>
-                                    {off.merchantName} ({off.area}){" "}
-                                    {idx === 0 && "\uD83C\uDFC6 BEST PRICE"}
-                                  </span>
-                                  <span className="text-emerald-400 font-black">
-                                    Rs.{off.price}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Variant Selector & Add Button */}
-                          <div className="flex items-center gap-1.5">
-                            <select
-                              value={currentVar.id}
-                              onChange={(e) =>
-                                setSelectedVariantMap({
-                                  ...selectedVariantMap,
-                                  [prod.id]: e.target.value
-                                })
-                              }
-                              className="bg-slate-950 border border-slate-700 rounded-xl px-2 py-1.5 text-[10px] text-emerald-300 flex-1 outline-none"
-                            >
-                              {prod.variants.map((v) => (
-                                <option key={v.id} value={v.id}>
-                                  {v.label} - Rs.{v.price} (MRP Rs.{v.mrp})
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              onClick={() => handleAddToProductCart(prod)}
-                              className="bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-[10px] cursor-pointer"
-                            >
-                              {t.addCart}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* SUB-TAB B: DECORATION PORTFOLIO, FUNCTION HALLS & DYNAMIC 35%|85% ESCROW */}
-            {customerHomeSubTab === "events" && (
-              <div className="space-y-2.5 text-xs">
-                <div className="bg-slate-900 text-white p-3 rounded-2xl border border-amber-500/40 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-black text-amber-400">
-                      Event Date &amp; Dynamic Escrow Rule
-                    </span>
-                    <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full text-[9px] font-black">
-                      {daysAway}d away &rarr; {advancePercentage}% Escrow Advance
-                    </span>
-                  </div>
-                  <input
-                    type="date"
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white"
-                  />
-                  <div className="space-y-1.5 pt-1">
-                    <p className="text-[10px] font-bold text-teal-300">
-                      Direct Function Hall Availability for {eventDate}:
-                    </p>
-                    {functionHalls.map((hall) => {
-                      const isBooked = (hall.bookedDates || []).includes(
-                        eventDate
-                      );
-                      return (
-                        <div
-                          key={hall.id}
-                          className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex justify-between items-center"
-                        >
-                          <div>
-                            <p className="font-bold text-white text-[11px]">
-                              {hall.name}
-                            </p>
-                            <p className="text-[9px] text-slate-400">
-                              {hall.capacity} &bull; Rs.{hall.pricePerDay}/day &bull;{" "}
-                              <span
-                                className={
-                                  isBooked
-                                    ? "text-rose-400 font-bold"
-                                    : "text-emerald-400 font-bold"
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedCompareProdId(
+                                    isCompareOpen ? null : prod.id
+                                  )
                                 }
+                                className="text-[9px] text-indigo-600 underline font-black cursor-pointer"
                               >
-                                {isBooked ? "Booked on Schedule" : "Available \u2713"}
-                              </span>
-                            </p>
+                                {t.compareShops} ({offers.length})
+                              </button>
+                            </div>
                           </div>
-                          {!isBooked && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                triggerToast(
-                                  `${hall.name} booked for ${eventDate} (${advancePercentage}% Escrow)!`
-                                )
-                              }
-                              className="bg-emerald-400 text-slate-950 font-black px-2.5 py-1 rounded-lg text-[9px] cursor-pointer"
-                            >
-                              Book Hall
-                            </button>
-                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                {/* High-Res Decorator Portfolio Stock */}
-                <div className="bg-slate-900 text-white p-3 rounded-2xl border border-amber-500/40 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-black text-amber-400 text-xs">
-                      High-Res Decorator Portfolio (Add to Decor Cart)
-                    </h4>
-                    {decorCart.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFooterTab("carts");
-                          setActiveCartViewTab("decor_cart");
-                        }}
-                        className="bg-emerald-400 text-slate-950 font-black px-2.5 py-1 rounded-xl text-[9px] cursor-pointer"
-                      >
-                        Decor Cart ({decorCart.length}) &rarr;
-                      </button>
-                    )}
-                  </div>
-                  {decorPortfolio.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex gap-2.5 items-center"
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-14 h-14 rounded-xl object-cover border border-amber-400/50 shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[9px] text-amber-300 font-black">
-                          {item.albumName} &bull; {item.decorType}
-                        </span>
-                        <h4 className="font-bold text-white text-xs truncate">
-                          {item.title}
-                        </h4>
-                        <p className="text-[9px] text-slate-400 truncate">
-                          {item.materialUsed} ({item.dimensionsSize})
-                        </p>
-                        <p className="text-[10px] text-emerald-400 font-bold">
-                          Est. Rs.{Number(item.baseEstimate).toLocaleString("en-IN")}
-                        </p>
+                        {isCompareOpen && (
+                          <div className="bg-slate-900 text-white p-2 rounded-xl space-y-1 text-[10px]">
+                            {offers.map((off) => (
+                              <button
+                                key={off.merchantId}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedMerchantByProduct({
+                                    ...selectedMerchantByProduct,
+                                    [prod.id]: off.merchantId
+                                  })
+                                }
+                                className="w-full p-1.5 rounded-lg border border-slate-700 flex justify-between cursor-pointer"
+                              >
+                                <span>{off.merchantName}</span>
+                                <span className="text-emerald-400 font-bold">
+                                  Rs.{off.price}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex gap-1.5">
+                          <select
+                            value={currentVar.id}
+                            onChange={(e) =>
+                              setSelectedVariantMap({
+                                ...selectedVariantMap,
+                                [prod.id]: e.target.value
+                              })
+                            }
+                            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-emerald-300 flex-1"
+                          >
+                            {prod.variants.map((v) => (
+                              <option key={v.id} value={v.id}>
+                                {v.label} - Rs.{v.price} (MRP Rs.{v.mrp})
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => handleAddToUnifiedMerchantCart(prod)}
+                            className="bg-emerald-600 text-white font-black px-3 py-1 rounded-lg text-[10px] cursor-pointer"
+                          >
+                            {t.addCart}
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDecorCart([...decorCart, item]);
-                          triggerToast(`Added "${item.title}" to Decor Cart!`);
-                        }}
-                        className="bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[9px] cursor-pointer shrink-0"
-                      >
-                        + Decor Cart
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* SUB-TAB C: BIKE TAXI, 3W AUTO & P2P PARCEL (SELF OR OTHER PERSON) */}
+            {customerHomeSubTab === "events" && (
+              <div className="bg-slate-900 text-white p-3 rounded-2xl border border-amber-500/40 space-y-2.5 text-xs">
+                <h3 className="font-black text-amber-400 text-xs">
+                  High-Res Flower Decorator &amp; Function Hall Portfolio
+                </h3>
+                {decorPortfolio.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex gap-2.5 items-center"
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-14 h-14 rounded-xl object-cover border border-amber-400/50 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-white text-xs truncate">
+                        {item.title}
+                      </h4>
+                      <p className="text-[10px] text-emerald-400 font-bold">
+                        {item.merchantName} &bull; Est. Rs.
+                        {Number(item.baseEstimate).toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDecorCart([...decorCart, item]);
+                        setFooterTab("carts");
+                        triggerToast(`Added "${item.title}" to Decor Cart!`);
+                      }}
+                      className="bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[9px] cursor-pointer shrink-0"
+                    >
+                      + Decor Cart
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {customerHomeSubTab === "taxi" && (
               <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-2.5 text-xs text-white">
                 <h3 className="font-black text-teal-300">
-                  Book Bike Taxi, 3W Auto or P2P Parcel (For Self or Family)
+                  Taxi &amp; P2P Parcel Dispatcher (T&amp;C Weight-Gated Vehicle Chooser)
                 </h3>
                 <div className="grid grid-cols-2 gap-1.5">
-                  <select
-                    value={taxiBookingForm.rideMode}
-                    onChange={(e) =>
-                      setTaxiBookingForm({
-                        ...taxiBookingForm,
-                        rideMode: e.target.value
-                      })
-                    }
-                    className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white font-bold text-[10px]"
-                  >
-                    <option value="BIKE_TAXI_PASSENGER">2W Bike Taxi (Rs.35)</option>
-                    <option value="AUTO_3W_RIDE">3W Auto Ride (Rs.75)</option>
-                    <option value="P2P_PARCEL_DROP">
-                      P2P Parcel / Tiffin Drop (Rs.45)
-                    </option>
-                  </select>
-                  <select
-                    value={taxiBookingForm.forWhom}
-                    onChange={(e) =>
-                      setTaxiBookingForm({
-                        ...taxiBookingForm,
-                        forWhom: e.target.value
-                      })
-                    }
-                    className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-amber-300 font-bold text-[10px]"
-                  >
-                    <option value="For Self">Booking For: Myself</option>
-                    <option value="For Family / Friend">
-                      Booking For: Family / Friend
-                    </option>
-                  </select>
+                  <div>
+                    <label className="block text-[9px] text-amber-300 font-bold">
+                      Parcel / Load Weight (kg):
+                    </label>
+                    <input
+                      type="number"
+                      value={customerBookingForm.weightKg}
+                      onChange={(e) => {
+                        const nextW = Math.max(1, Number(e.target.value) || 1);
+                        let nextVeh = customerBookingForm.chosenVehicleCode;
+                        if (nextW > 300) nextVeh = "4W_HEAVY";
+                        else if (nextW > 45 && nextVeh === "2W") nextVeh = "3W";
+                        setCustomerBookingForm({
+                          ...customerBookingForm,
+                          weightKg: nextW,
+                          chosenVehicleCode: nextVeh
+                        });
+                      }}
+                      className="w-full bg-slate-950 border border-amber-400 rounded-xl p-1.5 text-white font-black mt-0.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] text-slate-400 font-bold">
+                      Booking For:
+                    </label>
+                    <select
+                      value={customerBookingForm.forWhom}
+                      onChange={(e) =>
+                        setCustomerBookingForm({
+                          ...customerBookingForm,
+                          forWhom: e.target.value
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white font-bold mt-0.5"
+                    >
+                      <option value="For Self">For Myself</option>
+                      <option value="For Another Person">
+                        For Family / Another Person
+                      </option>
+                    </select>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={taxiBookingForm.pickupPin}
-                  onChange={(e) =>
-                    setTaxiBookingForm({
-                      ...taxiBookingForm,
-                      pickupPin: e.target.value
-                    })
-                  }
-                  placeholder="Pickup Location"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-                />
-                <input
-                  type="text"
-                  value={taxiBookingForm.dropPin}
-                  onChange={(e) =>
-                    setTaxiBookingForm({
-                      ...taxiBookingForm,
-                      dropPin: e.target.value
-                    })
-                  }
-                  placeholder="Drop Location"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-                />
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { code: "2W", allowed: is2WAllowed, limitText: "Max 45 kg" },
+                    {
+                      code: "3W",
+                      allowed: is3WAllowed,
+                      limitText: "Max 300 kg"
+                    },
+                    {
+                      code: "4W_HEAVY",
+                      allowed: true,
+                      limitText: "Up to 2000 kg"
+                    }
+                  ].map((opt) => {
+                    const rule = VEHICLE_CONSORT_RULES[opt.code];
+                    const selected = activeVehCode === opt.code;
+                    return (
+                      <button
+                        key={opt.code}
+                        type="button"
+                        disabled={!opt.allowed}
+                        onClick={() =>
+                          setCustomerBookingForm({
+                            ...customerBookingForm,
+                            chosenVehicleCode: opt.code
+                          })
+                        }
+                        className={`p-2 rounded-xl border text-center transition ${
+                          !opt.allowed
+                            ? "bg-rose-950/30 border-rose-500/40 text-rose-400 opacity-50 cursor-not-allowed"
+                            : selected
+                            ? "bg-emerald-400 text-slate-950 border-white font-black cursor-pointer shadow"
+                            : "bg-slate-950 text-slate-300 border-slate-800 cursor-pointer"
+                        }`}
+                      >
+                        <div className="text-[10px] font-black">
+                          {rule.shortLabel}
+                        </div>
+                        <div className="text-[8px] mt-0.5">
+                          {opt.allowed ? opt.limitText : "\uD83D\uDD12 Over Limit"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
                 <button
                   type="button"
                   onClick={() => {
-                    const newRadarRide = {
-                      id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
-                      rideType: taxiBookingForm.rideMode,
-                      badge: `${taxiBookingForm.rideMode.replace(
-                        /_/g,
-                        " "
-                      )} (${taxiBookingForm.forWhom})`,
-                      bookedBy: `Consumer: ${currentUser.fullName} (${taxiBookingForm.forWhom})`,
-                      pickupPin: taxiBookingForm.pickupPin,
-                      dropPin: taxiBookingForm.dropPin,
+                    const newJob = {
+                      id: `RDR-${activeVehCode}-${Math.floor(
+                        100 + Math.random() * 900
+                      )}`,
+                      requiredVehicleCode: activeVehCode,
+                      vehicleLabel: chosenRule.label,
+                      weightKg: wKg,
+                      badge: `${chosenRule.shortLabel} (${wKg} kg | ${customerBookingForm.forWhom})`,
+                      bookedBy: `Customer: ${currentUser.fullName} (Chose ${chosenRule.shortLabel})`,
+                      pickupPin: customerBookingForm.pickupPin,
+                      dropPin: customerBookingForm.dropPin,
                       distFromCaptainKm: 0.6,
-                      distanceKm: taxiBookingForm.distanceKm,
-                      captainPayout:
-                        taxiBookingForm.rideMode === "AUTO_3W_RIDE" ? 75 : 45,
+                      distanceKm: customerBookingForm.distanceKm,
+                      captainPayout: calculatedFare,
                       secretOtp: String(
                         Math.floor(1000 + Math.random() * 9000)
                       ),
                       status: "OPEN_ON_RADAR",
                       paymentReqStatus: "PENDING_TRIP_COMPLETION"
                     };
-                    setCaptainRadarJobs([newRadarRide, ...captainRadarJobs]);
+                    setCaptainRadarJobs([newJob, ...captainRadarJobs]);
                     triggerToast(
-                      `Published Ride #${newRadarRide.id} live to Delivery Captain Radar!`
+                      `Allocated Ride/Parcel #${newJob.id} strictly to ${chosenRule.shortLabel} Captains!`
                     );
                   }}
                   className="w-full bg-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
                 >
-                  Publish Ride / Parcel Live to Captain Radar &rarr;
+                  Dispatch to {chosenRule.shortLabel} Captains Only (Rs.
+                  {calculatedFare}) &rarr;
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* FOOTER TAB 2: 1-HR HOME SERVICES SLOT BOOKING */}
         {footerTab === "services" && (
           <div className="space-y-2.5 text-xs text-white">
             <div className="bg-slate-900 p-2.5 rounded-2xl border border-indigo-500/40 grid grid-cols-2 gap-1.5">
@@ -2340,7 +1824,6 @@ function AppContent() {
                 <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
                 <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
                 <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM</option>
-                <option value="04:00 PM - 05:00 PM">04:00 PM - 05:00 PM</option>
               </select>
             </div>
             {publishedServiceProviders.map((sp) => (
@@ -2362,7 +1845,8 @@ function AppContent() {
                       {sp.specialization}
                     </p>
                     <p className="text-[10px] text-emerald-400 font-bold">
-                      Visit Escrow: Rs.{sp.visitingFee} | Hourly: Rs.{sp.hourlyRate}/hr
+                      Visit Escrow: Rs.{sp.visitingFee} | Hourly: Rs.
+                      {sp.hourlyRate}/hr
                     </p>
                   </div>
                 </div>
@@ -2380,154 +1864,122 @@ function AppContent() {
                       }
                     ]);
                     setFooterTab("carts");
-                    setActiveCartViewTab("service_cart");
                     triggerToast(
-                      `Added ${sp.maskedId} (${serviceFilterSlot}) to Isolated Service Cart!`
+                      `Added ${sp.maskedId} (${serviceFilterSlot}) to Service Cart!`
                     );
                   }}
                   className="w-full bg-indigo-500 text-white font-black py-1.5 rounded-xl text-[10px] cursor-pointer"
                 >
-                  + Book 1-Hr Slot ({serviceFilterSlot}) &bull; Rs.{sp.visitingFee} Escrow
+                  + Book 1-Hr Slot ({serviceFilterSlot}) &bull; Rs.
+                  {sp.visitingFee} Escrow
                 </button>
               </div>
             ))}
           </div>
         )}
 
-        {/* FOOTER TAB 3: 4 ISOLATED MODULE CARTS (SHOP, SERVICE, DECOR, TAXI) */}
         {footerTab === "carts" && (
           <div className="space-y-3 text-xs text-white">
-            <div className="grid grid-cols-4 gap-1 text-[9px] bg-slate-900 p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setActiveCartViewTab("merchant_cart")}
-                className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                  activeCartViewTab === "merchant_cart"
-                    ? "bg-emerald-400 text-slate-950"
-                    : "text-slate-300"
-                }`}
-              >
-                Shop ({allMerchantCartCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCartViewTab("service_cart")}
-                className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                  activeCartViewTab === "service_cart"
-                    ? "bg-indigo-500 text-white"
-                    : "text-slate-300"
-                }`}
-              >
-                Service ({serviceCart.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCartViewTab("decor_cart")}
-                className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                  activeCartViewTab === "decor_cart"
-                    ? "bg-amber-400 text-slate-950"
-                    : "text-slate-300"
-                }`}
-              >
-                Decor ({decorCart.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCartViewTab("taxi_cart")}
-                className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                  activeCartViewTab === "taxi_cart"
-                    ? "bg-teal-400 text-slate-950"
-                    : "text-slate-300"
-                }`}
-              >
-                Taxi ({taxiCart.length})
-              </button>
-            </div>
-
-            {activeCartViewTab === "merchant_cart" && (
-              <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2.5">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} Cart ({(categoryCarts[c.id] || []).length})
-                    </option>
-                  ))}
-                </select>
-                {currentCategoryCart.length === 0 ? (
-                  <p className="text-slate-400 text-center py-4">
-                    This category cart is empty.
+            {merchantCart.length === 0 &&
+              serviceCart.length === 0 &&
+              decorCart.length === 0 && (
+                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 text-center space-y-2">
+                  <p className="font-bold text-slate-300">
+                    Your Shopping Cart is currently empty.
                   </p>
-                ) : (
-                  <>
-                    {currentCategoryCart.map((it, idx) => (
-                      <div
-                        key={idx}
-                        className="flex justify-between items-center bg-slate-950 p-2 rounded-xl"
-                      >
-                        <div>
-                          <p className="font-bold">{it.name}</p>
-                          <p className="text-[9px] text-emerald-400">
-                            {it.merchantName} &bull; Rs.{it.price} x {it.qty}
-                          </p>
-                        </div>
-                        <span className="font-black text-amber-300">
-                          Rs.{it.price * it.qty}
-                        </span>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const itemsTotal = currentCategoryCart.reduce(
-                          (s, i) => s + i.price * i.qty,
-                          0
-                        );
-                        const deliveryFee = 25;
-                        const silentFee =
-                          Number(monetizationConfig.globalPlatformFee || 0) +
-                          Number(
-                            monetizationConfig.categorySurcharges?.[
-                              selectedCategory
-                            ] || 0
-                          );
-                        const gst = Number(
-                          ((itemsTotal + deliveryFee + silentFee) * 0.05).toFixed(
-                            2
-                          )
-                        );
-                        setPendingUpiPayment({
-                          type: "PRODUCT_ORDER",
-                          catId: selectedCategory,
-                          title: `${
-                            categories.find((c) => c.id === selectedCategory)
-                              ?.name || "Store"
-                          } Order`,
-                          items: currentCategoryCart,
-                          itemsTotal,
-                          deliveryFee,
-                          gst,
-                          amount: Number(
-                            (itemsTotal + deliveryFee + silentFee + gst).toFixed(2)
-                          )
-                        });
-                      }}
-                      className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-                    >
-                      {t.payUpi} &rarr;
-                    </button>
-                  </>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFooterTab("home");
+                      setCustomerHomeSubTab("stores");
+                    }}
+                    className="bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl text-[10px] cursor-pointer"
+                  >
+                    Browse Local Stores &rarr;
+                  </button>
+                </div>
+              )}
+
+            {merchantCart.length > 0 && (
+              <div className="bg-slate-900 p-3.5 rounded-2xl border border-emerald-500/40 space-y-2.5">
+                <h4 className="font-black text-emerald-400">
+                  1. Unified Store Shopping Cart ({cartWeightKg} kg Total Load)
+                </h4>
+                {merchantCart.map((it, idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between items-center bg-slate-950 p-2 rounded-xl border border-slate-800"
+                  >
+                    <div>
+                      <p className="font-bold text-white">
+                        {it.qty}x {it.name}
+                      </p>
+                      <p className="text-[9px] text-slate-400">
+                        Shop: {it.merchantName}
+                      </p>
+                    </div>
+                    <span className="text-amber-300 font-black">
+                      Rs.{it.price * it.qty}
+                    </span>
+                  </div>
+                ))}
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-teal-500/40 space-y-1.5">
+                  <p className="text-[10px] font-black text-teal-300">
+                    Choose Delivery Vehicle (T&amp;C Payload Limit for {cartWeightKg} kg):
+                  </p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { code: "2W", allowed: cartAllow2W, limit: "Max 45 kg" },
+                      { code: "3W", allowed: cartAllow3W, limit: "Max 300 kg" },
+                      { code: "4W_HEAVY", allowed: true, limit: "Over 300 kg" }
+                    ].map((opt) => {
+                      const vr = VEHICLE_CONSORT_RULES[opt.code];
+                      const active = effectiveCartVehCode === opt.code;
+                      return (
+                        <button
+                          key={opt.code}
+                          type="button"
+                          disabled={!opt.allowed}
+                          onClick={() => setCartChosenVehicleCode(opt.code)}
+                          className={`p-1.5 rounded-xl border text-center ${
+                            !opt.allowed
+                              ? "bg-rose-950/30 border-rose-500/40 text-rose-400 opacity-50 cursor-not-allowed"
+                              : active
+                              ? "bg-teal-400 text-slate-950 border-white font-black cursor-pointer"
+                              : "bg-slate-900 text-slate-300 border-slate-800 cursor-pointer"
+                          }`}
+                        >
+                          <div className="text-[9px] font-black">
+                            {vr.shortLabel}
+                          </div>
+                          <div className="text-[8px]">
+                            {opt.allowed ? opt.limit : "\uD83D\uDD12 Over Limit"}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handlePlaceOrderForMerchantApproval(
+                      effectiveCartVehCode,
+                      cartDeliveryFee,
+                      cartWeightKg
+                    )
+                  }
+                  className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+                >
+                  Submit Order to Merchant &amp; {cartVehRule.shortLabel} Captain (Delivery Rs.{cartDeliveryFee}) &rarr;
+                </button>
               </div>
             )}
 
-            {activeCartViewTab === "service_cart" && (
+            {serviceCart.length > 0 && (
               <div className="bg-slate-900 p-3 rounded-2xl border border-indigo-500/40 space-y-2">
                 <h4 className="font-black text-indigo-300">
-                  1-Hr Service Slot Escrow Cart
+                  2. 1-Hr Service Slot Escrow Cart
                 </h4>
                 {serviceCart.map((c) => (
                   <div
@@ -2542,107 +1994,81 @@ function AppContent() {
                     </span>
                   </div>
                 ))}
-                {serviceCart.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPendingUpiPayment({
-                        type: "SERVICE_ESCROW",
-                        title: "Visiting Fee Escrow",
-                        amount: serviceCart.reduce(
-                          (s, i) => s + i.visitingFee,
-                          0
-                        )
-                      })
-                    }
-                    className="w-full bg-indigo-500 text-white font-black py-2.5 rounded-xl cursor-pointer"
-                  >
-                    Pay Visiting Fee via UPI (Held in Escrow) &rarr;
-                  </button>
-                )}
-              </div>
-            )}
-
-            {activeCartViewTab === "decor_cart" && (
-              <div className="bg-slate-900 p-3 rounded-2xl border border-amber-500/40 space-y-2">
-                <h4 className="font-black text-amber-400">
-                  Isolated Event Decoration Cart ({advancePercentage}% Escrow Rule)
-                </h4>
-                {decorCart.map((d, i) => (
-                  <div
-                    key={i}
-                    className="bg-slate-950 p-2 rounded-xl flex justify-between"
-                  >
-                    <span>{d.title}</span>
-                    <span className="text-emerald-400 font-bold">
-                      Est. Rs.{d.baseEstimate}
-                    </span>
-                  </div>
-                ))}
-                {decorCart.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newRfq = {
-                        id: `BID-${Math.floor(1000 + Math.random() * 9000)}`,
-                        customerName: currentUser.fullName,
-                        eventDate,
-                        venueName: activeAddressObj.fullAddress,
-                        selectedDesigns: decorCart.map((c) => c.title),
-                        estimatedBudget: decorCart.reduce(
-                          (s, c) => s + Number(c.baseEstimate || 20000),
-                          0
-                        ),
-                        lowestBidSoFar: decorCart.reduce(
-                          (s, c) => s + Number(c.baseEstimate || 20000),
-                          0
-                        ),
-                        status: "OPEN_FOR_REVERSE_BIDS"
-                      };
-                      setDecorReverseBids([newRfq, ...decorReverseBids]);
-                      setDecorCart([]);
-                      triggerToast(
-                        `Broadcasted Decor Cart #${newRfq.id} to Flower Decorators for Reverse Bidding!`
-                      );
-                    }}
-                    className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-                  >
-                    Broadcast Decor Cart to Reverse-Bidding Market &rarr;
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPendingUpiPayment({
+                      type: "SERVICE_ESCROW",
+                      title: "Visiting Fee Escrow",
+                      amount: serviceCart.reduce((s, i) => s + i.visitingFee, 0)
+                    })
+                  }
+                  className="w-full bg-indigo-500 text-white font-black py-2.5 rounded-xl cursor-pointer"
+                >
+                  Pay Visiting Fee via UPI (Held in Escrow) &rarr;
+                </button>
               </div>
             )}
           </div>
         )}
 
-        {/* FOOTER TAB 4: COMPLETE ORDERS HISTORY, TIMELINE FILTER & PDF INVOICE */}
         {footerTab === "orders" && (
-          <OrdersHistoryAndInvoice
-            orders={orders}
-            serviceBookings={serviceBookings}
-            onCancelOrder={(id) =>
-              setOrders(
-                orders.map((o) =>
-                  o.id === id ? { ...o, status: "CANCELLED_BY_USER" } : o
+          <div className="space-y-3">
+            {orders
+              .filter((o) => o.status === "MERCHANT_APPROVED_AWAITING_PAYMENT")
+              .map((ord) => (
+                <div
+                  key={ord.id}
+                  className="bg-slate-900 border-2 border-amber-400 rounded-2xl p-3 space-y-2 text-xs text-white"
+                >
+                  <div className="flex justify-between font-bold">
+                    <span>#{ord.id} Approved by Merchant</span>
+                    <span className="text-emerald-400">
+                      Rs.{ord.grandTotal}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPendingUpiPayment({
+                        type: "APPROVED_MERCHANT_ORDER",
+                        orderId: ord.id,
+                        title: `Order #${ord.id}`,
+                        amount: ord.grandTotal
+                      })
+                    }
+                    className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                  >
+                    {t.payUpi} (Rs.{ord.grandTotal}) &rarr;
+                  </button>
+                </div>
+              ))}
+            <OrdersHistoryAndInvoice
+              orders={orders}
+              serviceBookings={serviceBookings}
+              onCancelOrder={(id) =>
+                setOrders(
+                  orders.map((o) =>
+                    o.id === id ? { ...o, status: "CANCELLED_BY_USER" } : o
+                  )
                 )
-              )
-            }
-            onReturnOrder={(id) =>
-              setOrders(
-                orders.map((o) =>
-                  o.id === id ? { ...o, status: "RETURN_REQUESTED" } : o
+              }
+              onReturnOrder={(id) =>
+                setOrders(
+                  orders.map((o) =>
+                    o.id === id ? { ...o, status: "RETURN_REQUESTED" } : o
+                  )
                 )
-              )
-            }
-            onOpenLiveMap={(ord) => {
-              setActiveOrderId(ord.id);
-              setLiveOrderDrawerOpen(true);
-            }}
-            onTriggerToast={triggerToast}
-          />
+              }
+              onOpenLiveMap={(ord) => {
+                setActiveOrderId(ord.id);
+                setLiveOrderDrawerOpen(true);
+              }}
+              onTriggerToast={triggerToast}
+            />
+          </div>
         )}
 
-        {/* FOOTER TAB 5: OWNER ACCOUNT PROFILE (30-DAY OTP LOCK + BANK/UPI + OTA UPDATE) */}
         {footerTab === "account" && (
           <OwnerAccountProfile
             currentUser={currentUser}
@@ -2650,12 +2076,20 @@ function AppContent() {
             activePortal={activePortal}
             setActivePortal={(nextPortal) => {
               setActivePortal(nextPortal);
+              if (nextPortal === "customer") setCustomerHomeSubTab("stores");
               setFooterTab("home");
             }}
             activeAddressObj={activeAddressObj}
             accountSecurity={accountSecurity}
             setAccountSecurity={setAccountSecurity}
-            onLockApp={() => setOnboardingStep("auth")}
+            onLockApp={() => {
+              localStorage.setItem(
+                "we4all_persistent_session_v4",
+                "logged_out"
+              );
+              setOnboardingStep("auth");
+              triggerToast("Signed out of WE4ALL.");
+            }}
             brightTheme={brightTheme}
             setBrightTheme={setBrightTheme}
             appUpdateInfo={appUpdateInfo}
@@ -2670,9 +2104,13 @@ function AppContent() {
     );
   };
 
-  // ==========================================================================
-  // PORTALS 2, 3, 4 & 5: MERCHANT, SERVICE PROVIDER, DECORATOR & CAPTAIN
-  // ==========================================================================
+  const switchPartnerToConsumerShopping = (partnerRoleName) => {
+    setPersonalShoppingFromPartner(partnerRoleName);
+    setActivePortal("customer");
+    setCustomerHomeSubTab("stores");
+    setFooterTab("home");
+  };
+
   const renderSharedAccountTab = (partnerRole) => (
     <OwnerAccountProfile
       currentUser={currentUser}
@@ -2680,14 +2118,19 @@ function AppContent() {
       activePortal={activePortal}
       setActivePortal={(nextPortal) => {
         if (nextPortal === "customer")
-          setPersonalShoppingFromPartner(partnerRole);
-        setActivePortal(nextPortal);
-        setFooterTab("home");
+          switchPartnerToConsumerShopping(partnerRole);
+        else {
+          setActivePortal(nextPortal);
+          setFooterTab("home");
+        }
       }}
       activeAddressObj={activeAddressObj}
       accountSecurity={accountSecurity}
       setAccountSecurity={setAccountSecurity}
-      onLockApp={() => setOnboardingStep("auth")}
+      onLockApp={() => {
+        localStorage.setItem("we4all_persistent_session_v4", "logged_out");
+        setOnboardingStep("auth");
+      }}
       brightTheme={brightTheme}
       setBrightTheme={setBrightTheme}
       appUpdateInfo={appUpdateInfo}
@@ -2711,10 +2154,6 @@ function AppContent() {
       brightTheme={brightTheme}
       lang={lang}
       setLang={setLang}
-      appUpdateInfo={appUpdateInfo}
-      notificationsCount={notificationsList.length}
-      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
-      onCloudCall={() => triggerMaskedCloudCall("Customer / Captain")}
     >
       <MerchantPortal
         footerTab={footerTab}
@@ -2729,11 +2168,9 @@ function AppContent() {
         setOrders={setOrders}
         merchants={merchants}
         pendingMerchants={pendingMerchants}
-        onSwitchToPersonalShop={() => {
-          setPersonalShoppingFromPartner("merchant");
-          setActivePortal("customer");
-          setFooterTab("home");
-        }}
+        onSwitchToPersonalShop={() =>
+          switchPartnerToConsumerShopping("merchant")
+        }
         onTriggerToast={triggerToast}
         renderAccountTab={() => renderSharedAccountTab("merchant")}
       />
@@ -2752,10 +2189,6 @@ function AppContent() {
       brightTheme={brightTheme}
       lang={lang}
       setLang={setLang}
-      appUpdateInfo={appUpdateInfo}
-      notificationsCount={notificationsList.length}
-      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
-      onCloudCall={() => triggerMaskedCloudCall("Service Customer")}
     >
       <ServiceProviderPortal
         footerTab={footerTab}
@@ -2767,11 +2200,9 @@ function AppContent() {
         pendingServiceProviders={pendingServiceProviders}
         serviceBookings={serviceBookings}
         setServiceBookings={setServiceBookings}
-        onSwitchToPersonalShop={() => {
-          setPersonalShoppingFromPartner("service_provider");
-          setActivePortal("customer");
-          setFooterTab("home");
-        }}
+        onSwitchToPersonalShop={() =>
+          switchPartnerToConsumerShopping("service_provider")
+        }
         onTriggerToast={triggerToast}
         renderAccountTab={() => renderSharedAccountTab("service_provider")}
       />
@@ -2790,10 +2221,6 @@ function AppContent() {
       brightTheme={brightTheme}
       lang={lang}
       setLang={setLang}
-      appUpdateInfo={appUpdateInfo}
-      notificationsCount={notificationsList.length}
-      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
-      onCloudCall={() => triggerMaskedCloudCall("Event Client")}
     >
       <DecoratorPortal
         footerTab={footerTab}
@@ -2809,11 +2236,9 @@ function AppContent() {
         decorEscrowBookings={decorEscrowBookings}
         setDecorEscrowBookings={setDecorEscrowBookings}
         pendingDecorators={pendingDecorators}
-        onSwitchToPersonalShop={() => {
-          setPersonalShoppingFromPartner("decorator");
-          setActivePortal("customer");
-          setFooterTab("home");
-        }}
+        onSwitchToPersonalShop={() =>
+          switchPartnerToConsumerShopping("decorator")
+        }
         onTriggerToast={triggerToast}
         renderAccountTab={() => renderSharedAccountTab("decorator")}
       />
@@ -2823,7 +2248,7 @@ function AppContent() {
   const renderRiderPortal = () => (
     <MobilePhoneShell
       title="5. Delivery Captain"
-      badge="Live Radar"
+      badge={`v2.9.6 (${currentUser?.vehicleCode || "2W"})`}
       activePortal="rider"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -2832,26 +2257,20 @@ function AppContent() {
       brightTheme={brightTheme}
       lang={lang}
       setLang={setLang}
-      appUpdateInfo={appUpdateInfo}
-      notificationsCount={notificationsList.length}
-      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
-      onCloudCall={() => triggerMaskedCloudCall("Customer / Shop")}
     >
       <RiderCaptainPortal
         footerTab={footerTab}
         setFooterTab={setFooterTab}
         currentUser={currentUser}
+        setCurrentUser={setCurrentUser}
         orders={orders}
         setOrders={setOrders}
         captainRadarJobs={captainRadarJobs}
         setCaptainRadarJobs={setCaptainRadarJobs}
         pendingRiders={pendingRiders}
-        onSwitchToPersonalShop={() => {
-          setPersonalShoppingFromPartner("rider");
-          setActivePortal("customer");
-          setFooterTab("home");
-        }}
+        onSwitchToPersonalShop={() => switchPartnerToConsumerShopping("rider")}
         onTriggerToast={triggerToast}
+        onReportError={reportAppError}
         renderAccountTab={() => renderSharedAccountTab("rider")}
       />
     </MobilePhoneShell>
@@ -2860,17 +2279,9 @@ function AppContent() {
   const renderAdminAuthGate = () => (
     <div className="min-h-screen bg-[#04090e] flex items-center justify-center p-4 text-white">
       <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-5 space-y-3 shadow-2xl text-xs">
-        <div className="flex items-center gap-2.5">
-          <FounderLogoBadge logoUrl={founderLogoUrl} />
-          <div>
-            <h2 className="text-sm font-black text-amber-400">
-              WE4ALL 2-STEP FOUNDER ADMIN GATE
-            </h2>
-            <p className="text-[10px] text-slate-400">
-              Step {adminAuthStep} of 2
-            </p>
-          </div>
-        </div>
+        <h2 className="text-sm font-black text-amber-400">
+          WE4ALL 2-STEP FOUNDER ADMIN GATE
+        </h2>
         {adminLoginError && (
           <div className="bg-rose-950 border border-rose-500 text-rose-200 p-2 rounded-xl text-center font-bold">
             {adminLoginError}
@@ -2902,33 +2313,24 @@ function AppContent() {
               placeholder="Founder Password"
               className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
             />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setViewMode("mobile_app")}
-                className="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl font-bold cursor-pointer"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    adminLoginForm.username.trim().toLowerCase() ===
-                      "khodayanvesh" &&
-                    adminLoginForm.password === "22061969s!"
-                  ) {
-                    setAdminAuthStep(2);
-                    setAdminLoginError("");
-                  } else {
-                    setAdminLoginError("Invalid Founder Credentials.");
-                  }
-                }}
-                className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-              >
-                Step 1: Verify &rarr;
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  adminLoginForm.username.trim().toLowerCase() ===
+                    "khodayanvesh" &&
+                  adminLoginForm.password === "22061969s!"
+                ) {
+                  setAdminAuthStep(2);
+                  setAdminLoginError("");
+                } else {
+                  setAdminLoginError("Invalid Founder Credentials.");
+                }
+              }}
+              className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+            >
+              Step 1: Verify &rarr;
+            </button>
           </div>
         ) : (
           <div className="space-y-3 text-center">
@@ -2953,7 +2355,7 @@ function AppContent() {
               }}
               className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
             >
-              Step 2: Unlock Master Admin Suite
+              Step 2: Unlock Admin Suite
             </button>
           </div>
         )}
@@ -2980,8 +2382,6 @@ function AppContent() {
             setGeoAds={setGeoAds}
             categories={categories}
             setCategories={setCategories}
-            categoryCarts={categoryCarts}
-            setCategoryCarts={setCategoryCarts}
             merchants={merchants}
             setMerchants={setMerchants}
             serviceProviders={serviceProviders}
@@ -3026,7 +2426,7 @@ function AppContent() {
             onBroadcastOtaPushNotification={(nextInfo) => {
               saveCloudAndLocalState({ appUpdateInfo: nextInfo });
               triggerToast(
-                `OTA v${nextInfo.latestAvailableVersion} pushed to Bell Icon & Account Section on all devices!`
+                `OTA v${nextInfo.latestAvailableVersion} pushed to Mobile OS Notification Bar & Account Section!`
               );
             }}
             onLaunchMultiPhoneView={() => {
@@ -3042,25 +2442,17 @@ function AppContent() {
               }
               setOnboardingStep("app");
               setFooterTab("home");
-              if (flowId === "cust_stores") {
-                setActivePortal("customer");
-                setCustomerHomeSubTab("stores");
-              } else if (flowId === "cust_services") {
-                setActivePortal("customer");
-                setFooterTab("services");
-              } else if (flowId === "cust_decor") {
-                setActivePortal("customer");
-                setCustomerHomeSubTab("events");
-              } else if (flowId === "cust_taxi") {
-                setActivePortal("customer");
-                setCustomerHomeSubTab("taxi");
-              } else if (flowId === "portal_merchant")
-                setActivePortal("merchant");
-              else if (flowId === "portal_service")
-                setActivePortal("service_provider");
+              if (flowId === "portal_rider") setActivePortal("rider");
               else if (flowId === "portal_decorator")
                 setActivePortal("decorator");
-              else if (flowId === "portal_rider") setActivePortal("rider");
+              else if (flowId === "portal_service")
+                setActivePortal("service_provider");
+              else if (flowId === "portal_merchant")
+                setActivePortal("merchant");
+              else {
+                setActivePortal("customer");
+                setCustomerHomeSubTab("stores");
+              }
             }}
             onExitAdminToApp={() => setViewMode("mobile_app")}
             onTriggerToast={triggerToast}
@@ -3107,68 +2499,76 @@ function AppContent() {
         </main>
       )}
 
-      {/* NOTIFICATION BELL DRAWER (DIRECTS USER TO ACCOUNT SECTION FOR IN-APP UPDATE) */}
-      {notificationBellOpen && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-              <h3 className="font-black text-amber-400">
-                \uD83D\uDD14 Notifications &amp; Update Alerts
-              </h3>
+      {/* UNIVERSAL LIVE DIAGNOSTIC ERROR POPUP MODAL (CATCHES ANY ISSUE AT ANY POINT OF TIME) */}
+      {diagnosticErrorModal && (
+        <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-rose-500 rounded-3xl max-w-sm w-full p-5 space-y-3 text-xs text-white shadow-2xl">
+            <div className="flex justify-between items-start gap-2 border-b border-slate-800 pb-2">
+              <div>
+                <span className="bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase">
+                  LIVE DIAGNOSTIC POPUP &bull; {diagnosticErrorModal.time}
+                </span>
+                <h3 className="font-black text-rose-400 text-sm mt-1">
+                  {diagnosticErrorModal.title}
+                </h3>
+              </div>
               <button
                 type="button"
-                onClick={() => setNotificationBellOpen(false)}
-                className="bg-slate-800 px-2.5 py-1 rounded-xl font-black cursor-pointer"
+                onClick={() => setDiagnosticErrorModal(null)}
+                className="bg-slate-800 text-slate-300 px-2.5 py-1 rounded-xl font-black cursor-pointer"
               >
                 X
               </button>
             </div>
-            <div className="bg-slate-950 p-3 rounded-2xl border border-emerald-500/50 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="font-black text-emerald-400">
-                  WE4ALL OTA v{appUpdateInfo?.latestAvailableVersion || "2.9.5"}
-                </span>
-                <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[9px] font-black">
-                  ACCOUNT UPDATER
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-300">
-                {appUpdateInfo?.releaseNotes}
+            <div className="bg-slate-950 p-3 rounded-2xl border border-rose-500/40 space-y-1">
+              <p className="text-[10px] font-bold text-rose-200">
+                What Happened:
               </p>
+              <p className="text-[11px] font-mono text-white">
+                {diagnosticErrorModal.details}
+              </p>
+            </div>
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/40">
+              <p className="text-[10px] font-bold text-amber-300">
+                How to Resolve Immediately:
+              </p>
+              <p className="text-[10px] text-slate-300 mt-0.5">
+                {diagnosticErrorModal.hint}
+              </p>
+            </div>
+            <div className="flex gap-2 pt-1">
+              {diagnosticErrorModal.autoFixCallback && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cb = diagnosticErrorModal.autoFixCallback;
+                    setDiagnosticErrorModal(null);
+                    cb();
+                  }}
+                  className="flex-1 bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+                >
+                  &#x2713; Auto-Fix &amp; Complete Now
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  setNotificationBellOpen(false);
-                  setOnboardingStep("app");
-                  setFooterTab("account");
-                }}
-                className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                onClick={() => setDiagnosticErrorModal(null)}
+                className="flex-1 bg-slate-800 text-white font-bold py-2.5 rounded-xl cursor-pointer"
               >
-                Open Account Section to Update In-App &rarr;
+                Dismiss Popup
               </button>
-            </div>
-            <div className="max-h-48 overflow-y-auto space-y-1.5">
-              {notificationsList.map((n) => (
-                <div
-                  key={n.id}
-                  className="bg-slate-950 p-2 rounded-xl border border-slate-800"
-                >
-                  <p className="text-[10px] text-slate-200">{n.text}</p>
-                  <span className="text-[8px] text-slate-500">{n.time}</span>
-                </div>
-              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* OTP-VERIFIED CUSTOMER ADDRESS BOOK MODAL */}
+      {/* OTP-VERIFIED ADDRESS BOOK MODAL */}
       {showAddAddressModal && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-teal-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
             <div className="flex justify-between items-center">
               <h3 className="font-black text-teal-300">
-                Add New Address (Consumer OTP Verified)
+                Add New Address (OTP Verified)
               </h3>
               <button
                 type="button"
@@ -3178,18 +2578,6 @@ function AppContent() {
                 X
               </button>
             </div>
-            <select
-              value={newAddressForm.label}
-              onChange={(e) =>
-                setNewAddressForm({ ...newAddressForm, label: e.target.value })
-              }
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
-            >
-              <option value="Home">Home</option>
-              <option value="Office">Office</option>
-              <option value="Work Site">Construction / Work Site</option>
-              <option value="Other">Other Location</option>
-            </select>
             <input
               type="text"
               placeholder="Enter House No, Street, Colony in Adilabad..."
@@ -3205,18 +2593,23 @@ function AppContent() {
             <button
               type="button"
               onClick={() => {
-                if (!newAddressForm.fullAddress.trim()) return;
+                if (!newAddressForm.fullAddress.trim()) {
+                  reportAppError(
+                    "Address Field Empty",
+                    "Please enter a house number and street before requesting an OTP."
+                  );
+                  return;
+                }
                 const otp = String(Math.floor(1000 + Math.random() * 9000));
                 setNewAddressForm({
                   ...newAddressForm,
                   generatedOtp: otp,
                   enteredOtp: otp
                 });
-                triggerToast(`Address Verification OTP Sent: ${otp}`);
               }}
               className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
             >
-              Send 4-Digit Verification OTP
+              Send Verification OTP
             </button>
             {newAddressForm.generatedOtp && (
               <button
@@ -3231,71 +2624,17 @@ function AppContent() {
                   };
                   setAddressBook([...addressBook, addr]);
                   setSelectedAddressId(addr.id);
-                  setNewAddressForm({
-                    label: "Other",
-                    fullAddress: "",
-                    generatedOtp: "",
-                    enteredOtp: ""
-                  });
                   setShowAddAddressModal(false);
-                  triggerToast("Address OTP Verified & Saved to Address Book!");
                 }}
                 className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
               >
-                Verify OTP ({newAddressForm.enteredOtp}) &amp; Save Address
+                Verify OTP ({newAddressForm.enteredOtp}) &amp; Save
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* LIVE ORDER TRACKING & BILLING DRAWER */}
-      {liveOrderDrawerOpen && activeOrder && (
-        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black text-emerald-400">
-                Live Order #{activeOrder.id} ({activeOrder.status})
-              </h3>
-              <button
-                type="button"
-                onClick={() => setLiveOrderDrawerOpen(false)}
-                className="bg-slate-800 px-2.5 py-1 rounded-xl cursor-pointer"
-              >
-                X
-              </button>
-            </div>
-            <div className="w-full h-44 rounded-2xl overflow-hidden border border-emerald-500/50">
-              <iframe
-                title="Live Order GPS"
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                src="https://maps.google.com/maps?q=19.6641,78.5320&z=15&output=embed"
-              />
-            </div>
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
-              <div>
-                <p className="font-bold text-emerald-300">
-                  Captain: {activeOrder.riderName}
-                </p>
-                <p className="text-[10px] text-amber-300 font-mono">
-                  Doorstep OTP: {activeOrder.secretOtp}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => triggerMaskedCloudCall(activeOrder.riderName)}
-                className="bg-emerald-400 text-slate-950 font-black px-2.5 py-1 rounded-lg text-[10px] cursor-pointer"
-              >
-                \uD83D\uDCDE Call Captain
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* IN-APP OTA PROGRESS OVERLAY */}
       {otaProgress && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6">
           <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-5 text-center space-y-3 text-xs text-white">
@@ -3303,12 +2642,6 @@ function AppContent() {
               Installing In-App Update ({otaProgress.pct}%)
             </h3>
             <p className="text-slate-300">{otaProgress.msg}</p>
-            <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
-              <div
-                className="bg-emerald-400 h-full transition-all"
-                style={{ width: `${otaProgress.pct}%` }}
-              />
-            </div>
           </div>
         </div>
       )}
@@ -3319,35 +2652,72 @@ function AppContent() {
         onClose={() => setPendingUpiPayment(null)}
         onPaymentSuccess={handleCompleteUpiPayment}
       />
+
+      {liveOrderDrawerOpen && activeOrder && (
+        <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
+            <div className="flex justify-between items-center">
+              <h3 className="font-black text-emerald-400">
+                Live Order #{activeOrder.id}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setLiveOrderDrawerOpen(false)}
+                className="bg-slate-800 px-2.5 py-1 rounded-xl cursor-pointer"
+              >
+                X
+              </button>
+            </div>
+            <LiveRouteMap
+              pickupLabel={activeOrder.shopName}
+              dropLabel={activeOrder.address}
+              riderName={activeOrder.riderName}
+              vehicle={activeOrder.vehicle}
+              distanceKm={activeOrder.distanceKm || 1.8}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
+// Global Crash Boundary Popup with Stack Trace & Line Numbers
 class GlobalErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
+  componentDidCatch(error, errorInfo) {
+    this.setState({ errorInfo });
+  }
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#071118] flex flex-col items-center justify-center p-6 text-white text-center">
-          <div className="bg-slate-900 border-2 border-rose-500 rounded-3xl p-6 max-w-sm">
+        <div className="min-h-screen bg-[#071118] flex flex-col items-center justify-center p-4 text-white">
+          <div className="bg-slate-900 border-2 border-rose-500 rounded-3xl p-6 max-w-lg w-full space-y-3 shadow-2xl">
             <h2 className="text-lg font-black text-rose-400">
-              Application Error Caught
+              Application Crash Caught (Diagnostic Popup)
             </h2>
-            <p className="text-xs text-rose-200 mt-2">
-              {this.state.error?.toString()}
-            </p>
+            <div className="bg-slate-950 p-3 rounded-xl border border-rose-800 overflow-x-auto">
+              <p className="text-xs font-mono text-rose-200">
+                {this.state.error?.toString()}
+              </p>
+            </div>
+            {this.state.errorInfo?.componentStack && (
+              <pre className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[10px] font-mono text-amber-300 overflow-x-auto max-h-48">
+                {this.state.errorInfo.componentStack}
+              </pre>
+            )}
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-4 w-full bg-emerald-500 text-slate-950 py-2.5 rounded-xl font-black cursor-pointer"
+              className="w-full bg-emerald-400 text-slate-950 py-2.5 rounded-xl font-black cursor-pointer"
             >
-              Reload WE4ALL
+              Reload Application
             </button>
           </div>
         </div>

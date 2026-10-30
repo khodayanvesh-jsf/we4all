@@ -1,0 +1,33 @@
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("push", (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || "WE4ALL Super-App";
+  const options = {
+    body: data.body || "New update available on WE4ALL Adilabad.",
+    icon: "/logo.png",
+    badge: "/logo.png",
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
+    tag: data.tag || "we4all-os-push"
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length > 0) {
+        return clientList[0].focus();
+      }
+      return self.clients.openWindow("/");
+    })
+  );
+});

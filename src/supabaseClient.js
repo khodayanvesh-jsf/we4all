@@ -1,21 +1,29 @@
 // ============================================================================
 // MODULE: src/supabaseClient.js
-// PURPOSE: Real-time state persistence, 20-row pagination helper, and strict
-// In-App Silent OTA Update installer (never opens an external browser).
+// PURPOSE: Connects to Supabase (https://rjwxsjdayublcmcciuww.supabase.co),
+// maintains persistent login state, and runs a 3-second instant auto-refresh
+// loop + visibility/focus listener so users never miss live updates.
 // ============================================================================
+export const SUPABASE_PROJECT_URL =
+  import.meta.env?.VITE_SUPABASE_URL ||
+  "https://rjwxsjdayublcmcciuww.supabase.co";
+export const SUPABASE_ANON_KEY =
+  import.meta.env?.VITE_SUPABASE_ANON_KEY ||
+  "public-anon-key-configured-in-vercel";
+
 const LIVE_CLOUD_ORIGIN = "https://we-4-all-super-app.vercel.app";
-const CURRENT_SCHEMA_VERSION = "2.9.5";
+const CURRENT_SCHEMA_VERSION = "2.9.6";
 const STORAGE_KEY = "we4all_master_cloud_state_v4";
 const BACKUP_KEY = "we4all_zero_loss_user_backup_v4";
 const INSTALLED_VER_KEY = "we4all_device_installed_version_v4";
-const SCHEMA_MIGRATED_KEY = "we4all_schema_migrated_v295";
+const SCHEMA_MIGRATED_KEY = "we4all_schema_migrated_v296";
 
 const syncChannel =
   typeof window !== "undefined" && "BroadcastChannel" in window
     ? new BroadcastChannel("we4all_realtime_bus_v4")
     : null;
 
-export function getDeviceInstalledVersion(fallback = "2.9.4") {
+export function getDeviceInstalledVersion(fallback = "2.9.5") {
   if (typeof window === "undefined") return fallback;
   return localStorage.getItem(INSTALLED_VER_KEY) || fallback;
 }
@@ -43,9 +51,6 @@ export function loadCloudAndLocalState() {
     if (localStorage.getItem(SCHEMA_MIGRATED_KEY) !== CURRENT_SCHEMA_VERSION) {
       localStorage.setItem(SCHEMA_MIGRATED_KEY, CURRENT_SCHEMA_VERSION);
       localStorage.setItem(INSTALLED_VER_KEY, CURRENT_SCHEMA_VERSION);
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(BACKUP_KEY);
-      return null;
     }
     const raw =
       localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BACKUP_KEY);
@@ -64,7 +69,7 @@ export async function checkLiveCloudOtaManifest(callback) {
     );
     if (!res.ok) return null;
     const remoteOta = await res.json();
-    const installedVer = getDeviceInstalledVersion("2.9.4");
+    const installedVer = getDeviceInstalledVersion("2.9.5");
     if (remoteOta?.latestAvailableVersion) {
       const hasNewer = remoteOta.latestAvailableVersion !== installedVer;
       const updatedInfo = {
@@ -82,6 +87,7 @@ export async function checkLiveCloudOtaManifest(callback) {
   return null;
 }
 
+// High-Frequency 3-Second Instant Auto-Refresh + Window Focus Sync
 export function subscribeToRealtimeUpdates(callback) {
   if (typeof window === "undefined") return () => {};
   const handler = (event) => {
@@ -96,20 +102,34 @@ export function subscribeToRealtimeUpdates(callback) {
       } catch (err) {}
     }
   };
+  const instantFocusSync = () => {
+    const latestLocal = loadCloudAndLocalState();
+    if (latestLocal) callback(latestLocal);
+    checkLiveCloudOtaManifest(callback);
+  };
+
   if (syncChannel) syncChannel.addEventListener("message", handler);
   window.addEventListener("storage", storageHandler);
+  window.addEventListener("focus", instantFocusSync);
+  document.addEventListener("visibilitychange", instantFocusSync);
+
   checkLiveCloudOtaManifest(callback);
+  // 3-second instant auto-refresh interval so users never miss live changes
   const pollTimer = setInterval(() => {
+    const latestLocal = loadCloudAndLocalState();
+    if (latestLocal) callback(latestLocal);
     checkLiveCloudOtaManifest(callback);
-  }, 7000);
+  }, 3000);
+
   return () => {
     if (syncChannel) syncChannel.removeEventListener("message", handler);
     window.removeEventListener("storage", storageHandler);
+    window.removeEventListener("focus", instantFocusSync);
+    document.removeEventListener("visibilitychange", instantFocusSync);
     clearInterval(pollTimer);
   };
 }
 
-// STRICT IN-APP SILENT OTA INSTALLER (Executes 100% inside the app WebView)
 export function performZeroLossOtaUpdate(
   targetVersion,
   releaseNotes,
@@ -126,8 +146,6 @@ export function performZeroLossOtaUpdate(
   };
   localStorage.setItem(INSTALLED_VER_KEY, targetVersion);
   localStorage.setItem(SCHEMA_MIGRATED_KEY, targetVersion);
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(BACKUP_KEY);
 
   if (typeof window !== "undefined" && "caches" in window) {
     caches
@@ -138,10 +156,10 @@ export function performZeroLossOtaUpdate(
 
   let step = 0;
   const stages = [
-    { pct: 25, msg: "1/4: Backing up Orders, Escrow & Portfolio Vault..." },
-    { pct: 60, msg: `2/4: Downloading WE4ALL v${targetVersion} Bundle In-App...` },
-    { pct: 90, msg: "3/4: Applying Updated Modules Inside App WebView..." },
-    { pct: 100, msg: `4/4: WE4ALL v${targetVersion} Installed! Restarting In-App...` }
+    { pct: 25, msg: "1/4: Preserving Persistent Login & Orders..." },
+    { pct: 60, msg: `2/4: Downloading WE4ALL v${targetVersion} In-App...` },
+    { pct: 90, msg: "3/4: Applying Live Modules..." },
+    { pct: 100, msg: `4/4: Updated to v${targetVersion}! Reloading...` }
   ];
 
   const interval = setInterval(() => {
@@ -155,7 +173,7 @@ export function performZeroLossOtaUpdate(
         if (typeof window !== "undefined") {
           window.location.reload();
         }
-      }, 300);
+      }, 250);
     }
-  }, 400);
+  }, 350);
 }
