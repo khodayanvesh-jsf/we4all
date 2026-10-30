@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.9.6",
-  "latestAvailableVersion": "2.9.7",
+  "currentVersion": "2.9.7",
+  "latestAvailableVersion": "2.9.8",
   "updateAvailable": true,
-  "publishedAt": "2026-10-31T01:20:00Z",
+  "publishedAt": "2026-10-31T01:30:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
-  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.7",
-  "releaseNotes": "WE4ALL v2.9.7: Complete Tier-2/3 Town Demand Suite (Daily Mandi Rate Ticker, Parcha Slip Photo & Voice Ordering, Cash on Delivery + Monthly Shop Khata, Barcode Stock Scanner, 1-Tap Town Landmarks & Mandal Bus Parcel, Zero Nested APK Bloat)."
+  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.8",
+  "releaseNotes": "WE4ALL v2.9.8: Live Supabase PostgreSQL & Storage Bucket Sync across all phones in town."
 }
