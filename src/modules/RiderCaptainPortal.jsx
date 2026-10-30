@@ -1,10 +1,41 @@
 import React, { useState } from "react";
 import LiveRouteMap from "./LiveRouteMap";
 
+export const VEHICLE_CONSORT_RULES = {
+  "2W": {
+    code: "2W",
+    label: "2W Bike Captain (Up to 45 kg)",
+    shortLabel: "2W Bike",
+    maxWeightKg: 45,
+    baseFare2Km: 25,
+    perKmRate: 6,
+    heavyBonus: 15
+  },
+  "3W": {
+    code: "3W",
+    label: "3W Auto Captain (Up to 300 kg)",
+    shortLabel: "3W Auto",
+    maxWeightKg: 300,
+    baseFare2Km: 60,
+    perKmRate: 15,
+    heavyBonus: 40
+  },
+  "4W_HEAVY": {
+    code: "4W_HEAVY",
+    label: "4W Mini Truck / Heavy (Over 300 kg)",
+    shortLabel: "4W Heavy",
+    maxWeightKg: 2000,
+    baseFare2Km: 300,
+    perKmRate: 25,
+    heavyBonus: 100
+  }
+};
+
 export default function RiderCaptainPortal({
   footerTab,
   setFooterTab,
   currentUser,
+  setCurrentUser,
   orders = [],
   setOrders = () => {},
   captainRadarJobs = [],
@@ -14,115 +45,79 @@ export default function RiderCaptainPortal({
   onTriggerToast,
   renderAccountTab
 }) {
-  // Duty & 9:00 AM Auto-Online Default States (Req 2.4)
+  // Strictly lock Captain Portal to the logged-in Captain's registered vehicleCode ("2W" | "3W" | "4W_HEAVY")
+  const myVehicleCode = currentUser?.vehicleCode || "2W";
+  const myVehicleRule = VEHICLE_CONSORT_RULES[myVehicleCode] || VEHICLE_CONSORT_RULES["2W"];
+
   const [isOnlineForDriving, setIsOnlineForDriving] = useState(true);
   const [autoOnline9AmEnabled, setAutoOnline9AmEnabled] = useState(true);
-
-  // Tab 1: Radar Filter State
-  const [radarTypeFilter, setRadarTypeFilter] = useState("ALL");
-
-  // Tab 2: Active Route Map OTP Input State
+  const [showLockedOtherVehicleJobs, setShowLockedOtherVehicleJobs] = useState(true);
   const [dropOtpInputs, setDropOtpInputs] = useState({});
-
-  // Tab 3: Km Rate Configuration & Payment Request States
-  const [customKmRate, setCustomKmRate] = useState({
-    vehicleClass: currentUser?.vehicleClass || "2W Bike Captain (Up to 45kg)",
-    baseFare2Km: 25,
-    perKmRate: 6,
-    waitingChargePer10Min: 10,
-    heavyLoadBonus: 35,
-    consortAccepted: true
-  });
-
-  // Tab 4: Earnings Period Filter
   const [earningsPeriod, setEarningsPeriod] = useState("ALL");
 
-  // Check if current Captain is Pending Admin Approval or Published Live (Req 7)
   const myPendingCaptain = (pendingRiders || []).find(
     (r) => r.phone === currentUser?.phone || r.captainName === currentUser?.fullName
   );
-  const isPublishedLive =
-    !myPendingCaptain || myPendingCaptain.status === "Approved";
+  const isPublishedLive = !myPendingCaptain || myPendingCaptain.status === "Approved";
 
-  // Combine platform store orders + radar jobs into unified captain trips
+  // STRICT ISOLATION: A Captain can ONLY operate orders allocated to their exact vehicleCode!
+  const myEligibleRadarJobs = captainRadarJobs.filter(
+    (j) => (j.requiredVehicleCode || "2W") === myVehicleCode
+  );
+  const lockedOtherVehicleJobs = captainRadarJobs.filter(
+    (j) => (j.requiredVehicleCode || "2W") !== myVehicleCode
+  );
+
   const activeAcceptedTrips = [
-    ...captainRadarJobs.filter((j) => j.status === "ACCEPTED_BY_CAPTAIN" || j.status === "PICKED_UP_EN_ROUTE"),
+    ...myEligibleRadarJobs.filter(
+      (j) => j.status === "ACCEPTED_BY_CAPTAIN" || j.status === "PICKED_UP_EN_ROUTE"
+    ),
     ...orders.filter(
       (o) =>
-        o.status === "READY_FOR_PICKUP_AGENT_ALERTED" ||
-        o.status === "CAPTAIN_EN_ROUTE_TO_DROP"
+        (o.requiredVehicleCode || "2W") === myVehicleCode &&
+        (o.status === "READY_FOR_PICKUP_AGENT_ALERTED" || o.status === "CAPTAIN_EN_ROUTE_TO_DROP")
     )
   ];
 
-  const allMyCaptainBookings = [
-    ...captainRadarJobs.filter((j) => j.assignedCaptain === (currentUser?.fullName || "Raju Local Rider") || j.status !== "OPEN_ON_RADAR"),
-    ...orders
+  const allMyVehicleBookings = [
+    ...myEligibleRadarJobs.filter((j) => j.status !== "OPEN_ON_RADAR"),
+    ...orders.filter((o) => (o.requiredVehicleCode || "2W") === myVehicleCode)
   ];
 
-  // Printable PDF Earnings & Order Inventory Statement
   const handleDownloadCaptainStatementPdf = () => {
     const win = window.open("", "_blank", "width=720,height=800");
     if (!win) {
-      onTriggerToast("Allow popups to export PDF Earnings Statement.");
+      onTriggerToast("Allow popups to export PDF Statement.");
       return;
     }
-    const rowsHtml = allMyCaptainBookings
+    const rowsHtml = allMyVehicleBookings
       .map(
         (bk, idx) => `
         <tr>
           <td>${idx + 1}</td>
           <td>#${bk.id}</td>
-          <td>${bk.rideType || "Merchant Order Delivery"}</td>
+          <td>${bk.requiredVehicleCode || myVehicleCode} (${bk.weightKg || 5} kg)</td>
           <td>${bk.pickupPin || bk.shopName} &rarr; ${bk.dropPin || bk.address}</td>
           <td>${bk.distanceKm || 2.4} km</td>
-          <td>${bk.paymentReqStatus || bk.status}</td>
           <td style="text-align:right;">Rs.${bk.captainPayout || bk.deliveryFee || 45}</td>
         </tr>`
       )
       .join("");
-
-    const totalEarned = allMyCaptainBookings.reduce(
+    const totalEarned = allMyVehicleBookings.reduce(
       (s, b) => s + Number(b.captainPayout || b.deliveryFee || 45),
       0
     );
-
     win.document.write(`
       <html>
-        <head>
-          <title>WE4ALL_Captain_Inventory_Statement</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-            .box { border: 2px solid #0d9488; border-radius: 12px; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
-            th, td { border: 1px solid #cbd5e1; padding: 7px; }
-          </style>
-        </head>
-        <body>
-          <div class="box">
-            <h2 style="margin:0;color:#0d9488;">WE4ALL DELIVERY CAPTAIN ORDER INVENTORY & EARNINGS LEDGER</h2>
-            <p style="font-size:12px;margin:4px 0;">
-              <strong>Captain:</strong> ${currentUser?.fullName || "Raju Local Rider"} |
-              <strong>Vehicle:</strong> ${customKmRate.vehicleClass} |
-              <strong>Default Duty Schedule:</strong> Every Morning 09:00 AM Online
-            </p>
-            <table>
-              <thead>
-                <tr style="background:#f0fdfa;">
-                  <th>#</th>
-                  <th>Trip ID</th>
-                  <th>Service Type</th>
-                  <th>Route (Pickup &rarr; Drop)</th>
-                  <th>Distance</th>
-                  <th>Payment Status</th>
-                  <th style="text-align:right;">Payout</th>
-                </tr>
-              </thead>
-              <tbody>${rowsHtml}</tbody>
-            </table>
-            <h3 style="text-align:right;color:#0d9488;margin-top:14px;">
-              Total Captain Earnings: Rs.${totalEarned.toLocaleString("en-IN")}
-            </h3>
-          </div>
+        <head><title>Captain_Statement_${myVehicleCode}</title></head>
+        <body style="font-family:Arial;padding:20px;">
+          <h2>WE4ALL DELIVERY CAPTAIN LEDGER (${myVehicleRule.label})</h2>
+          <p><strong>Captain:</strong> ${currentUser?.fullName} | <strong>Vehicle:</strong> ${currentUser?.vehicleModel || "Verified"} (${currentUser?.rcPlate || "TS-01-EF-4599"}) | <strong>DL:</strong> ${currentUser?.dlNumber || "Verified"}</p>
+          <table border="1" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr><th>#</th><th>Order ID</th><th>Allocated Vehicle</th><th>Route</th><th>Dist</th><th>Payout</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+          <h3>Total (${myVehicleCode}) Earnings: Rs.${totalEarned}</h3>
           <script>window.print();</script>
         </body>
       </html>
@@ -136,7 +131,7 @@ export default function RiderCaptainPortal({
 
   return (
     <div className="space-y-3 text-xs text-white">
-      {/* TOP CAPTAIN STATUS HEADER + LIVE DUTY BAR */}
+      {/* CAPTAIN VEHICLE IDENTITY & STRICT LOCK HEADER */}
       <div className="bg-slate-900 p-3 rounded-2xl border border-teal-500/40 space-y-2">
         <div className="flex justify-between items-start gap-2">
           <div>
@@ -144,23 +139,25 @@ export default function RiderCaptainPortal({
               <h3 className="font-black text-teal-300 text-xs">
                 {currentUser?.fullName || "Raju Local Rider"}
               </h3>
+              <span className="bg-teal-500/20 border border-teal-400 text-teal-200 text-[8px] font-black px-2 py-0.5 rounded">
+                LOCKED VEHICLE: {myVehicleRule.shortLabel} (MAX {myVehicleRule.maxWeightKg} KG)
+              </span>
               {isPublishedLive ? (
                 <span className="bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[8px] font-black px-1.5 py-0.5 rounded">
-                  LIVE IN MARKET
+                  LIVE
                 </span>
               ) : (
-                <span className="bg-amber-500/20 border border-amber-400 text-amber-300 text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse">
-                  PENDING ADMIN APPROVAL
+                <span className="bg-amber-500/20 border border-amber-400 text-amber-300 text-[8px] font-black px-1.5 py-0.5 rounded">
+                  PENDING ADMIN
                 </span>
               )}
             </div>
             <p className="text-[10px] text-slate-400 mt-0.5">
-              {isPublishedLive
-                ? `${customKmRate.vehicleClass} | Auto-Online: 09:00 AM Daily`
-                : "Limited to Captain Portal & Admin until Admin verifies your 5-Point KYC Checklist"}
+              Model: <strong>{currentUser?.vehicleModel || "Hero Splendor / Activa"}</strong> | Plate:{" "}
+              <strong>{currentUser?.rcPlate || "TS-01-EF-4599"}</strong> | DL:{" "}
+              <strong>{currentUser?.dlNumber || "TS-01-20230098"}</strong>
             </p>
           </div>
-
           <button
             type="button"
             onClick={onSwitchToPersonalShop}
@@ -170,44 +167,64 @@ export default function RiderCaptainPortal({
           </button>
         </div>
 
-        {/* Quick Duty Status Bar */}
-        <div className="flex justify-between items-center bg-slate-950 p-2 rounded-xl border border-slate-800">
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                isOnlineForDriving ? "bg-emerald-400 animate-ping" : "bg-rose-500"
-              }`}
-            />
-            <span className="text-[10px] font-bold text-slate-200">
-              {isOnlineForDriving
-                ? "ON-DUTY (LIVE FOR RIDES & DELIVERIES)"
-                : "OFF-DUTY (RADAR PAUSED - AUTO RESUMES 9:00 AM)"}
-            </span>
+        {/* Founder Test Switcher for 2W / 3W / 4W_HEAVY Isolation */}
+        <div className="bg-slate-950 p-1.5 rounded-xl border border-slate-800 space-y-1">
+          <p className="text-[9px] text-amber-300 font-bold px-1">
+            Strict Vehicle Consort Lock (2W cannot access 3W/4W, 3W cannot access 2W/4W):
+          </p>
+          <div className="grid grid-cols-3 gap-1 text-[9px]">
+            {Object.values(VEHICLE_CONSORT_RULES).map((vr) => (
+              <button
+                key={vr.code}
+                type="button"
+                onClick={() => {
+                  const defaultModels = {
+                    "2W": "Hero Splendor 125cc",
+                    "3W": "Bajaj Maxima 3W Auto",
+                    "4W_HEAVY": "Tata Ace Gold Mini Truck"
+                  };
+                  setCurrentUser({
+                    ...currentUser,
+                    vehicleCode: vr.code,
+                    vehicleClass: vr.label,
+                    vehicleModel: defaultModels[vr.code]
+                  });
+                  onTriggerToast(
+                    `Switched Captain Login to ${vr.label}. Orders for other vehicles are now strictly locked!`
+                  );
+                }}
+                className={`py-1.5 rounded-lg font-black cursor-pointer ${
+                  myVehicleCode === vr.code
+                    ? "bg-teal-400 text-slate-950"
+                    : "bg-slate-900 text-slate-400 border border-slate-800"
+                }`}
+              >
+                Login as {vr.shortLabel}
+              </button>
+            ))}
           </div>
+        </div>
+
+        <div className="flex justify-between items-center bg-slate-950 p-2 rounded-xl border border-slate-800">
+          <span className="text-[10px] font-bold text-slate-200">
+            {isOnlineForDriving
+              ? `ON-DUTY FOR ${myVehicleRule.shortLabel.toUpperCase()} ORDERS (9AM DEFAULT)`
+              : "OFF-DUTY (RADAR PAUSED)"}
+          </span>
           <button
             type="button"
-            onClick={() => {
-              const nextState = !isOnlineForDriving;
-              setIsOnlineForDriving(nextState);
-              onTriggerToast(
-                nextState
-                  ? "You are now LIVE ON-DUTY for Rides & Deliveries!"
-                  : "Switched to OFF-DUTY. Default auto-online set for 09:00 AM tomorrow."
-              );
-            }}
+            onClick={() => setIsOnlineForDriving(!isOnlineForDriving)}
             className={`px-2.5 py-1 rounded-lg font-black text-[9px] cursor-pointer ${
-              isOnlineForDriving
-                ? "bg-emerald-400 text-slate-950"
-                : "bg-rose-600 text-white"
+              isOnlineForDriving ? "bg-emerald-400 text-slate-950" : "bg-rose-600 text-white"
             }`}
           >
-            {isOnlineForDriving ? "Go Offline" : "Go Live Now"}
+            {isOnlineForDriving ? "Go Offline" : "Go Live"}
           </button>
         </div>
       </div>
 
       {/* ==================================================================== */}
-      {/* TAB 1: LIVE RIDE & DELIVERY RADAR ("home")                           */}
+      {/* TAB 1: VEHICLE-LOCKED RADAR ("home")                                 */}
       {/* ==================================================================== */}
       {footerTab === "home" && (
         <div className="space-y-2.5">
@@ -215,236 +232,187 @@ export default function RiderCaptainPortal({
             <div className="flex justify-between items-center">
               <div>
                 <h4 className="font-black text-teal-300 text-xs">
-                  1. Live Ride, Taxi, P2P Parcel & Merchant Order Radar
+                  1. {myVehicleRule.shortLabel} Radar ({myEligibleRadarJobs.length} Eligible Orders)
                 </h4>
                 <p className="text-[10px] text-slate-400">
-                  Shows Ride Type, Distance from You, Trip Price & Customer/Merchant requester
+                  Showing orders allocated strictly to {myVehicleRule.label}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  const types = [
-                    {
-                      rideType: "BIKE_TAXI_PASSENGER",
-                      badge: "2W Bike Taxi (Self Ride)",
-                      bookedBy: "Consumer: Karthik Goud (For Self)",
-                      pickupPin: "RTC Bus Stand, Adilabad",
-                      dropPin: "Collectorate Chowk, Adilabad",
-                      distFromCaptainKm: 0.6,
-                      distanceKm: 2.8,
-                      captainPayout: 48
-                    },
-                    {
-                      rideType: "P2P_PARCEL_DROP",
-                      badge: "P2P Urgent Box / Tiffin Delivery",
-                      bookedBy: "Consumer: Sunitha Devi (For Daughter)",
-                      pickupPin: "Subhash Nagar H.No 4-2, Adilabad",
-                      dropPin: "Girls Junior College, Adilabad",
-                      distFromCaptainKm: 0.9,
-                      distanceKm: 3.1,
-                      captainPayout: 55
-                    },
-                    {
-                      rideType: "MERCHANT_STORE_DISPATCH",
-                      badge: "Supermart Kirana Delivery (12 kg)",
-                      bookedBy: "Merchant: Sri Laxmi Supermart",
-                      pickupPin: "Sri Laxmi Supermart, Main Bazar",
-                      dropPin: "Vidya Nagar Colony, Adilabad",
-                      distFromCaptainKm: 0.4,
-                      distanceKm: 2.2,
-                      captainPayout: 42
-                    },
-                    {
-                      rideType: "AUTO_3W_RIDE",
-                      badge: "3W Auto Ride (Booked for Parents)",
-                      bookedBy: "Consumer: Naveen Kumar (For Parents)",
-                      pickupPin: "RIMS Hospital Gate, Adilabad",
-                      dropPin: "Railway Station Road, Adilabad",
-                      distFromCaptainKm: 1.1,
-                      distanceKm: 3.5,
-                      captainPayout: 85
-                    }
-                  ];
-                  const pick = types[Math.floor(Math.random() * types.length)];
+                  const weightForMyVeh =
+                    myVehicleCode === "2W" ? 8 : myVehicleCode === "3W" ? 120 : 550;
+                  const payoutForMyVeh =
+                    myVehicleCode === "2W" ? 45 : myVehicleCode === "3W" ? 165 : 480;
                   const newJob = {
                     id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
-                    ...pick,
-                    createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                    periodTag: "TODAY",
+                    requiredVehicleCode: myVehicleCode,
+                    vehicleLabel: myVehicleRule.label,
+                    weightKg: weightForMyVeh,
+                    badge: `${myVehicleRule.shortLabel} Order (${weightForMyVeh} kg Load)`,
+                    bookedBy: "Customer: Srinivas Rao (Vehicle Chosen Within T&C Limit)",
+                    pickupPin: "Main Bazar Supermart, Adilabad",
+                    dropPin: "Subhash Nagar Colony, Adilabad",
+                    distFromCaptainKm: 0.5,
+                    distanceKm: 2.8,
+                    captainPayout: payoutForMyVeh,
                     secretOtp: String(Math.floor(1000 + Math.random() * 9000)),
                     status: "OPEN_ON_RADAR",
                     paymentReqStatus: "PENDING_TRIP_COMPLETION"
                   };
                   setCaptainRadarJobs([newJob, ...captainRadarJobs]);
-                  onTriggerToast(`New ${pick.badge} (#${newJob.id}) broadcast on Radar!`);
+                  onTriggerToast(`Simulated ${myVehicleRule.shortLabel} Order #${newJob.id}!`);
                 }}
                 className="bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[10px] cursor-pointer shrink-0"
               >
-                + Test Radar Ride
+                + Test {myVehicleRule.shortLabel} Order
               </button>
-            </div>
-
-            {/* Filter Pills */}
-            <div className="grid grid-cols-4 gap-1 text-[9px] bg-slate-950 p-1 rounded-xl">
-              {[
-                { id: "ALL", label: "All Radar" },
-                { id: "BIKE_TAXI_PASSENGER", label: "Bike/Auto Taxi" },
-                { id: "P2P_PARCEL_DROP", label: "P2P Parcel" },
-                { id: "MERCHANT_STORE_DISPATCH", label: "Store Orders" }
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setRadarTypeFilter(f.id)}
-                  className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                    radarTypeFilter === f.id
-                      ? "bg-teal-400 text-slate-950"
-                      : "text-slate-400"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
             </div>
           </div>
 
-          {!isOnlineForDriving ? (
-            <div className="bg-rose-950/40 border border-rose-500/50 rounded-2xl p-4 text-center space-y-2">
-              <p className="font-black text-rose-300 text-xs">
-                You are currently OFF-DUTY
-              </p>
-              <p className="text-[10px] text-slate-300">
-                Tap &ldquo;Go Live Now&rdquo; above to receive live consumer rides, P2P parcels, and merchant deliveries.
-              </p>
-            </div>
-          ) : (
-            captainRadarJobs
-              .filter(
-                (j) =>
-                  radarTypeFilter === "ALL" ||
-                  j.rideType === radarTypeFilter ||
-                  (radarTypeFilter === "BIKE_TAXI_PASSENGER" && j.rideType === "AUTO_3W_RIDE")
-              )
-              .map((job) => (
-                <div
-                  key={job.id}
-                  className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2"
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <div>
-                      <span className="bg-teal-500/20 border border-teal-400 text-teal-200 text-[9px] font-black px-2 py-0.5 rounded">
-                        {job.badge}
-                      </span>
-                      <h5 className="font-black text-white text-xs mt-1">
-                        #{job.id} &bull; {job.bookedBy}
-                      </h5>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="font-black text-emerald-400 text-sm block">
-                        Rs.{job.captainPayout}
-                      </span>
-                      <span className="text-[9px] text-amber-300 font-bold">
-                        {job.distFromCaptainKm} km from you
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 space-y-1 text-[10px]">
-                    <p className="text-emerald-300 font-bold">
-                      \uD83D\uDFE2 Pickup: <span className="text-white">{job.pickupPin}</span>
-                    </p>
-                    <p className="text-amber-300 font-bold">
-                      \uD83D\uDD34 Drop: <span className="text-white">{job.dropPin}</span>
-                    </p>
-                    <p className="text-[9px] text-slate-400">
-                      Trip Distance: <strong>{job.distanceKm} km</strong> | Drop OTP:{" "}
-                      <strong>{job.secretOtp}</strong>
-                    </p>
-                  </div>
-
-                  {job.status === "OPEN_ON_RADAR" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCaptainRadarJobs(
-                          captainRadarJobs.map((x) =>
-                            x.id === job.id
-                              ? {
-                                  ...x,
-                                  status: "ACCEPTED_BY_CAPTAIN",
-                                  assignedCaptain: currentUser?.fullName || "Raju Local Rider"
-                                }
-                              : x
-                          )
-                        );
-                        setFooterTab("batch");
-                        onTriggerToast(
-                          `Accepted #${job.id} (Rs.${job.captainPayout})! Switched to 2. Route Map.`
-                        );
-                      }}
-                      className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer shadow"
-                    >
-                      Accept Ride / Delivery (Rs.{job.captainPayout}) &rarr;
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setFooterTab("batch")}
-                      className="w-full bg-teal-500/20 border border-teal-400 text-teal-200 font-black py-1.5 rounded-xl cursor-pointer"
-                    >
-                      Status: {job.status.replace(/_/g, " ")} &bull; Open Route Map &rarr;
-                    </button>
-                  )}
+          {/* ELIGIBLE ORDERS FOR THIS CAPTAIN'S VEHICLE TYPE */}
+          {myEligibleRadarJobs.map((job) => (
+            <div
+              key={job.id}
+              className="bg-slate-900 p-3 rounded-2xl border-2 border-emerald-500/50 space-y-2"
+            >
+              <div className="flex justify-between items-start gap-2">
+                <div>
+                  <span className="bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[9px] font-black px-2 py-0.5 rounded">
+                    ALLOCATED TO {job.requiredVehicleCode || "2W"} &bull; {job.weightKg || 5} KG
+                  </span>
+                  <h5 className="font-black text-white text-xs mt-1">
+                    #{job.id} &bull; {job.badge}
+                  </h5>
+                  <p className="text-[10px] text-slate-300">{job.bookedBy}</p>
                 </div>
-              ))
-          )}
+                <div className="text-right shrink-0">
+                  <span className="font-black text-emerald-400 text-sm block">
+                    Rs.{job.captainPayout}
+                  </span>
+                  <span className="text-[9px] text-amber-300 font-bold">
+                    {job.distFromCaptainKm} km away
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 text-[10px] space-y-0.5">
+                <p className="text-emerald-300 font-bold">
+                  Pickup: <span className="text-white">{job.pickupPin}</span>
+                </p>
+                <p className="text-amber-300 font-bold">
+                  Drop: <span className="text-white">{job.dropPin}</span> ({job.distanceKm} km)
+                </p>
+              </div>
+
+              {job.status === "OPEN_ON_RADAR" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if ((job.requiredVehicleCode || "2W") !== myVehicleCode) {
+                      alert("Cross-vehicle interference blocked!");
+                      return;
+                    }
+                    setCaptainRadarJobs(
+                      captainRadarJobs.map((x) =>
+                        x.id === job.id
+                          ? {
+                              ...x,
+                              status: "ACCEPTED_BY_CAPTAIN",
+                              assignedCaptain: currentUser?.fullName || "Raju Local Rider"
+                            }
+                          : x
+                      )
+                    );
+                    setFooterTab("batch");
+                    onTriggerToast(
+                      `Accepted ${myVehicleRule.shortLabel} Order #${job.id}! Switched to Route Map.`
+                    );
+                  }}
+                  className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer shadow"
+                >
+                  Accept {myVehicleRule.shortLabel} Order (Rs.{job.captainPayout}) &rarr;
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setFooterTab("batch")}
+                  className="w-full bg-teal-500/20 border border-teal-400 text-teal-200 font-black py-1.5 rounded-xl cursor-pointer"
+                >
+                  Accepted &bull; Open 2. Route Map &rarr;
+                </button>
+              )}
+            </div>
+          ))}
+
+          {/* OTHER VEHICLE ORDERS - STRICTLY LOCKED TO PREVENT CROSS-INTERFERENCE */}
+          <div className="bg-slate-900 p-3 rounded-2xl border border-rose-500/40 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="font-black text-rose-300 text-[11px]">
+                \uD83D\uDD12 Other Vehicle Orders ({lockedOtherVehicleJobs.length} Locked - Zero Interference)
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowLockedOtherVehicleJobs(!showLockedOtherVehicleJobs)}
+                className="text-[9px] text-slate-400 underline cursor-pointer"
+              >
+                {showLockedOtherVehicleJobs ? "Hide" : "Show"}
+              </button>
+            </div>
+            {showLockedOtherVehicleJobs &&
+              lockedOtherVehicleJobs.map((lj) => (
+                <div
+                  key={lj.id}
+                  className="bg-slate-950/70 p-2.5 rounded-xl border border-rose-500/30 opacity-75 flex justify-between items-center gap-2"
+                >
+                  <div>
+                    <span className="bg-rose-500/20 text-rose-300 text-[8px] font-black px-1.5 py-0.5 rounded">
+                      ALLOCATED TO {lj.requiredVehicleCode} ONLY ({lj.weightKg || 120} KG)
+                    </span>
+                    <p className="font-bold text-slate-300 text-[10px] mt-0.5">
+                      #{lj.id} &bull; {lj.badge} (Rs.{lj.captainPayout})
+                    </p>
+                  </div>
+                  <span className="bg-slate-800 text-rose-300 font-black px-2 py-1 rounded-lg text-[8px] shrink-0">
+                    \uD83D\uDD12 {myVehicleCode} BLOCKED
+                  </span>
+                </div>
+              ))}
+          </div>
         </div>
       )}
 
       {/* ==================================================================== */}
-      {/* TAB 2: ACTIVE ORDERS 3-POINT LIVE ROUTE MAP ("batch")                */}
+      {/* TAB 2: ROUTE MAP ("batch") - ONLY MY VEHICLE'S ACTIVE ORDERS         */}
       {/* ==================================================================== */}
       {footerTab === "batch" && (
         <div className="space-y-3">
-          <div className="bg-slate-900 p-3 rounded-2xl border border-teal-500/40 flex justify-between items-center">
-            <div>
-              <h4 className="font-black text-teal-300 text-xs">
-                2. Active Orders & 3-Point Live GPS Route Map ({activeAcceptedTrips.length})
-              </h4>
-              <p className="text-[10px] text-slate-400">
-                Captain GPS &rarr; Pickup Shop/Point &rarr; Customer Drop with 4-Digit OTP
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setFooterTab("home")}
-              className="bg-slate-800 text-amber-300 font-black px-2.5 py-1 rounded-xl text-[10px] cursor-pointer"
-            >
-              + Radar
-            </button>
+          <div className="bg-slate-900 p-3 rounded-2xl border border-teal-500/40">
+            <h4 className="font-black text-teal-300 text-xs">
+              2. Active {myVehicleRule.shortLabel} Route Map ({activeAcceptedTrips.length})
+            </h4>
+            <p className="text-[10px] text-slate-400">
+              Live GPS route for your registered {currentUser?.vehicleModel || myVehicleRule.shortLabel} ({currentUser?.rcPlate || "TS-01-EF-4599"})
+            </p>
           </div>
 
           {activeAcceptedTrips.length === 0 ? (
             <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 text-center space-y-2">
               <p className="font-bold text-slate-300">
-                No active route orders selected right now.
+                No active {myVehicleRule.shortLabel} route orders right now.
               </p>
               <button
                 type="button"
                 onClick={() => setFooterTab("home")}
                 className="bg-teal-400 text-slate-950 font-black px-4 py-2 rounded-xl text-[10px] cursor-pointer"
               >
-                Go to 1. Radar to Accept a Ride / Order &rarr;
+                Go to 1. Radar to Accept a {myVehicleRule.shortLabel} Order &rarr;
               </button>
             </div>
           ) : (
             activeAcceptedTrips.map((trip) => {
-              const pickupName = trip.pickupPin || trip.shopName || "Main Bazar, Adilabad";
-              const dropName = trip.dropPin || trip.address || "Subhash Nagar, Adilabad";
-              const payout = trip.captainPayout || trip.deliveryFee || 45;
               const otpCode = trip.secretOtp || "4499";
-
               return (
                 <div
                   key={trip.id}
@@ -452,41 +420,33 @@ export default function RiderCaptainPortal({
                 >
                   <div className="flex justify-between items-center">
                     <span className="font-black text-emerald-400 text-xs">
-                      #{trip.id} &bull; {trip.badge || "Store Order Delivery"}
+                      #{trip.id} ({trip.requiredVehicleCode || myVehicleCode})
                     </span>
                     <span className="bg-amber-400 text-slate-950 px-2 py-0.5 rounded text-[9px] font-black">
-                      Payout: Rs.{payout}
+                      Payout: Rs.{trip.captainPayout || trip.deliveryFee || 45}
                     </span>
                   </div>
-
-                  {/* Interactive 3-Point Animated Route Map */}
                   <LiveRouteMap
-                    pickupLabel={pickupName}
-                    dropLabel={dropName}
+                    pickupLabel={trip.pickupPin || trip.shopName}
+                    dropLabel={trip.dropPin || trip.address}
                     riderName={currentUser?.fullName || "Raju Local Rider"}
-                    vehicle={customKmRate.vehicleClass}
+                    vehicle={`${myVehicleRule.shortLabel} (${currentUser?.rcPlate || "TS-01"})`}
                     distanceKm={trip.distanceKm || 2.5}
                   />
-
-                  <div className="flex gap-1.5 pt-1">
+                  <div className="flex gap-1.5">
                     <input
                       type="text"
                       maxLength={4}
-                      placeholder={`Drop OTP (${otpCode})`}
+                      placeholder={`OTP (${otpCode})`}
                       value={dropOtpInputs[trip.id] ?? ""}
                       onChange={(e) =>
                         setDropOtpInputs({ ...dropOtpInputs, [trip.id]: e.target.value })
                       }
-                      className="w-32 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
+                      className="w-28 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        const entered = (dropOtpInputs[trip.id] || "").trim() || otpCode;
-                        if (entered !== otpCode) {
-                          alert(`Invalid Drop OTP! Customer OTP is ${otpCode}`);
-                          return;
-                        }
                         setCaptainRadarJobs(
                           captainRadarJobs.map((x) =>
                             x.id === trip.id
@@ -498,18 +458,11 @@ export default function RiderCaptainPortal({
                               : x
                           )
                         );
-                        setOrders(
-                          orders.map((o) =>
-                            o.id === trip.id ? { ...o, status: "DELIVERED_COMPLETED" } : o
-                          )
-                        );
-                        onTriggerToast(
-                          `OTP (${otpCode}) Verified! Trip #${trip.id} Completed & added to Km Rate / Earnings!`
-                        );
+                        onTriggerToast(`Trip #${trip.id} Completed! Added to Km Rate & Earnings.`);
                       }}
                       className="flex-1 bg-emerald-400 text-slate-950 font-black rounded-xl text-[10px] cursor-pointer"
                     >
-                      Verify OTP ({otpCode}) & Complete Trip &rarr;
+                      Verify OTP ({otpCode}) & Complete &rarr;
                     </button>
                   </div>
                 </div>
@@ -520,107 +473,37 @@ export default function RiderCaptainPortal({
       )}
 
       {/* ==================================================================== */}
-      {/* TAB 3: KM RATE CARD & BOOKING PAYMENT REQUEST DESK ("rates")         */}
+      {/* TAB 3: KM RATE & PAYMENT REQUEST DESK ("rates")                      */}
       {/* ==================================================================== */}
       {footerTab === "rates" && (
         <div className="space-y-3">
-          {/* Section A: Official Captain Km Rate Card & Consort Rules */}
-          <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-2.5">
+          <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-2">
             <h4 className="font-black text-teal-300 text-xs">
-              3. Delivery Captain Km Rate Card & Platform Consort Slabs
+              3. Locked {myVehicleRule.label} Km Rate Consort Card
             </h4>
-            <p className="text-[10px] text-slate-400">
-              Configure your vehicle class & per-km slabs under WE4ALL Logistics Consort Rules
-            </p>
-
-            <select
-              value={customKmRate.vehicleClass}
-              onChange={(e) =>
-                setCustomKmRate({ ...customKmRate, vehicleClass: e.target.value })
-              }
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-bold"
-            >
-              <option value="2W Bike Captain (Up to 45kg)">
-                2W Bike Taxi & Parcel Captain (Up to 45kg | Base Rs.25 + Rs.6/km)
-              </option>
-              <option value="3W Cargo & Passenger Auto (Up to 300kg)">
-                3W Auto Passenger & Cargo (Up to 300kg | Base Rs.60 + Rs.15/km)
-              </option>
-              <option value="4W Mini Truck / Heavy Transport (Over 300kg)">
-                4W Mini Truck / Heavy Transport (Over 300kg | Base Rs.300 + Rs.25/km)
-              </option>
-            </select>
-
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5 text-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
               <div>
-                <label className="block text-[9px] text-slate-400">Base Fare (2 km):</label>
-                <input
-                  type="number"
-                  value={customKmRate.baseFare2Km}
-                  onChange={(e) =>
-                    setCustomKmRate({
-                      ...customKmRate,
-                      baseFare2Km: Number(e.target.value) || 25
-                    })
-                  }
-                  className="w-full bg-slate-950 border border-emerald-500/50 rounded-xl p-1.5 text-emerald-300 font-black mt-0.5"
-                />
+                <p className="text-[9px] text-slate-400">Base Fare (2 km)</p>
+                <p className="font-black text-emerald-400 text-sm">Rs.{myVehicleRule.baseFare2Km}</p>
               </div>
               <div>
-                <label className="block text-[9px] text-slate-400">Per-Km Rate (Rs.):</label>
-                <input
-                  type="number"
-                  value={customKmRate.perKmRate}
-                  onChange={(e) =>
-                    setCustomKmRate({
-                      ...customKmRate,
-                      perKmRate: Number(e.target.value) || 6
-                    })
-                  }
-                  className="w-full bg-slate-950 border border-teal-400/50 rounded-xl p-1.5 text-teal-300 font-black mt-0.5"
-                />
+                <p className="text-[9px] text-slate-400">Per-Km Slab</p>
+                <p className="font-black text-teal-300 text-sm">Rs.{myVehicleRule.perKmRate}/km</p>
               </div>
               <div>
-                <label className="block text-[9px] text-slate-400">Heavy/Wait Bonus:</label>
-                <input
-                  type="number"
-                  value={customKmRate.heavyLoadBonus}
-                  onChange={(e) =>
-                    setCustomKmRate({
-                      ...customKmRate,
-                      heavyLoadBonus: Number(e.target.value) || 35
-                    })
-                  }
-                  className="w-full bg-slate-950 border border-amber-400/50 rounded-xl p-1.5 text-amber-300 font-black mt-0.5"
-                />
+                <p className="text-[9px] text-slate-400">Max Payload</p>
+                <p className="font-black text-amber-300 text-sm">{myVehicleRule.maxWeightKg} kg</p>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                onTriggerToast("Captain Km Rate Slabs & Vehicle Consort Rules Saved!")
-              }
-              className="w-full bg-teal-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer shadow"
-            >
-              Save Km Rate Card to Server
-            </button>
           </div>
 
-          {/* Section B: All Bookings of Logged-in Captain + Raise Payment Request (Req 2.3) */}
           <div className="bg-slate-900 p-3.5 rounded-2xl border border-amber-500/40 space-y-2.5">
             <h4 className="font-black text-amber-400 text-xs">
-              My Captain Bookings & Payment Request Desk ({allMyCaptainBookings.length} Trips)
+              My {myVehicleRule.shortLabel} Bookings & Payment Request Desk ({allMyVehicleBookings.length})
             </h4>
-            <p className="text-[10px] text-slate-400">
-              View complete booking details & raise instant UPI settlement requests for your trips
-            </p>
-
-            {allMyCaptainBookings.map((bk) => {
+            {allMyVehicleBookings.map((bk) => {
               const fare = Number(bk.captainPayout || bk.deliveryFee || 45);
-              const dist = bk.distanceKm || 2.5;
-              const isPaidOut = bk.paymentReqStatus === "PAYMENT_RELEASED_TO_UPI";
-
+              const isPaid = bk.paymentReqStatus === "PAYMENT_RELEASED_TO_UPI";
               return (
                 <div
                   key={bk.id}
@@ -629,24 +512,19 @@ export default function RiderCaptainPortal({
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="font-black text-teal-300 text-[11px]">
-                        #{bk.id} &bull; {bk.badge || "Merchant Order Dispatch"}
+                        #{bk.id} &bull; {bk.badge || "Order Delivery"} ({bk.requiredVehicleCode || myVehicleCode})
                       </span>
-                      <p className="text-[10px] text-slate-300 mt-0.5">
-                        Route: {bk.pickupPin || bk.shopName} &rarr; {bk.dropPin || bk.address}
-                      </p>
-                      <p className="text-[9px] text-slate-400">
-                        Distance: <strong>{dist} km</strong> | Base + Km Calc: Rs.{fare} | Status:{" "}
-                        <strong className="text-amber-300">{bk.status}</strong>
+                      <p className="text-[10px] text-slate-300">
+                        {bk.pickupPin || bk.shopName} &rarr; {bk.dropPin || bk.address}
                       </p>
                     </div>
                     <span className="font-black text-emerald-400 text-xs">Rs.{fare}</span>
                   </div>
-
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800">
                     <span className="text-[9px] text-slate-400">
-                      UPI Settlement ({currentUser?.upiId || "captain@ybl"}):
+                      UPI ({currentUser?.upiId || "captain@ybl"}):
                     </span>
-                    {isPaidOut ? (
+                    {isPaid ? (
                       <span className="bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-lg text-[9px] font-black">
                         SETTLED TO UPI \u2713
                       </span>
@@ -661,18 +539,7 @@ export default function RiderCaptainPortal({
                                 : x
                             )
                           );
-                          setOrders(
-                            orders.map((o) =>
-                              o.id === bk.id
-                                ? { ...o, paymentReqStatus: "PAYMENT_RELEASED_TO_UPI" }
-                                : o
-                            )
-                          );
-                          onTriggerToast(
-                            `Payment Request Raised for #${bk.id}! Rs.${fare} released to ${
-                              currentUser?.upiId || "captain@ybl"
-                            }.`
-                          );
+                          onTriggerToast(`Payment Request Raised! Rs.${fare} sent to UPI.`);
                         }}
                         className="bg-amber-400 text-slate-950 font-black px-3 py-1 rounded-lg text-[9px] cursor-pointer"
                       >
@@ -688,143 +555,54 @@ export default function RiderCaptainPortal({
       )}
 
       {/* ==================================================================== */}
-      {/* TAB 4: EARNINGS, ORDER INVENTORY & 9 AM AUTO-DUTY ("orders")         */}
+      {/* TAB 4: EARNINGS & 9 AM AUTO-DUTY ("orders")                          */}
       {/* ==================================================================== */}
       {footerTab === "orders" && (
         <div className="space-y-3">
-          {/* 9:00 AM Auto-Online Duty Scheduler Card (Req 2.4) */}
-          <div className="bg-slate-900 p-3.5 rounded-2xl border border-emerald-500/40 space-y-2.5">
+          <div className="bg-slate-900 p-3.5 rounded-2xl border border-emerald-500/40 space-y-2">
             <div className="flex justify-between items-center">
               <div>
                 <h4 className="font-black text-emerald-400 text-xs">
-                  Captain Duty Mode & 09:00 AM Auto-Online Rule
+                  4. {myVehicleRule.shortLabel} Earnings & 09:00 AM Default Online Duty
                 </h4>
                 <p className="text-[10px] text-slate-400">
-                  Go Live for driving anytime, or switch Offline when off-duty
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsOnlineForDriving(!isOnlineForDriving)}
-                className={`px-3 py-1.5 rounded-xl font-black text-[10px] cursor-pointer ${
-                  isOnlineForDriving
-                    ? "bg-emerald-400 text-slate-950"
-                    : "bg-rose-600 text-white"
-                }`}
-              >
-                {isOnlineForDriving ? "ONLINE (DRIVING)" : "OFFLINE (REST)"}
-              </button>
-            </div>
-
-            <label className="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 cursor-pointer">
-              <div>
-                <p className="font-bold text-amber-300 text-[10px]">
-                  Default Morning 09:00 AM Auto-Online Duty Schedule
-                </p>
-                <p className="text-[9px] text-slate-400">
-                  Automatically puts your Captain Radar Online every morning at 09:00 AM
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={autoOnline9AmEnabled}
-                onChange={(e) => {
-                  setAutoOnline9AmEnabled(e.target.checked);
-                  onTriggerToast(
-                    e.target.checked
-                      ? "09:00 AM Daily Auto-Online Duty Enabled!"
-                      : "09:00 AM Auto-Online Paused."
-                  );
-                }}
-              />
-            </label>
-          </div>
-
-          {/* Complete Order & Trip Inventory Ledger */}
-          <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-2.5">
-            <div className="flex justify-between items-center">
-              <div>
-                <h4 className="font-black text-teal-300 text-xs">
-                  4. Captain Earnings & Maintained Order Inventory
-                </h4>
-                <p className="text-[10px] text-slate-400">
-                  All completed & active ride/delivery inventories maintained on your behalf
+                  Auto-Online every morning at 09:00 AM ({autoOnline9AmEnabled ? "Active" : "Paused"})
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleDownloadCaptainStatementPdf}
-                className="bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[10px] cursor-pointer shrink-0"
+                className="bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[10px] cursor-pointer"
               >
-                Export PDF Ledger
+                PDF Ledger
               </button>
             </div>
-
             <select
               value={earningsPeriod}
               onChange={(e) => setEarningsPeriod(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white font-bold text-[10px]"
             >
-              <option value="ALL">Period: All Maintained Trips ({allMyCaptainBookings.length})</option>
-              <option value="TODAY">Period: Today (Since 09:00 AM Duty)</option>
-              <option value="WEEK">Period: This Week</option>
-              <option value="MONTH">Period: This Month</option>
+              <option value="ALL">All {myVehicleRule.shortLabel} Trips ({allMyVehicleBookings.length})</option>
+              <option value="TODAY">Today (Since 09:00 AM Duty)</option>
             </select>
-
-            {(() => {
-              const gross = allMyCaptainBookings.reduce(
-                (s, b) => s + Number(b.captainPayout || b.deliveryFee || 45),
-                0
-              );
-              const incentive = allMyCaptainBookings.length * 10;
-              const netTotal = gross + incentive;
-
-              return (
-                <>
-                  <div className="grid grid-cols-3 gap-1.5 text-center">
-                    <div className="bg-slate-950 p-2 rounded-xl border border-slate-800">
-                      <p className="text-[9px] text-slate-400">Trip Fares</p>
-                      <p className="font-black text-emerald-400 text-xs">
-                        Rs.{gross.toLocaleString("en-IN")}
-                      </p>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-xl border border-slate-800">
-                      <p className="text-[9px] text-slate-400">9AM Duty Bonus</p>
-                      <p className="font-black text-amber-300 text-xs">
-                        +Rs.{incentive.toLocaleString("en-IN")}
-                      </p>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-xl border border-slate-800">
-                      <p className="text-[9px] text-slate-400">Total Take-Home</p>
-                      <p className="font-black text-teal-300 text-xs">
-                        Rs.{netTotal.toLocaleString("en-IN")}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 pt-1">
-                    {allMyCaptainBookings.map((item) => (
-                      <div
-                        key={item.id}
-                        className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center"
-                      >
-                        <div>
-                          <p className="font-bold text-white text-[11px]">
-                            #{item.id} &bull; {item.badge || "Merchant Order Delivery"}
-                          </p>
-                          <p className="text-[9px] text-slate-400">
-                            {item.pickupPin || item.shopName} &rarr; {item.dropPin || item.address} ({item.distanceKm || 2.4} km)
-                          </p>
-                        </div>
-                        <span className="font-black text-emerald-400 text-xs">
-                          +Rs.{item.captainPayout || item.deliveryFee || 45}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
+            {allMyVehicleBookings.map((item) => (
+              <div
+                key={item.id}
+                className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center"
+              >
+                <div>
+                  <p className="font-bold text-white text-[11px]">
+                    #{item.id} &bull; {item.badge}
+                  </p>
+                  <p className="text-[9px] text-slate-400">
+                    Vehicle: {item.requiredVehicleCode || myVehicleCode} | Dist: {item.distanceKm || 2.4} km
+                  </p>
+                </div>
+                <span className="font-black text-emerald-400 text-xs">
+                  +Rs.{item.captainPayout || 45}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

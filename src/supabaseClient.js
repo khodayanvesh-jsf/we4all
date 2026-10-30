@@ -1,9 +1,9 @@
 const LIVE_CLOUD_ORIGIN = "https://we-4-all-super-app.vercel.app";
-const CURRENT_SCHEMA_VERSION = "2.9.4";
+const CURRENT_SCHEMA_VERSION = "2.9.5";
 const STORAGE_KEY = "we4all_master_cloud_state_v4";
 const BACKUP_KEY = "we4all_zero_loss_user_backup_v4";
 const INSTALLED_VER_KEY = "we4all_device_installed_version_v4";
-const SCHEMA_MIGRATED_KEY = "we4all_schema_migrated_v294";
+const SCHEMA_MIGRATED_KEY = "we4all_schema_migrated_v295";
 
 const syncChannel =
   typeof window !== "undefined" && "BroadcastChannel" in window

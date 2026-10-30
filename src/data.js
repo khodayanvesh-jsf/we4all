@@ -233,3 +233,11 @@ INITIAL_APP_UPDATE_INFO.currentVersion = "2.9.3";
 INITIAL_APP_UPDATE_INFO.latestAvailableVersion = "2.9.4";
 INITIAL_APP_UPDATE_INFO.updateAvailable = true;
 INITIAL_APP_UPDATE_INFO.releaseNotes = "WE4ALL v2.9.4: Complete Delivery Captain Portal (1. Live Ride/Order Radar, 2. Active Orders 3-Point Route Map, 3. Km Rate Card & Booking Payment Request Desk, 4. Earnings Inventory & 9 AM Auto-Online Duty, DL/RC PDF & Camera KYC, Account-Only In-App Updater).";
+
+// ============================================================================
+// v2.9.5 OVERRIDES: STRICT VEHICLE ALLOCATION (2W / 3W / 4W_HEAVY)
+// ============================================================================
+INITIAL_APP_UPDATE_INFO.currentVersion = "2.9.4";
+INITIAL_APP_UPDATE_INFO.latestAvailableVersion = "2.9.5";
+INITIAL_APP_UPDATE_INFO.updateAvailable = true;
+INITIAL_APP_UPDATE_INFO.releaseNotes = "WE4ALL v2.9.5: Mandatory Captain Vehicle Type & RC/DL Registration, Customer T&C Weight-Gated Vehicle Selector, Strict 2W/3W/4W Order Allocation with Zero Cross-Interference, and Account-Only In-App Updater.";

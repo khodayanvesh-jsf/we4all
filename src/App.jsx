@@ -19,7 +19,7 @@ import FounderAdminSuite from "./modules/FounderAdminSuite";
 import MerchantPortal from "./modules/MerchantPortal";
 import ServiceProviderPortal from "./modules/ServiceProviderPortal";
 import DecoratorPortal from "./modules/DecoratorPortal";
-import RiderCaptainPortal from "./modules/RiderCaptainPortal";
+import RiderCaptainPortal, { VEHICLE_CONSORT_RULES } from "./modules/RiderCaptainPortal";
 import {
   saveCloudAndLocalState,
   loadCloudAndLocalState,
@@ -47,8 +47,6 @@ function FounderLogoBadge({ logoUrl }) {
   );
 }
 
-// REQ 12: ZERO TOP UPDATE BANNER IN MobilePhoneShell!
-// Bell icon notifies the user, and update installation lives ONLY inside the Account section!
 function MobilePhoneShell({
   title,
   badge,
@@ -175,7 +173,6 @@ function AppContent() {
   const [lang, setLang] = useState("EN");
   const t = getLangText(lang);
   const [brightTheme, setBrightTheme] = useState(true);
-
   const [founderLogoUrl] = useState(
     () => localStorage.getItem("we4all_founder_original_photo") || "/logo.png"
   );
@@ -198,7 +195,6 @@ function AppContent() {
   const [footerTab, setFooterTab] = useState("home");
   const [authError, setAuthError] = useState("");
 
-  // Digital Signature Pad + Gallery/Camera Signature State (Req 9)
   const sigCanvasRef = useRef(null);
   const [isDrawingSig, setIsDrawingSig] = useState(false);
   const [hasDrawnSignature, setHasDrawnSignature] = useState(false);
@@ -244,7 +240,6 @@ function AppContent() {
     setUploadedSignatureImg("");
   };
 
-  // OTA Update Engine (Bell Notification + Account Section Installation ONLY)
   const [appUpdateInfo, setAppUpdateInfo] = useState(
     savedCloud?.appUpdateInfo || INITIAL_APP_UPDATE_INFO
   );
@@ -254,41 +249,41 @@ function AppContent() {
   const [notificationsList, setNotificationsList] = useState([
     {
       id: 1,
-      text: "WE4ALL v2.9.4 Update Available in your Account Section!",
+      text: "WE4ALL v2.9.5 Update Available in your Account Section!",
       time: "Just now"
     }
   ]);
 
   const handleManualCheckForUpdate = async () => {
     setCheckingUpdate(true);
-    triggerToast("Checking WE4ALL Cloud Server for v2.9.4...");
+    triggerToast("Checking WE4ALL Cloud Server for v2.9.5...");
     const latest = await checkLiveCloudOtaManifest((payload) => {
       if (payload?.appUpdateInfo) setAppUpdateInfo(payload.appUpdateInfo);
     });
     setTimeout(() => {
       setCheckingUpdate(false);
       const targetVer =
-        latest?.latestAvailableVersion || appUpdateInfo?.latestAvailableVersion || "2.9.4";
+        latest?.latestAvailableVersion || appUpdateInfo?.latestAvailableVersion || "2.9.5";
       setAppUpdateInfo((prev) => ({
         ...prev,
         ...(latest || {}),
         latestAvailableVersion: targetVer,
         updateAvailable: true
       }));
-      triggerToast(`Update v${targetVer} Ready! Tap 'Download & Install' below.`);
+      triggerToast(`Update v${targetVer} Ready in Account Section!`);
     }, 500);
   };
 
   const handleRunOtaUpdate = () => {
     setNotificationBellOpen(false);
     performZeroLossOtaUpdate(
-      appUpdateInfo.latestAvailableVersion || "2.9.4",
+      appUpdateInfo.latestAvailableVersion || "2.9.5",
       appUpdateInfo.releaseNotes,
       (stage) => setOtaProgress(stage),
       (updatedInfo) => {
         setAppUpdateInfo(updatedInfo);
         setOtaProgress(null);
-        triggerToast(`In-App Update v${updatedInfo.currentVersion} Installed Successfully!`);
+        triggerToast(`In-App Update v${updatedInfo.currentVersion} Installed!`);
       }
     );
   };
@@ -309,7 +304,11 @@ function AppContent() {
         username: "raju_captain",
         phone: "9848055112",
         role: "rider",
-        vehicleClass: "2W Bike Captain (Up to 45kg)",
+        vehicleCode: "2W",
+        vehicleClass: "2W Bike Captain (Up to 45 kg)",
+        vehicleModel: "Hero Splendor Plus 125cc",
+        fuelType: "Petrol",
+        maxPayloadKg: 45,
         dlNumber: "TS-01-2022009812",
         rcPlate: "TS-01-EF-4599",
         bankName: "State Bank of India",
@@ -323,11 +322,13 @@ function AppContent() {
     savedCloud?.registeredUsers || []
   );
 
-  const [loginForm, setLoginForm] = useState({ usernameOrPhone: "", password: "" });
+  // Registration Form with Full Vehicle Details & Type (2W / 3W / 4W_HEAVY)
   const [regForm, setRegForm] = useState({
     role: "rider",
     decoratorSubRole: "flower_decorator",
-    vehicleClass: "2W Bike Captain (Up to 45kg)",
+    vehicleCode: "2W",
+    vehicleModel: "Hero Splendor / Honda Activa",
+    fuelType: "Petrol / EV",
     dlNumber: "",
     rcPlate: "",
     phone: "",
@@ -338,7 +339,6 @@ function AppContent() {
     govId: "",
     area: "Adilabad Town",
     kycDocName: "",
-    kycDocDataUrl: "",
     workImageName: "",
     workImageUrl: "",
     upiId: "",
@@ -373,58 +373,62 @@ function AppContent() {
   );
   const [riders, setRiders] = useState(savedCloud?.riders || INITIAL_RIDERS);
 
-  // Live Radar Jobs for Delivery Captain Portal (Tab 1, 2, 3, 4)
+  // Radar Jobs Pre-Populated Across 2W, 3W, and 4W_HEAVY to Demonstrate Strict Vehicle Isolation
   const [captainRadarJobs, setCaptainRadarJobs] = useState(
     savedCloud?.captainRadarJobs && savedCloud.captainRadarJobs.length > 0
       ? savedCloud.captainRadarJobs
       : [
           {
-            id: "RDR-801",
-            rideType: "BIKE_TAXI_PASSENGER",
-            badge: "2W Bike Taxi (Consumer Self Ride)",
-            bookedBy: "Consumer: Rameshwar Reddy (For Self)",
-            pickupPin: "Subhash Nagar Chowk, Adilabad",
-            dropPin: "Adilabad Railway Station",
-            distFromCaptainKm: 0.5,
-            distanceKm: 2.6,
-            captainPayout: 45,
+            id: "RDR-2W-101",
+            requiredVehicleCode: "2W",
+            vehicleLabel: "2W Bike Captain (Up to 45 kg)",
+            weightKg: 6,
+            badge: "2W Bike Taxi / Kirana Pack (6 kg)",
+            bookedBy: "Customer: Rameshwar Reddy (Chose 2W Bike)",
+            pickupPin: "Sri Laxmi Supermart, Main Bazar",
+            dropPin: "Subhash Nagar, Adilabad",
+            distFromCaptainKm: 0.4,
+            distanceKm: 2.5,
+            captainPayout: 42,
             secretOtp: "3388",
             status: "OPEN_ON_RADAR",
             paymentReqStatus: "PENDING_TRIP_COMPLETION"
           },
           {
-            id: "RDR-802",
-            rideType: "P2P_PARCEL_DROP",
-            badge: "P2P Parcel & Lunch Box (Booked for Family)",
-            bookedBy: "Consumer: Kavitha Sharma (For Brother)",
-            pickupPin: "Vidya Nagar H.No 2-11, Adilabad",
-            dropPin: "Collectorate Office, Adilabad",
-            distFromCaptainKm: 0.8,
-            distanceKm: 3.2,
-            captainPayout: 55,
+            id: "RDR-3W-202",
+            requiredVehicleCode: "3W",
+            vehicleLabel: "3W Auto Captain (Up to 300 kg)",
+            weightKg: 140,
+            badge: "3W Cargo Auto Wholesale Bags (140 kg)",
+            bookedBy: "Customer: Annapurna Hotel (Chose 3W Auto)",
+            pickupPin: "Adilabad Wholesale Gunj",
+            dropPin: "Collectorate Road, Adilabad",
+            distFromCaptainKm: 0.9,
+            distanceKm: 3.4,
+            captainPayout: 165,
             secretOtp: "7744",
             status: "OPEN_ON_RADAR",
             paymentReqStatus: "PENDING_TRIP_COMPLETION"
           },
           {
-            id: "RDR-803",
-            rideType: "MERCHANT_STORE_DISPATCH",
-            badge: "Merchant Kirana Dispatch (14 kg Pack)",
-            bookedBy: "Merchant: Sri Laxmi Supermart",
-            pickupPin: "Sri Laxmi Supermart, Main Bazar",
-            dropPin: "Housing Board Colony, Adilabad",
-            distFromCaptainKm: 0.3,
-            distanceKm: 2.1,
-            captainPayout: 40,
-            secretOtp: "5511",
-            assignedCaptain: "Raju Local Rider",
-            status: "ACCEPTED_BY_CAPTAIN",
-            paymentReqStatus: "ELIGIBLE_FOR_PAYOUT_REQ"
+            id: "RDR-4W-303",
+            requiredVehicleCode: "4W_HEAVY",
+            vehicleLabel: "4W Mini Truck / Heavy (Over 300 kg)",
+            weightKg: 650,
+            badge: "4W Heavy Cement & Steel Load (650 kg)",
+            bookedBy: "Customer: KVR Builders (Chose 4W Heavy)",
+            pickupPin: "UltraTech Depot, Bypass Road",
+            dropPin: "Dasnapur Site, Adilabad",
+            distFromCaptainKm: 1.4,
+            distanceKm: 4.8,
+            captainPayout: 490,
+            secretOtp: "9922",
+            status: "OPEN_ON_RADAR",
+            paymentReqStatus: "PENDING_TRIP_COMPLETION"
           }
         ]
   );
 
-  // Pending Delivery Captains Queue for Admin 5-Point Checklist (Req 7 & 8)
   const [pendingRiders, setPendingRiders] = useState(
     savedCloud?.pendingRiders && savedCloud.pendingRiders.length > 0
       ? savedCloud.pendingRiders
@@ -432,19 +436,16 @@ function AppContent() {
           {
             id: 991,
             captainName: "Salman Khan Captain",
-            vehicleClass: "2W Bike Captain (Up to 45kg)",
+            vehicleCode: "2W",
+            vehicleClass: "2W Bike Captain (Up to 45 kg)",
+            vehicleModel: "Bajaj Pulsar 150cc",
             dlNumber: "TS-01-2023004411",
             rcPlate: "TS-01-GH-8821",
             phone: "9848033221",
             govId: "9988-7766-5544 [Verified]",
             area: "Station Road, Adilabad",
             upiId: "salmancaptain@ybl",
-            bankName: "State Bank of India",
-            accountNumber: "30985544332",
-            ifscCode: "SBIN0000801",
-            kycDocName: "Driving_License_RC_Fitness_Adilabad.pdf",
-            workImageUrl:
-              "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=300&auto=format&fit=crop&q=80",
+            kycDocName: "DL_RC_Fitness_Adilabad.pdf",
             tcAccepted: true,
             acceptedAt: "2026-10-30 09:00 AM",
             digitalSignatureText: "Salman Khan (Digitally Signed)",
@@ -459,9 +460,7 @@ function AppContent() {
   const [decorEscrowBookings, setDecorEscrowBookings] = useState(
     savedCloud?.decorEscrowBookings || []
   );
-  const [pendingMerchants, setPendingMerchants] = useState(
-    savedCloud?.pendingMerchants || []
-  );
+  const [pendingMerchants, setPendingMerchants] = useState(savedCloud?.pendingMerchants || []);
   const [pendingServiceProviders, setPendingServiceProviders] = useState(
     savedCloud?.pendingServiceProviders || []
   );
@@ -480,23 +479,25 @@ function AppContent() {
     { id: 5, role: "rider" }
   ]);
 
-  const [addressBook] = useState([
-    { id: "addr_home", label: "Home", fullAddress: "Subhash Nagar, Adilabad", distanceKm: 1.8, verified: true }
-  ]);
-  const activeAddressObj = addressBook[0];
+  const activeAddressObj = {
+    id: "addr_home",
+    label: "Home",
+    fullAddress: "Subhash Nagar, Adilabad",
+    distanceKm: 1.8
+  };
 
+  // Customer T&C Weight-Gated Vehicle Selector State
   const [customerHomeSubTab, setCustomerHomeSubTab] = useState("taxi");
-  const [taxiBookingForm, setTaxiBookingForm] = useState({
-    rideMode: "BIKE_TAXI_PASSENGER",
+  const [customerBookingForm, setCustomerBookingForm] = useState({
+    serviceKind: "P2P_PARCEL_OR_ORDER",
     forWhom: "For Myself",
+    weightKg: 15,
+    chosenVehicleCode: "2W",
     pickupPin: "Subhash Nagar, Adilabad",
     dropPin: "Collectorate Chowk, Adilabad",
     distanceKm: 2.8
   });
 
-  const [merchantCart] = useState([]);
-  const [serviceCart] = useState([]);
-  const [decorCart] = useState([]);
   const [orders, setOrders] = useState(savedCloud?.orders || []);
   const [serviceBookings, setServiceBookings] = useState(savedCloud?.serviceBookings || []);
 
@@ -506,8 +507,6 @@ function AppContent() {
       appUpdateInfo,
       accountSecurity,
       currentUser,
-      geoAds,
-      categories,
       merchants,
       serviceProviders,
       decorators,
@@ -517,13 +516,11 @@ function AppContent() {
       decorPortfolio,
       decorReverseBids,
       decorEscrowBookings,
-      registeredUsers,
       products,
       functionHalls,
       pendingMerchants,
       pendingServiceProviders,
       pendingDecorators,
-      pendingSubCategories,
       orders,
       serviceBookings
     });
@@ -532,8 +529,6 @@ function AppContent() {
     appUpdateInfo,
     accountSecurity,
     currentUser,
-    geoAds,
-    categories,
     merchants,
     serviceProviders,
     decorators,
@@ -543,55 +538,34 @@ function AppContent() {
     decorPortfolio,
     decorReverseBids,
     decorEscrowBookings,
-    registeredUsers,
     products,
     functionHalls,
     pendingMerchants,
     pendingServiceProviders,
     pendingDecorators,
-    pendingSubCategories,
     orders,
     serviceBookings
   ]);
 
   useEffect(() => {
     return subscribeToRealtimeUpdates((remoteState) => {
-      if (remoteState.orders) setOrders(remoteState.orders);
       if (remoteState.captainRadarJobs) setCaptainRadarJobs(remoteState.captainRadarJobs);
       if (remoteState.pendingRiders) setPendingRiders(remoteState.pendingRiders);
-      if (remoteState.appUpdateInfo) {
-        setAppUpdateInfo((prev) => {
-          const incomingVer = remoteState.appUpdateInfo.latestAvailableVersion;
-          if (incomingVer && incomingVer !== prev?.latestAvailableVersion) {
-            setNotificationsList((n) => [
-              {
-                id: Date.now(),
-                text: `OTA Update v${incomingVer} is ready! Open your Account Section to install in-app.`,
-                time: "Just now"
-              },
-              ...n
-            ]);
-          }
-          return remoteState.appUpdateInfo;
-        });
-      }
+      if (remoteState.appUpdateInfo) setAppUpdateInfo(remoteState.appUpdateInfo);
     });
   }, []);
 
-  const totalCartCount =
-    merchantCart.length + serviceCart.length + decorCart.length;
-
   // ==========================================================================
-  // REQ 1, 7, 9: 3-STEP REGISTRATION WITH DL/RC PDF & CAMERA + SIGNATURE
+  // REGISTRATION VAULT WITH MANDATORY CAPTAIN VEHICLE DETAILS & TYPE LOCK
   // ==========================================================================
   const renderAuthVault = () => (
     <MobilePhoneShell
       title="Security & KYC Vault"
-      badge="v2.9.4"
+      badge="v2.9.5"
       activePortal={activePortal}
       footerTab={footerTab}
       setFooterTab={setFooterTab}
-      totalCartCount={totalCartCount}
+      totalCartCount={0}
       totalOrdersCount={orders.length}
       brightTheme={brightTheme}
       lang={lang}
@@ -632,40 +606,34 @@ function AppContent() {
             }}
             className="w-full bg-slate-950 border border-emerald-500/50 rounded-xl p-2 text-white font-bold text-xs"
           >
-            <option value="customer">1. Customer Super-App</option>
-            <option value="merchant">2. Product Merchant Portal (Supermart / Kirana)</option>
-            <option value="service_provider">3. Service Provider Portal (1-Hr Slots & Escrow)</option>
+            <option value="customer">1. Customer Super-App (With T&C Vehicle Chooser)</option>
+            <option value="merchant">2. Product Merchant Portal</option>
+            <option value="service_provider">3. Service Provider Portal</option>
             <option value="decorator">4. Flower Decorator & Function Halls Portal</option>
-            <option value="rider">5. Delivery Captain Portal (Delivery, Taxi & P2P)</option>
+            <option value="rider">5. Delivery Captain Portal (2W / 3W / 4W Vehicle Locked)</option>
           </select>
 
-          <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl">
+          <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl">
             <button
               type="button"
-              onClick={() => { setAuthTab("pin_biometric"); setAuthError(""); }}
-              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
-                authTab === "pin_biometric" ? "bg-teal-400 text-slate-950" : "text-slate-400"
-              }`}
+              onClick={() => {
+                setActivePortal(selectedRole);
+                setFooterTab("home");
+                setOnboardingStep("app");
+              }}
+              className="py-1.5 rounded-lg font-black text-[10px] bg-emerald-400 text-slate-950 cursor-pointer"
             >
-              PIN / Biometric
+              Quick Open Portal &rarr;
             </button>
             <button
               type="button"
-              onClick={() => { setAuthTab("login"); setAuthError(""); }}
-              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
-                authTab === "login" ? "bg-emerald-400 text-slate-950" : "text-slate-400"
-              }`}
+              onClick={() => {
+                setAuthTab("register");
+                setRegStep(1);
+              }}
+              className="py-1.5 rounded-lg font-black text-[10px] bg-amber-400 text-slate-950 cursor-pointer"
             >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAuthTab("register"); setRegStep(1); setAuthError(""); }}
-              className={`py-1.5 rounded-lg font-black text-[10px] cursor-pointer ${
-                authTab === "register" ? "bg-amber-400 text-slate-950" : "text-slate-400"
-              }`}
-            >
-              New Register
+              New Registration
             </button>
           </div>
         </div>
@@ -676,751 +644,515 @@ function AppContent() {
           </div>
         )}
 
-        {authTab === "pin_biometric" && (
-          <div className="bg-slate-900 text-white border border-teal-500/40 rounded-2xl p-4 space-y-3 text-center">
-            <h3 className="font-black text-teal-300 text-xs">
-              Instant PIN & Biometric Unlock ({selectedRole.toUpperCase()})
-            </h3>
-            <button
-              type="button"
-              onClick={() => {
-                setActivePortal(selectedRole);
-                setFooterTab("home");
-                setOnboardingStep("app");
-                triggerToast(`Opened ${selectedRole.toUpperCase()} Portal!`);
-              }}
-              className="w-full bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
-            >
-              1-Tap Biometric Login (Fingerprint / Face ID)
-            </button>
-            <div className="flex gap-2 pt-2 border-t border-slate-800">
-              <input
-                type="password"
-                maxLength={4}
-                value={pinUnlockInput}
-                onChange={(e) => setPinUnlockInput(e.target.value)}
-                placeholder="Enter 4-Digit PIN"
-                className="w-32 bg-slate-950 border border-amber-400 rounded-xl p-2 text-center font-mono text-white"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if (pinUnlockInput === "9999") {
-                    setPinUnlockInput("");
-                    setIsAdminAuthenticated(false);
-                    setAdminAuthStep(1);
-                    setViewMode("founder_web");
-                    return;
-                  }
-                  setPinUnlockInput("");
-                  setActivePortal(selectedRole);
-                  setFooterTab("home");
-                  setOnboardingStep("app");
-                  triggerToast(`Unlocked ${selectedRole.toUpperCase()} Portal!`);
-                }}
-                className="flex-1 bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer"
-              >
-                Unlock with PIN
-              </button>
-            </div>
+        <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
+          <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+            <span className="font-black text-amber-400 text-xs">
+              3-Step Registration ({selectedRole.toUpperCase()})
+            </span>
+            <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
+              Step {regStep} of 3
+            </span>
           </div>
-        )}
 
-        {authTab === "login" && (
-          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
-            <input
-              type="text"
-              value={loginForm.usernameOrPhone}
-              onChange={(e) => setLoginForm({ ...loginForm, usernameOrPhone: e.target.value })}
-              placeholder="Registered Username or 10-Digit Mobile"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-            <input
-              type="password"
-              value={loginForm.password}
-              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-              placeholder="Password"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setActivePortal(selectedRole);
-                setFooterTab("home");
-                setOnboardingStep("app");
-                triggerToast(`Signed in to ${selectedRole.toUpperCase()} Portal!`);
-              }}
-              className="w-full bg-emerald-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-            >
-              Verify & Open Portal &rarr;
-            </button>
-          </div>
-        )}
-
-        {authTab === "register" && (
-          <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-              <span className="font-black text-amber-400 text-xs">
-                3-Step KYC, PDF/Camera Docs & Digital Sign ({selectedRole.toUpperCase()})
-              </span>
-              <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
-                Step {regStep} of 3
-              </span>
-            </div>
-
-            {regStep === 1 && (
-              <div className="space-y-2.5">
-                {selectedRole === "rider" && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-teal-300 font-black block">
-                      Select Delivery Captain Vehicle Class:
-                    </label>
-                    <select
-                      value={regForm.vehicleClass}
-                      onChange={(e) => setRegForm({ ...regForm, vehicleClass: e.target.value })}
-                      className="w-full bg-slate-950 border border-teal-400/60 rounded-xl p-2 text-white font-bold"
-                    >
-                      <option value="2W Bike Captain (Up to 45kg)">
-                        2W Bike Taxi, Parcel & Store Delivery (Up to 45kg)
-                      </option>
-                      <option value="3W Cargo & Passenger Auto (Up to 300kg)">
-                        3W Auto Passenger & Cargo Captain (Up to 300kg)
-                      </option>
-                      <option value="4W Mini Truck / Heavy Transport (Over 300kg)">
-                        4W Mini Truck / Heavy Transport Captain (Over 300kg)
-                      </option>
-                    </select>
+          {regStep === 1 && (
+            <div className="space-y-2.5">
+              {selectedRole === "rider" && (
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-teal-500/50 space-y-2">
+                  <p className="text-[10px] font-black text-teal-300">
+                    Mandatory: Select Your Delivery Vehicle Type (Locks Your Order Allocation):
+                  </p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {Object.values(VEHICLE_CONSORT_RULES).map((vr) => (
+                      <button
+                        key={vr.code}
+                        type="button"
+                        onClick={() => setRegForm({ ...regForm, vehicleCode: vr.code })}
+                        className={`p-2 rounded-xl border text-center cursor-pointer ${
+                          regForm.vehicleCode === vr.code
+                            ? "bg-teal-400 text-slate-950 border-white font-black"
+                            : "bg-slate-900 text-slate-300 border-slate-800"
+                        }`}
+                      >
+                        <div className="text-[10px] font-black">{vr.shortLabel}</div>
+                        <div className="text-[8px] mt-0.5">Max {vr.maxWeightKg} kg</div>
+                      </button>
+                    ))}
                   </div>
-                )}
-
-                <p className="text-[11px] text-slate-300 font-bold">
-                  Step 1/3: Mobile Number OTP Verification
-                </p>
-                <div className="flex gap-1.5">
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    value={regForm.phone}
-                    onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
-                    placeholder="Enter 10-Digit Mobile Number"
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (regForm.phone.trim().length < 10) {
-                        setAuthError("Please enter a valid 10-digit mobile number.");
-                        return;
-                      }
-                      const otp = String(Math.floor(1000 + Math.random() * 9000));
-                      setRegForm({ ...regForm, generatedOtp: otp, otpInput: otp });
-                      setAuthError("");
-                      triggerToast(`Registration OTP Sent: ${otp}`);
-                    }}
-                    className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
-                  >
-                    Send OTP
-                  </button>
+                  <p className="text-[9px] text-amber-300">
+                    * Consort Rule: A {regForm.vehicleCode} Captain can ONLY access {regForm.vehicleCode} orders. Zero cross-interference is enforced.
+                  </p>
                 </div>
-                {regForm.generatedOtp && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRegForm({ ...regForm, otpVerified: true });
-                      setAuthError("");
-                      setRegStep(2);
-                    }}
-                    className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                  >
-                    Verify OTP ({regForm.generatedOtp}) & Continue to Step 2 &rarr;
-                  </button>
-                )}
-              </div>
-            )}
+              )}
 
-            {regStep === 2 && (
-              <div className="space-y-2">
-                <p className="text-[11px] text-slate-300 font-bold">
-                  Step 2/3: KYC, DL/RC Details, Bank/UPI & Required Docs (PDF / Gallery / Camera)
-                </p>
+              <div className="flex gap-1.5">
                 <input
-                  type="text"
-                  value={regForm.fullName}
-                  onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
-                  placeholder={
-                    selectedRole === "rider"
-                      ? "Delivery Captain Full Legal Name"
-                      : "Full Business / Partner Legal Name"
-                  }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                  type="tel"
+                  maxLength={10}
+                  value={regForm.phone}
+                  onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
+                  placeholder="Enter 10-Digit Mobile Number"
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const otp = String(Math.floor(1000 + Math.random() * 9000));
+                    setRegForm({ ...regForm, generatedOtp: otp, otpInput: otp });
+                    triggerToast(`OTP Sent: ${otp}`);
+                  }}
+                  className="bg-amber-400 text-slate-950 font-black px-3 rounded-xl cursor-pointer"
+                >
+                  Send OTP
+                </button>
+              </div>
+              {regForm.generatedOtp && (
+                <button
+                  type="button"
+                  onClick={() => setRegStep(2)}
+                  className="w-full bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                >
+                  Verify OTP ({regForm.generatedOtp}) & Continue to Step 2 &rarr;
+                </button>
+              )}
+            </div>
+          )}
 
-                {selectedRole === "rider" && (
+          {regStep === 2 && (
+            <div className="space-y-2">
+              <p className="text-[11px] text-slate-300 font-bold">
+                Step 2/3: Vehicle Details, DL/RC Numbers, PDF/Camera Docs & UPI
+              </p>
+              <input
+                type="text"
+                value={regForm.fullName}
+                onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
+                placeholder="Captain / Partner Full Legal Name"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+              />
+
+              {selectedRole === "rider" && (
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-teal-500/40 space-y-1.5">
+                  <p className="text-[10px] font-black text-teal-300">
+                    Vehicle Make/Model, RC Plate & Driving License Details ({regForm.vehicleCode}):
+                  </p>
                   <div className="grid grid-cols-2 gap-1.5">
                     <input
                       type="text"
-                      value={regForm.dlNumber}
-                      onChange={(e) => setRegForm({ ...regForm, dlNumber: e.target.value })}
-                      placeholder="Driving License (DL) No."
-                      className="bg-slate-950 border border-teal-500/50 rounded-xl p-2 text-white"
+                      value={regForm.vehicleModel}
+                      onChange={(e) => setRegForm({ ...regForm, vehicleModel: e.target.value })}
+                      placeholder="Vehicle Make & Model"
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
+                    />
+                    <input
+                      type="text"
+                      value={regForm.fuelType}
+                      onChange={(e) => setRegForm({ ...regForm, fuelType: e.target.value })}
+                      placeholder="Fuel (Petrol / CNG / EV)"
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white"
                     />
                     <input
                       type="text"
                       value={regForm.rcPlate}
                       onChange={(e) => setRegForm({ ...regForm, rcPlate: e.target.value })}
-                      placeholder="Vehicle Plate (TS-01-EF-4599)"
-                      className="bg-slate-950 border border-teal-500/50 rounded-xl p-2 text-white"
+                      placeholder="RC Plate (TS-01-EF-4599)"
+                      className="bg-slate-900 border border-amber-400/50 rounded-lg p-1.5 text-amber-300 font-bold"
+                    />
+                    <input
+                      type="text"
+                      value={regForm.dlNumber}
+                      onChange={(e) => setRegForm({ ...regForm, dlNumber: e.target.value })}
+                      placeholder="Driving License (DL) No."
+                      className="bg-slate-900 border border-emerald-400/50 rounded-lg p-1.5 text-emerald-300 font-bold"
                     />
                   </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-1.5">
-                  <input
-                    type="text"
-                    maxLength={12}
-                    value={regForm.govId}
-                    onChange={(e) => setRegForm({ ...regForm, govId: e.target.value })}
-                    placeholder="12-Digit Aadhaar / Gov ID"
-                    className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-                  />
-                  <input
-                    type="text"
-                    value={regForm.upiId}
-                    onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
-                    placeholder="Instant Payout UPI ID"
-                    className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
-                  />
                 </div>
+              )}
 
-                {/* REQ 1: UPLOAD DL/RC/KYC DOCS AS PDF, PHONE GALLERY IMAGE OR CAMERA */}
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/40 space-y-2">
-                  <p className="text-[10px] font-black text-amber-300">
-                    1. Upload Driving License / RC / KYC Doc (PDF, Gallery Image or Camera):
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <label className="bg-slate-900 border border-emerald-500/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[9px] font-bold text-emerald-300 block">
-                        \uD83D\uDCC4 Upload PDF / Phone Image
-                      </span>
-                      <input
-                        type="file"
-                        accept=".pdf,image/*"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          setRegForm({ ...regForm, kycDocName: f.name });
-                          triggerToast(`Attached Document: ${f.name}`);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    <label className="bg-slate-900 border border-amber-400/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[9px] font-bold text-amber-300 block">
-                        \uD83D\uDCF7 Capture Doc via Camera
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          setRegForm({ ...regForm, kycDocName: `Camera_${f.name}` });
-                          triggerToast("Captured DL/RC Document via Mobile Camera!");
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  <p className="text-[10px] font-black text-teal-300 pt-1">
-                    2. Vehicle / Captain Photo (Phone Gallery or Mobile Camera):
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <label className="bg-slate-900 border border-teal-400/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[9px] font-bold text-teal-300 block">
-                        \uD83D\uDDBC\uFE0F Select from Gallery
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setRegForm({
-                              ...regForm,
-                              workImageName: f.name,
-                              workImageUrl: String(reader.result || "")
-                            });
-                            triggerToast(`Loaded Gallery Photo: ${f.name}`);
-                          };
-                          reader.readAsDataURL(f);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    <label className="bg-slate-900 border border-indigo-400/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[9px] font-bold text-indigo-300 block">
-                        \uD83D\uDCF8 Take Picture with Camera
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setRegForm({
-                              ...regForm,
-                              workImageName: `Cam_${f.name}`,
-                              workImageUrl: String(reader.result || "")
-                            });
-                            triggerToast("Captured Vehicle/Captain Photo via Camera!");
-                          };
-                          reader.readAsDataURL(f);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRegStep(1)}
-                    className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
-                  >
-                    &larr; Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!regForm.fullName.trim()) {
-                        setAuthError("Please enter Full Legal Name.");
-                        return;
-                      }
-                      setAuthError("");
-                      setRegStep(3);
-                    }}
-                    className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                  >
-                    Continue to Step 3 (T&C + Digital Sign) &rarr;
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* REQ 9: STEP 3 DIGITAL SIGNATURE PAD OR GALLERY/CAMERA SIGNATURE */}
-            {regStep === 3 && (
-              <div className="space-y-2.5">
-                <p className="text-[11px] text-amber-300 font-black">
-                  Step 3/3: Platform T&C & Digital Signature (Draw, Gallery or Camera Capture)
-                </p>
-
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/50 space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-bold text-amber-300">
-                      Draw Signature OR Upload from Gallery / Capture with Camera:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={clearSigCanvas}
-                      className="bg-slate-800 text-rose-300 px-2 py-0.5 rounded text-[9px] font-bold cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  </div>
-
-                  <canvas
-                    ref={sigCanvasRef}
-                    width={310}
-                    height={75}
-                    onMouseDown={startSigDraw}
-                    onMouseMove={moveSigDraw}
-                    onMouseUp={endSigDraw}
-                    onMouseLeave={endSigDraw}
-                    onTouchStart={startSigDraw}
-                    onTouchMove={moveSigDraw}
-                    onTouchEnd={endSigDraw}
-                    className="w-full h-[75px] bg-white rounded-xl border-2 border-emerald-400 cursor-crosshair touch-none"
-                  />
-
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <label className="bg-indigo-500/20 border border-indigo-400 text-indigo-200 font-black py-1.5 px-2 rounded-xl text-[9px] text-center cursor-pointer">
-                      \uD83D\uDDBC\uFE0F Signature from Gallery
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setUploadedSignatureImg(String(reader.result || ""));
-                            triggerToast("Signature image loaded from Gallery!");
-                          };
-                          reader.readAsDataURL(f);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    <label className="bg-amber-500/20 border border-amber-400 text-amber-200 font-black py-1.5 px-2 rounded-xl text-[9px] text-center cursor-pointer">
-                      \uD83D\uDCF7 Capture Sign via Camera
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setUploadedSignatureImg(String(reader.result || ""));
-                            triggerToast("Signature captured via Mobile Camera!");
-                          };
-                          reader.readAsDataURL(f);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  <input
-                    type="text"
-                    value={regForm.digitalSignatureText}
-                    onChange={(e) =>
-                      setRegForm({ ...regForm, digitalSignatureText: e.target.value })
-                    }
-                    placeholder="Or type Full Legal Name as Digital Signature"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-[11px] font-serif italic"
-                  />
-                </div>
-
-                <label className="flex items-start gap-2 bg-emerald-950/40 p-2 rounded-xl border border-emerald-500/40 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={regForm.tcAccepted}
-                    onChange={(e) => setRegForm({ ...regForm, tcAccepted: e.target.checked })}
-                    className="mt-0.5"
-                  />
-                  <span className="text-[10px] text-emerald-200 font-bold">
-                    I accept the WE4ALL Platform Terms & Conditions (including 09:00 AM Default Online Duty & Km Rate Consort Rules) with my signature above.
-                  </span>
-                </label>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRegStep(2)}
-                    className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
-                  >
-                    &larr; Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!regForm.tcAccepted) {
-                        setAuthError("Please accept the Platform Terms & Conditions checkbox.");
-                        return;
-                      }
-                      if (
-                        !hasDrawnSignature &&
-                        !uploadedSignatureImg &&
-                        !regForm.digitalSignatureText.trim()
-                      ) {
-                        setAuthError("Please draw, upload, or camera-capture your signature.");
-                        return;
-                      }
-                      const finalSig =
-                        uploadedSignatureImg ||
-                        (hasDrawnSignature && sigCanvasRef.current
-                          ? sigCanvasRef.current.toDataURL("image/png")
-                          : "");
-
-                      const newUser = {
-                        id: Date.now(),
-                        fullName: regForm.fullName.trim(),
-                        username: regForm.fullName.trim(),
-                        phone: regForm.phone.trim() || "9848055112",
-                        govId: `${regForm.govId || "8899-1122"} [Verified]`,
-                        role: selectedRole,
-                        vehicleClass: regForm.vehicleClass,
-                        dlNumber: regForm.dlNumber || "TS-01-2023009911",
-                        rcPlate: regForm.rcPlate || "TS-01-EF-4599",
-                        decoratorSubRole: regForm.decoratorSubRole || "flower_decorator",
-                        upiId: regForm.upiId || "captain@ybl",
-                        bankName: regForm.bankName,
-                        accountNumber: regForm.accountNumber || "30984451209",
-                        ifscCode: regForm.ifscCode || "SBIN0000801",
-                        fastPin: regForm.fastPin || "1234",
-                        tcAccepted: true,
-                        acceptedAt: new Date().toLocaleString(),
-                        kycDocName: regForm.kycDocName || "DL_RC_Verified.pdf",
-                        workImageUrl:
-                          regForm.workImageUrl ||
-                          "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=300&auto=format&fit=crop&q=80",
-                        digitalSignatureDataUrl: finalSig,
-                        digitalSignatureText:
-                          regForm.digitalSignatureText.trim() || regForm.fullName.trim()
-                      };
-
-                      // REQ 7: Save New Registration to Server in Pending Admin Queue!
-                      if (selectedRole === "rider") {
-                        setPendingRiders([
-                          {
-                            ...newUser,
-                            captainName: newUser.fullName,
-                            status: "Pending_Admin_Approval",
-                            isPublishedToPublic: false
-                          },
-                          ...pendingRiders
-                        ]);
-                      } else if (selectedRole === "decorator") {
-                        setPendingDecorators([
-                          {
-                            ...newUser,
-                            businessName: newUser.fullName,
-                            providerName: newUser.fullName,
-                            status: "Pending_Admin_Approval",
-                            isPublishedToPublic: false
-                          },
-                          ...pendingDecorators
-                        ]);
-                      } else if (selectedRole === "service_provider") {
-                        setPendingServiceProviders([
-                          {
-                            ...newUser,
-                            providerName: newUser.fullName,
-                            status: "Pending_Admin_Approval",
-                            isPublishedToPublic: false
-                          },
-                          ...pendingServiceProviders
-                        ]);
-                      } else if (selectedRole === "merchant") {
-                        setPendingMerchants([
-                          {
-                            ...newUser,
-                            businessName: newUser.fullName,
-                            status: "Pending_Admin_Approval",
-                            isPublishedToPublic: false
-                          },
-                          ...pendingMerchants
-                        ]);
-                      }
-
-                      setCurrentUser(newUser);
-                      setRegisteredUsers([newUser, ...registeredUsers]);
-                      setDeviceBoundUser(newUser);
-                      localStorage.setItem("we4all_device_bound_user_v4", JSON.stringify(newUser));
-                      setActivePortal(selectedRole);
-                      setFooterTab("home");
-                      setOnboardingStep("app");
-                      triggerToast(
-                        `Registered ${newUser.fullName} on Server! Sent to Admin for 5-Point Checklist Approval.`
-                      );
-                    }}
-                    className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
-                  >
-                    Sign & Register on Server &rarr;
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </MobilePhoneShell>
-  );
-
-  // ==========================================================================
-  // PORTAL 1: CUSTOMER SUPER-APP (CAN PUBLISH RIDES/PARCELS FOR SELF OR OTHERS)
-  // ==========================================================================
-  const renderCustomerPortal = () => (
-    <MobilePhoneShell
-      title="Customer Super-App"
-      badge="Prime"
-      activePortal="customer"
-      footerTab={footerTab}
-      setFooterTab={setFooterTab}
-      totalCartCount={totalCartCount}
-      totalOrdersCount={orders.length + serviceBookings.length}
-      brightTheme={brightTheme}
-      lang={lang}
-      setLang={setLang}
-      appUpdateInfo={appUpdateInfo}
-      notificationsCount={notificationsList.length}
-      onOpenNotificationsBell={() => setNotificationBellOpen(true)}
-      personalShoppingFromPartner={personalShoppingFromPartner}
-      onReturnToPartnerDesk={() => {
-        setActivePortal(personalShoppingFromPartner);
-        setPersonalShoppingFromPartner(null);
-        setFooterTab("home");
-      }}
-    >
-      {mobileToast && (
-        <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
-          <span>{mobileToast}</span>
-          <button type="button" onClick={() => setMobileToast("")} className="font-black">
-            X
-          </button>
-        </div>
-      )}
-
-      <div className="flex justify-between items-center pb-2 border-b border-slate-300">
-        <div className="flex items-center gap-1.5">
-          <FounderLogoBadge logoUrl={founderLogoUrl} />
-          <span className="text-[10px] font-black text-emerald-800">
-            {activeAddressObj.fullAddress}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setOnboardingStep("auth")}
-          className="bg-rose-600 text-white px-2.5 py-1 rounded-lg text-[9px] font-black cursor-pointer"
-        >
-          Switch Portal / Role
-        </button>
-      </div>
-
-      {footerTab === "home" && (
-        <div className="space-y-2.5">
-          <div className="grid grid-cols-3 gap-1 text-[10px] bg-slate-900 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setCustomerHomeSubTab("stores")}
-              className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                customerHomeSubTab === "stores" ? "bg-emerald-400 text-slate-950" : "text-slate-300"
-              }`}
-            >
-              {t.stores}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerHomeSubTab("events")}
-              className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                customerHomeSubTab === "events" ? "bg-amber-400 text-slate-950" : "text-slate-300"
-              }`}
-            >
-              4. Decor & Halls
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerHomeSubTab("taxi")}
-              className={`py-1.5 rounded-lg font-black cursor-pointer ${
-                customerHomeSubTab === "taxi" ? "bg-teal-400 text-slate-950" : "text-slate-300"
-              }`}
-            >
-              5. Taxi & P2P
-            </button>
-          </div>
-
-          {customerHomeSubTab === "taxi" && (
-            <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-2.5 text-xs text-white">
-              <h3 className="font-black text-teal-300">
-                Book Bike Taxi, 3W Auto or P2P Parcel (For Yourself or Another Person)
-              </h3>
               <div className="grid grid-cols-2 gap-1.5">
-                <select
-                  value={taxiBookingForm.rideMode}
-                  onChange={(e) =>
-                    setTaxiBookingForm({ ...taxiBookingForm, rideMode: e.target.value })
-                  }
-                  className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white font-bold text-[10px]"
-                >
-                  <option value="BIKE_TAXI_PASSENGER">2W Bike Taxi</option>
-                  <option value="AUTO_3W_RIDE">3W Auto Ride</option>
-                  <option value="P2P_PARCEL_DROP">P2P Parcel / Tiffin Drop</option>
-                </select>
-                <select
-                  value={taxiBookingForm.forWhom}
-                  onChange={(e) =>
-                    setTaxiBookingForm({ ...taxiBookingForm, forWhom: e.target.value })
-                  }
-                  className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-amber-300 font-bold text-[10px]"
-                >
-                  <option value="For Self">Booking For: Myself</option>
-                  <option value="For Family / Friend">Booking For: Family / Another Person</option>
-                </select>
+                <input
+                  type="text"
+                  value={regForm.govId}
+                  onChange={(e) => setRegForm({ ...regForm, govId: e.target.value })}
+                  placeholder="12-Digit Aadhaar / Gov ID"
+                  className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
+                <input
+                  type="text"
+                  value={regForm.upiId}
+                  onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
+                  placeholder="Instant Payout UPI ID"
+                  className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                />
               </div>
-              <input
-                type="text"
-                value={taxiBookingForm.pickupPin}
-                onChange={(e) =>
-                  setTaxiBookingForm({ ...taxiBookingForm, pickupPin: e.target.value })
-                }
-                placeholder="Pickup Location"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <label className="bg-slate-950 border border-emerald-500/50 rounded-xl p-2 text-center cursor-pointer block">
+                  <span className="text-[9px] font-bold text-emerald-300 block">
+                    \uD83D\uDCC4 Upload DL/RC PDF or Image
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        setRegForm({ ...regForm, kycDocName: f.name });
+                        triggerToast(`Attached: ${f.name}`);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                <label className="bg-slate-950 border border-amber-400/50 rounded-xl p-2 text-center cursor-pointer block">
+                  <span className="text-[9px] font-bold text-amber-300 block">
+                    \uD83D\uDCF7 Capture Vehicle/Doc Camera
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        setRegForm({ ...regForm, kycDocName: `Camera_${f.name}` });
+                        triggerToast("Captured via Camera!");
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRegStep(1)}
+                  className="bg-slate-800 text-slate-300 px-3 py-2 rounded-xl cursor-pointer"
+                >
+                  &larr; Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegStep(3)}
+                  className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+                >
+                  Continue to Step 3 (T&C + Digital Sign) &rarr;
+                </button>
+              </div>
+            </div>
+          )}
+
+          {regStep === 3 && (
+            <div className="space-y-2.5">
+              <p className="text-[11px] text-amber-300 font-black">
+                Step 3/3: Platform T&C & Digital Signature (Draw, Gallery or Camera)
+              </p>
+              <canvas
+                ref={sigCanvasRef}
+                width={310}
+                height={70}
+                onMouseDown={startSigDraw}
+                onMouseMove={moveSigDraw}
+                onMouseUp={endSigDraw}
+                onTouchStart={startSigDraw}
+                onTouchMove={moveSigDraw}
+                onTouchEnd={endSigDraw}
+                className="w-full h-[70px] bg-white rounded-xl border-2 border-emerald-400 cursor-crosshair touch-none"
               />
               <input
                 type="text"
-                value={taxiBookingForm.dropPin}
+                value={regForm.digitalSignatureText}
                 onChange={(e) =>
-                  setTaxiBookingForm({ ...taxiBookingForm, dropPin: e.target.value })
+                  setRegForm({ ...regForm, digitalSignatureText: e.target.value })
                 }
-                placeholder="Drop Location"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                placeholder="Or type Full Legal Name as Digital Signature"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-white text-[11px] font-serif italic"
               />
+              <label className="flex items-start gap-2 bg-emerald-950/40 p-2 rounded-xl border border-emerald-500/40 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={regForm.tcAccepted}
+                  onChange={(e) => setRegForm({ ...regForm, tcAccepted: e.target.checked })}
+                  className="mt-0.5"
+                />
+                <span className="text-[10px] text-emerald-200 font-bold">
+                  I accept the WE4ALL Consort Terms & Conditions (Strict {regForm.vehicleCode} Vehicle Allocation & Zero Cross-Interference).
+                </span>
+              </label>
               <button
                 type="button"
                 onClick={() => {
-                  const newRadarRide = {
-                    id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
-                    rideType: taxiBookingForm.rideMode,
-                    badge: `${taxiBookingForm.rideMode.replace(/_/g, " ")} (${taxiBookingForm.forWhom})`,
-                    bookedBy: `Consumer: ${currentUser.fullName} (${taxiBookingForm.forWhom})`,
-                    pickupPin: taxiBookingForm.pickupPin,
-                    dropPin: taxiBookingForm.dropPin,
-                    distFromCaptainKm: 0.7,
-                    distanceKm: taxiBookingForm.distanceKm,
-                    captainPayout: taxiBookingForm.rideMode === "AUTO_3W_RIDE" ? 75 : 45,
-                    secretOtp: String(Math.floor(1000 + Math.random() * 9000)),
-                    status: "OPEN_ON_RADAR",
-                    paymentReqStatus: "PENDING_TRIP_COMPLETION"
+                  const vRule =
+                    VEHICLE_CONSORT_RULES[regForm.vehicleCode] || VEHICLE_CONSORT_RULES["2W"];
+                  const newUser = {
+                    id: Date.now(),
+                    fullName: regForm.fullName.trim() || "Verified Captain",
+                    phone: regForm.phone.trim() || "9848055112",
+                    role: selectedRole,
+                    vehicleCode: vRule.code,
+                    vehicleClass: vRule.label,
+                    vehicleModel: regForm.vehicleModel || "Verified Vehicle",
+                    fuelType: regForm.fuelType || "Petrol",
+                    maxPayloadKg: vRule.maxWeightKg,
+                    dlNumber: regForm.dlNumber || "TS-01-2023009911",
+                    rcPlate: regForm.rcPlate || "TS-01-EF-4599",
+                    upiId: regForm.upiId || "captain@ybl",
+                    tcAccepted: true,
+                    acceptedAt: new Date().toLocaleString(),
+                    digitalSignatureText:
+                      regForm.digitalSignatureText || regForm.fullName || "Signed"
                   };
-                  setCaptainRadarJobs([newRadarRide, ...captainRadarJobs]);
+                  if (selectedRole === "rider") {
+                    setPendingRiders([
+                      {
+                        ...newUser,
+                        captainName: newUser.fullName,
+                        status: "Pending_Admin_Approval",
+                        isPublishedToPublic: false
+                      },
+                      ...pendingRiders
+                    ]);
+                  }
+                  setCurrentUser(newUser);
+                  setDeviceBoundUser(newUser);
+                  localStorage.setItem("we4all_device_bound_user_v4", JSON.stringify(newUser));
+                  setActivePortal(selectedRole);
+                  setFooterTab("home");
+                  setOnboardingStep("app");
                   triggerToast(
-                    `Published Ride #${newRadarRide.id} live to Delivery Captain Radar!`
+                    `Registered ${newUser.fullName} as ${vRule.label}! Saved on Server.`
                   );
                 }}
-                className="w-full bg-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+                className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
               >
-                Publish Ride / Parcel Live to Captain Radar &rarr;
+                Sign & Register on Server &rarr;
               </button>
             </div>
           )}
         </div>
-      )}
-
-      {footerTab === "account" && (
-        <OwnerAccountProfile
-          currentUser={currentUser}
-          setCurrentUser={setCurrentUser}
-          activePortal={activePortal}
-          setActivePortal={(nextPortal) => {
-            setActivePortal(nextPortal);
-            setFooterTab("home");
-          }}
-          activeAddressObj={activeAddressObj}
-          accountSecurity={accountSecurity}
-          setAccountSecurity={setAccountSecurity}
-          onLockApp={() => setOnboardingStep("auth")}
-          brightTheme={brightTheme}
-          setBrightTheme={setBrightTheme}
-          appUpdateInfo={appUpdateInfo}
-          onCheckForUpdate={handleManualCheckForUpdate}
-          checkingUpdate={checkingUpdate}
-          onRunOtaUpdate={handleRunOtaUpdate}
-          otaProgress={otaProgress}
-          onTriggerToast={triggerToast}
-        />
-      )}
+      </div>
     </MobilePhoneShell>
   );
+
+  // ==========================================================================
+  // PORTAL 1: CUSTOMER SUPER-APP (WITH WEIGHT-GATED VEHICLE CHOOSER)
+  // ==========================================================================
+  const renderCustomerPortal = () => {
+    const wKg = Number(customerBookingForm.weightKg) || 1;
+    // Determine which vehicles are permitted under T&C payload limits
+    const is2WAllowed = wKg <= 45;
+    const is3WAllowed = wKg <= 300;
+    const activeVehCode =
+      !is2WAllowed && customerBookingForm.chosenVehicleCode === "2W"
+        ? is3WAllowed
+          ? "3W"
+          : "4W_HEAVY"
+        : !is3WAllowed && customerBookingForm.chosenVehicleCode === "3W"
+        ? "4W_HEAVY"
+        : customerBookingForm.chosenVehicleCode;
+
+    const chosenRule = VEHICLE_CONSORT_RULES[activeVehCode] || VEHICLE_CONSORT_RULES["2W"];
+    const calculatedFare = Math.round(
+      chosenRule.baseFare2Km + customerBookingForm.distanceKm * chosenRule.perKmRate
+    );
+
+    return (
+      <MobilePhoneShell
+        title="Customer Super-App"
+        badge="Prime"
+        activePortal="customer"
+        footerTab={footerTab}
+        setFooterTab={setFooterTab}
+        totalCartCount={0}
+        totalOrdersCount={orders.length}
+        brightTheme={brightTheme}
+        lang={lang}
+        setLang={setLang}
+        appUpdateInfo={appUpdateInfo}
+        notificationsCount={notificationsList.length}
+        onOpenNotificationsBell={() => setNotificationBellOpen(true)}
+        personalShoppingFromPartner={personalShoppingFromPartner}
+        onReturnToPartnerDesk={() => {
+          setActivePortal(personalShoppingFromPartner);
+          setPersonalShoppingFromPartner(null);
+          setFooterTab("home");
+        }}
+      >
+        {mobileToast && (
+          <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
+            <span>{mobileToast}</span>
+            <button type="button" onClick={() => setMobileToast("")} className="font-black">
+              X
+            </button>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center pb-2 border-b border-slate-300">
+          <div className="flex items-center gap-1.5">
+            <FounderLogoBadge logoUrl={founderLogoUrl} />
+            <span className="text-[10px] font-black text-emerald-800">
+              {activeAddressObj.fullAddress}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOnboardingStep("auth")}
+            className="bg-rose-600 text-white px-2.5 py-1 rounded-lg text-[9px] font-black cursor-pointer"
+          >
+            Switch Portal / Role
+          </button>
+        </div>
+
+        {footerTab === "home" && (
+          <div className="space-y-2.5">
+            <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-2.5 text-xs text-white">
+              <h3 className="font-black text-teal-300">
+                Customer Order / Parcel / Ride Dispatcher (With T&C Vehicle Chooser)
+              </h3>
+              <p className="text-[10px] text-slate-400">
+                Choose your preferred delivery vehicle within permissible weight & T&C limits. Allocated strictly to matching Captains!
+              </p>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <label className="block text-[9px] text-amber-300 font-bold">
+                    Load / Order Weight (kg):
+                  </label>
+                  <input
+                    type="number"
+                    value={customerBookingForm.weightKg}
+                    onChange={(e) => {
+                      const nextW = Math.max(1, Number(e.target.value) || 1);
+                      let nextVeh = customerBookingForm.chosenVehicleCode;
+                      if (nextW > 300) nextVeh = "4W_HEAVY";
+                      else if (nextW > 45 && nextVeh === "2W") nextVeh = "3W";
+                      setCustomerBookingForm({
+                        ...customerBookingForm,
+                        weightKg: nextW,
+                        chosenVehicleCode: nextVeh
+                      });
+                    }}
+                    className="w-full bg-slate-950 border border-amber-400 rounded-xl p-1.5 text-white font-black mt-0.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] text-slate-400 font-bold">
+                    Booking For:
+                  </label>
+                  <select
+                    value={customerBookingForm.forWhom}
+                    onChange={(e) =>
+                      setCustomerBookingForm({ ...customerBookingForm, forWhom: e.target.value })
+                    }
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white font-bold mt-0.5"
+                  >
+                    <option value="For Self">For Myself</option>
+                    <option value="For Another Person">For Family / Another Person</option>
+                    <option value="Merchant Store Order">Merchant Store Dispatch</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* CUSTOMER VEHICLE CHOOSER WITH T&C WEIGHT PERMISSION GATING */}
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black text-emerald-300">
+                  Choose Delivery / Ride Vehicle (Subject to T&C Weight Limits):
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { code: "2W", allowed: is2WAllowed, limitText: "Max 45 kg" },
+                    { code: "3W", allowed: is3WAllowed, limitText: "Max 300 kg" },
+                    { code: "4W_HEAVY", allowed: true, limitText: "Up to 2000 kg" }
+                  ].map((opt) => {
+                    const rule = VEHICLE_CONSORT_RULES[opt.code];
+                    const selected = activeVehCode === opt.code;
+                    return (
+                      <button
+                        key={opt.code}
+                        type="button"
+                        disabled={!opt.allowed}
+                        onClick={() =>
+                          setCustomerBookingForm({
+                            ...customerBookingForm,
+                            chosenVehicleCode: opt.code
+                          })
+                        }
+                        className={`p-2 rounded-xl border text-center transition ${
+                          !opt.allowed
+                            ? "bg-rose-950/30 border-rose-500/40 text-rose-400 opacity-50 cursor-not-allowed"
+                            : selected
+                            ? "bg-emerald-400 text-slate-950 border-white font-black cursor-pointer shadow"
+                            : "bg-slate-950 text-slate-300 border-slate-800 cursor-pointer"
+                        }`}
+                      >
+                        <div className="text-[10px] font-black">{rule.shortLabel}</div>
+                        <div className="text-[8px] mt-0.5">
+                          {opt.allowed ? opt.limitText : "\uD83D\uDD12 Over Limit"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const newJob = {
+                    id: `RDR-${activeVehCode}-${Math.floor(100 + Math.random() * 900)}`,
+                    requiredVehicleCode: activeVehCode,
+                    vehicleLabel: chosenRule.label,
+                    weightKg: wKg,
+                    badge: `${chosenRule.shortLabel} (${wKg} kg | ${customerBookingForm.forWhom})`,
+                    bookedBy: `Customer: ${currentUser.fullName} (Chose ${chosenRule.shortLabel})`,
+                    pickupPin: customerBookingForm.pickupPin,
+                    dropPin: customerBookingForm.dropPin,
+                    distFromCaptainKm: 0.6,
+                    distanceKm: customerBookingForm.distanceKm,
+                    captainPayout: calculatedFare,
+                    secretOtp: String(Math.floor(1000 + Math.random() * 9000)),
+                    status: "OPEN_ON_RADAR",
+                    paymentReqStatus: "PENDING_TRIP_COMPLETION"
+                  };
+                  setCaptainRadarJobs([newJob, ...captainRadarJobs]);
+                  triggerToast(
+                    `Allocated Order #${newJob.id} strictly to ${chosenRule.shortLabel} Captains!`
+                  );
+                }}
+                className="w-full bg-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+              >
+                Allocate Order to {chosenRule.shortLabel} Captains Only (Rs.{calculatedFare}) &rarr;
+              </button>
+            </div>
+          </div>
+        )}
+
+        {footerTab === "account" && (
+          <OwnerAccountProfile
+            currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
+            activePortal={activePortal}
+            setActivePortal={(nextPortal) => {
+              setActivePortal(nextPortal);
+              setFooterTab("home");
+            }}
+            activeAddressObj={activeAddressObj}
+            accountSecurity={accountSecurity}
+            setAccountSecurity={setAccountSecurity}
+            onLockApp={() => setOnboardingStep("auth")}
+            brightTheme={brightTheme}
+            setBrightTheme={setBrightTheme}
+            appUpdateInfo={appUpdateInfo}
+            onCheckForUpdate={handleManualCheckForUpdate}
+            checkingUpdate={checkingUpdate}
+            onRunOtaUpdate={handleRunOtaUpdate}
+            otaProgress={otaProgress}
+            onTriggerToast={triggerToast}
+          />
+        )}
+      </MobilePhoneShell>
+    );
+  };
 
   const renderMerchantPortal = () => (
     <MobilePhoneShell
@@ -1429,7 +1161,7 @@ function AppContent() {
       activePortal="merchant"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
-      totalCartCount={totalCartCount}
+      totalCartCount={0}
       totalOrdersCount={orders.length}
       brightTheme={brightTheme}
       lang={lang}
@@ -1488,7 +1220,7 @@ function AppContent() {
       activePortal="service_provider"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
-      totalCartCount={totalCartCount}
+      totalCartCount={0}
       totalOrdersCount={serviceBookings.length}
       brightTheme={brightTheme}
       lang={lang}
@@ -1544,7 +1276,7 @@ function AppContent() {
       activePortal="decorator"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
-      totalCartCount={totalCartCount}
+      totalCartCount={0}
       totalOrdersCount={decorReverseBids.length}
       brightTheme={brightTheme}
       lang={lang}
@@ -1597,17 +1329,14 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
-  // ==========================================================================
-  // PORTAL 5: COMPLETE DELIVERY CAPTAIN PORTAL (RADAR, ROUTE MAP, KM RATE, EARNINGS)
-  // ==========================================================================
   const renderRiderPortal = () => (
     <MobilePhoneShell
       title="5. Delivery Captain"
-      badge="v2.9.4 Suite"
+      badge={`v2.9.5 (${currentUser?.vehicleCode || "2W"})`}
       activePortal="rider"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
-      totalCartCount={totalCartCount}
+      totalCartCount={0}
       totalOrdersCount={captainRadarJobs.length}
       brightTheme={brightTheme}
       lang={lang}
@@ -1629,6 +1358,7 @@ function AppContent() {
         footerTab={footerTab}
         setFooterTab={setFooterTab}
         currentUser={currentUser}
+        setCurrentUser={setCurrentUser}
         orders={orders}
         setOrders={setOrders}
         captainRadarJobs={captainRadarJobs}
@@ -1638,7 +1368,6 @@ function AppContent() {
           setPersonalShoppingFromPartner("rider");
           setActivePortal("customer");
           setFooterTab("home");
-          triggerToast("Switched to Personal Shopping Mode!");
         }}
         onTriggerToast={triggerToast}
         renderAccountTab={() => (
@@ -1694,32 +1423,23 @@ function AppContent() {
               placeholder="Founder Password"
               className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
             />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setViewMode("mobile_app")}
-                className="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl font-bold cursor-pointer"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    adminLoginForm.username.trim().toLowerCase() === "khodayanvesh" &&
-                    adminLoginForm.password === "22061969s!"
-                  ) {
-                    setAdminAuthStep(2);
-                    setAdminLoginError("");
-                  } else {
-                    setAdminLoginError("Invalid Founder Credentials.");
-                  }
-                }}
-                className="flex-1 bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
-              >
-                Step 1: Verify &rarr;
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  adminLoginForm.username.trim().toLowerCase() === "khodayanvesh" &&
+                  adminLoginForm.password === "22061969s!"
+                ) {
+                  setAdminAuthStep(2);
+                  setAdminLoginError("");
+                } else {
+                  setAdminLoginError("Invalid Founder Credentials.");
+                }
+              }}
+              className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer"
+            >
+              Step 1: Verify &rarr;
+            </button>
           </div>
         ) : (
           <div className="space-y-3 text-center">
@@ -1783,9 +1503,7 @@ function AppContent() {
             setAppUpdateInfo={setAppUpdateInfo}
             onBroadcastOtaPushNotification={(nextInfo) => {
               saveCloudAndLocalState({ appUpdateInfo: nextInfo });
-              triggerToast(
-                `OTA v${nextInfo.latestAvailableVersion} pushed! Available in Bell Alert & Account Section.`
-              );
+              triggerToast(`OTA v${nextInfo.latestAvailableVersion} pushed to Account Section!`);
             }}
             onLaunchMultiPhoneView={() => {
               setOnboardingStep("app");
@@ -1838,14 +1556,11 @@ function AppContent() {
         </main>
       )}
 
-      {/* REQ 12: NOTIFICATION BELL ALERT DRAWER (ROUTES TO ACCOUNT SECTION FOR UPDATE) */}
       {notificationBellOpen && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-              <h3 className="font-black text-amber-400">
-                \uD83D\uDD14 Platform Notifications
-              </h3>
+              <h3 className="font-black text-amber-400">\uD83D\uDD14 Notifications</h3>
               <button
                 type="button"
                 onClick={() => setNotificationBellOpen(false)}
@@ -1854,13 +1569,9 @@ function AppContent() {
                 X
               </button>
             </div>
-
             <div className="bg-slate-950 p-3 rounded-2xl border border-emerald-500/50 space-y-2">
               <p className="font-black text-emerald-400">
-                WE4ALL OTA v{appUpdateInfo?.latestAvailableVersion || "2.9.4"} Available
-              </p>
-              <p className="text-[10px] text-slate-300">
-                Updates are managed exclusively in your Account section for all portals.
+                WE4ALL OTA v{appUpdateInfo?.latestAvailableVersion || "2.9.5"} Available
               </p>
               <button
                 type="button"
@@ -1871,23 +1582,13 @@ function AppContent() {
                 }}
                 className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
               >
-                Go to Account Section to Update &rarr;
+                Open Account Section to Install Update &rarr;
               </button>
-            </div>
-
-            <div className="max-h-48 overflow-y-auto space-y-1.5">
-              {notificationsList.map((n) => (
-                <div key={n.id} className="bg-slate-950 p-2 rounded-xl border border-slate-800">
-                  <p className="text-[10px] text-slate-200">{n.text}</p>
-                  <span className="text-[8px] text-slate-500">{n.time}</span>
-                </div>
-              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* IN-APP OTA PROGRESS OVERLAY */}
       {otaProgress && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6">
           <div className="bg-slate-900 border-2 border-emerald-400 rounded-3xl max-w-sm w-full p-5 text-center space-y-3 text-xs">
@@ -1895,12 +1596,6 @@ function AppContent() {
               Installing In-App Update ({otaProgress.pct}%)
             </h3>
             <p className="text-slate-300">{otaProgress.msg}</p>
-            <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
-              <div
-                className="bg-emerald-400 h-full transition-all"
-                style={{ width: `${otaProgress.pct}%` }}
-              />
-            </div>
           </div>
         </div>
       )}
