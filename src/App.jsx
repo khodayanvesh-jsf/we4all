@@ -1475,6 +1475,22 @@ function AppContent() {
             </div>
 
             {customerHomeSubTab === "stores" && (
+              <div className="space-y-2.5 mb-2.5">
+                <TownMandiTicker
+                  onSelectCategory={(catId) => setSelectedCategory(catId)}
+                  onTriggerToast={triggerToast}
+                />
+                <ParchaAndVoiceOrderBox
+                  currentUser={currentUser}
+                  activeAddressObj={activeAddressObj}
+                  orders={orders}
+                  setOrders={setOrders}
+                  onNavigateToOrders={() => setFooterTab("orders")}
+                  onTriggerToast={triggerToast}
+                />
+              </div>
+            )}
+            {customerHomeSubTab === "stores" && (
               <div className="space-y-2.5">
                 <input
                   type="text"
