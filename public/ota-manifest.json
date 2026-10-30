@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.9.5",
-  "latestAvailableVersion": "2.9.6",
+  "currentVersion": "2.9.2",
+  "latestAvailableVersion": "2.9.3",
   "updateAvailable": true,
-  "publishedAt": "2026-10-31T00:30:00Z",
+  "publishedAt": "2026-10-31T01:14:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
-  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.6",
-  "releaseNotes": "WE4ALL v2.9.6: 5-Language App-Wide MNC Localization (EN, TE, HI, MR, KN), Amazon-Style Persistent Login & Hardware Biometrics, Clean Top Header, Silent Sensor Telemetry & OS Notification Bar Push."
+  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.3",
+  "releaseNotes": "WE4ALL OTA v2.9.3: Complete Event Decorator & Function Hall Portal (Calendar Date Blocking, Competitive Bids, Portfolio Showcase, and Escrow Ledger)."
 }
