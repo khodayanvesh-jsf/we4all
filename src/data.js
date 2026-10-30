@@ -225,3 +225,11 @@ INITIAL_APP_UPDATE_INFO.currentVersion = "2.9.2";
 INITIAL_APP_UPDATE_INFO.latestAvailableVersion = "2.9.3";
 INITIAL_APP_UPDATE_INFO.updateAvailable = true;
 INITIAL_APP_UPDATE_INFO.releaseNotes = "WE4ALL v2.9.3: Complete Flower Decorator & Function Halls Portal (Role-Gated Hall Calendar & Reverse Bids, 35%|85%|100% Milestone Escrow Ledger, High-Res Camera/Gallery Portfolio Stock, In-App Silent Updater & Bell Alerts).";
+
+// ============================================================================
+// v2.9.4 OVERRIDES: DELIVERY CAPTAIN PORTAL (RADAR, ROUTE MAP, KM RATE & EARNINGS)
+// ============================================================================
+INITIAL_APP_UPDATE_INFO.currentVersion = "2.9.3";
+INITIAL_APP_UPDATE_INFO.latestAvailableVersion = "2.9.4";
+INITIAL_APP_UPDATE_INFO.updateAvailable = true;
+INITIAL_APP_UPDATE_INFO.releaseNotes = "WE4ALL v2.9.4: Complete Delivery Captain Portal (1. Live Ride/Order Radar, 2. Active Orders 3-Point Route Map, 3. Km Rate Card & Booking Payment Request Desk, 4. Earnings Inventory & 9 AM Auto-Online Duty, DL/RC PDF & Camera KYC, Account-Only In-App Updater).";

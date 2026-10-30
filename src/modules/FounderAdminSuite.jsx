@@ -2,30 +2,25 @@ import React, { useState } from "react";
 
 export default function FounderAdminSuite({
   founderLogoUrl,
-  onUploadFounderPhoto,
-  apkIconUrl,
-  onUploadApkIcon,
-  geoAds,
-  categories,
-  merchants,
-  setMerchants,
-  serviceProviders,
-  setServiceProviders,
-  decorators,
-  setDecorators,
+  merchants = [],
+  setMerchants = () => {},
+  serviceProviders = [],
+  setServiceProviders = () => {},
+  decorators = [],
+  setDecorators = () => {},
+  riders = [],
+  setRiders = () => {},
   decorPortfolio = [],
   setDecorPortfolio = () => {},
-  orders,
-  serviceBookings,
   pendingMerchants = [],
   setPendingMerchants = () => {},
   pendingServiceProviders = [],
   setPendingServiceProviders = () => {},
   pendingDecorators = [],
   setPendingDecorators = () => {},
-  monetizationConfig,
-  setMonetizationConfig,
-  splitScreens,
+  pendingRiders = [],
+  setPendingRiders = () => {},
+  splitScreens = [],
   appUpdateInfo,
   setAppUpdateInfo,
   onBroadcastOtaPushNotification,
@@ -34,9 +29,8 @@ export default function FounderAdminSuite({
   onExitAdminToApp,
   onTriggerToast
 }) {
-  const [adminDisplayMode, setAdminDisplayMode] = useState("web");
   const [founderTab, setFounderTab] = useState("approvals");
-  const [approvalQueueSubTab, setApprovalQueueSubTab] = useState("decorators_halls");
+  const [approvalQueueSubTab, setApprovalQueueSubTab] = useState("captains");
   const [checklistByPartner, setChecklistByPartner] = useState({});
 
   const toggleCheckItem = (partnerId, key) => {
@@ -67,35 +61,31 @@ export default function FounderAdminSuite({
   };
 
   const [otaForm, setOtaForm] = useState({
-    version: appUpdateInfo?.latestAvailableVersion || "2.9.3",
+    version: appUpdateInfo?.latestAvailableVersion || "2.9.4",
     notes:
       appUpdateInfo?.releaseNotes ||
-      "WE4ALL v2.9.3: Flower Decorator & Function Halls Portal, 35%|85% Escrow, High-Res Camera/Gallery Portfolio & In-App Silent Update."
+      "WE4ALL v2.9.4: Delivery Captain Portal (Radar, Route Map, Km Rate & Payment Req, 9AM Auto-Duty & Account-Only In-App Updater)."
   });
 
   const totalPendingCount =
-    (pendingMerchants?.length || 0) +
+    (pendingRiders?.length || 0) +
+    (pendingDecorators?.length || 0) +
     (pendingServiceProviders?.length || 0) +
-    (pendingDecorators?.length || 0);
+    (pendingMerchants?.length || 0);
 
   const ADMIN_TABS = [
     {
       id: "approvals",
-      label: "1. Partner KYC & T&C Checklists",
+      label: "1. Partner & Captain 5-Point Checklists",
       badge: `${totalPendingCount} Pending`
     },
     {
-      id: "portfolio_admin",
-      label: "2. Decorator & Hall Portfolio Master Control",
-      badge: `${decorPortfolio.length} Albums`
-    },
-    {
       id: "ota_updates",
-      label: "3. Push In-App Update (OTA & Bell Alert)",
-      badge: `v${appUpdateInfo?.latestAvailableVersion || "2.9.3"}`
+      label: "2. Push In-App Update (Bell + Account)",
+      badge: `v${appUpdateInfo?.latestAvailableVersion || "2.9.4"}`
     },
-    { id: "flow_tester", label: "4. 1-Click Portal Flow Tester", badge: "Portals" },
-    { id: "testing", label: "5. 5-Phone Live Sandbox", badge: `${splitScreens.length} Phones` }
+    { id: "flow_tester", label: "3. 1-Click Portal Flow Tester", badge: "5 Portals" },
+    { id: "testing", label: "4. 5-Phone Live Sandbox", badge: `${splitScreens.length} Phones` }
   ];
 
   const renderPartnerApprovalCard = (partner, partnerType) => {
@@ -107,12 +97,13 @@ export default function FounderAdminSuite({
       chk.tcAcceptedVerified &&
       chk.signatureVerified;
 
-    const displayName = partner.providerName || partner.businessName;
+    const displayName =
+      partner.captainName || partner.providerName || partner.businessName;
 
     return (
       <div
         key={partner.id}
-        className="bg-slate-950 p-3.5 rounded-2xl border border-amber-400/50 space-y-3"
+        className="bg-slate-950 p-3.5 rounded-2xl border border-teal-400/50 space-y-3"
       >
         <div className="flex flex-wrap justify-between items-start gap-2 border-b border-slate-800 pb-2">
           <div className="flex items-center gap-2.5">
@@ -125,14 +116,15 @@ export default function FounderAdminSuite({
             )}
             <div>
               <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded uppercase">
-                Unpublished (Limited to Partner & Admin Until Approved)
+                Unpublished (Limited to {partnerType.toUpperCase()} & Admin)
               </span>
               <h4 className="text-sm font-black text-white mt-1">
-                {displayName} ({partner.decoratorSubRole === "function_hall" ? "Function Hall Merchant" : partner.decoratorSubRole === "flower_decorator" ? "Flower Decorator" : partner.specialization || partner.categoryId})
+                {displayName} ({partner.vehicleClass || partner.specialization || partner.categoryId || "Partner"})
               </h4>
               <p className="text-[10px] text-slate-300">
-                Mobile: <strong>+91 {partner.phone}</strong> | Area: {partner.area || "Adilabad"} | UPI:{" "}
+                Mobile: <strong>+91 {partner.phone}</strong> | UPI:{" "}
                 <strong className="text-emerald-300">{partner.upiId}</strong>
+                {partner.dlNumber && ` | DL: ${partner.dlNumber} | RC: ${partner.rcPlate}`}
               </p>
             </div>
           </div>
@@ -148,15 +140,15 @@ export default function FounderAdminSuite({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-amber-300">
-              Uploaded KYC Document (PDF/Image/Camera) & T&C Status:
+              Uploaded DL / RC / KYC Document (PDF/Image/Camera) & T&C:
             </p>
             <p className="text-[10px] text-emerald-400 font-bold">
               &#x2713; Platform T&C Accepted on {partner.acceptedAt || "2026-10-30"}
             </p>
             <p className="text-[10px] text-slate-300">
-              Gov ID: <strong>{partner.govId || "[Verified]"}</strong> | Doc:{" "}
-              <span className="text-indigo-300 font-mono">
-                {partner.kycDocName || "KYC_Certificate.pdf"}
+              Gov ID: <strong>{partner.govId || "[Verified]"}</strong> | Attached Doc:{" "}
+              <span className="text-teal-300 font-mono">
+                {partner.kycDocName || "DL_RC_Certificate.pdf"}
               </span>
             </p>
           </div>
@@ -181,20 +173,26 @@ export default function FounderAdminSuite({
 
         <div className="space-y-1.5">
           <p className="text-[10px] font-black text-teal-300">
-            Mandatory Admin Approval Checklist (Click each item to verify):
+            Mandatory Admin 5-Point Checklist (Click each item to verify before approval):
           </p>
           {[
             {
               key: "kycDocVerified",
-              label: "1. Uploaded Gov ID & KYC Document (Image / PDF / Camera) Inspected"
+              label:
+                partnerType === "captain"
+                  ? "1. Driving License (DL), Vehicle RC & PDF/Camera KYC Documents Verified"
+                  : "1. Uploaded Gov ID & KYC Document (Image / PDF / Camera) Verified"
             },
             {
               key: "tradeSkillVerified",
-              label: "2. Portfolio / Hall Capacity / Trade License & Consort Pricing Verified"
+              label:
+                partnerType === "captain"
+                  ? "2. Vehicle Class (2W/3W/Heavy), Fitness & Km Rate Consort Rules Verified"
+                  : "2. Business License / Rate Card / Portfolio Pricing Verified"
             },
             {
               key: "bankUpiVerified",
-              label: "3. Partner Bank Account & 35%|85% Escrow UPI Settlement ID Verified"
+              label: "3. Bank Account & Instant UPI Trip/Order Settlement ID Verified"
             },
             {
               key: "tcAcceptedVerified",
@@ -202,7 +200,7 @@ export default function FounderAdminSuite({
             },
             {
               key: "signatureVerified",
-              label: "5. Digital Signature / Camera Signature Image Authenticated"
+              label: "5. Digital Signature / Gallery or Camera Signature Image Authenticated"
             }
           ].map((item) => {
             const checked = Boolean(chk[item.key]);
@@ -229,43 +227,45 @@ export default function FounderAdminSuite({
           })}
         </div>
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={!allFiveChecked}
-            onClick={() => {
-              const approvedObj = {
-                ...partner,
-                status: "Approved",
-                isPublished: true,
-                isPublishedToPublic: true,
-                approvedAt: new Date().toLocaleString()
-              };
-              if (partnerType === "decorator") {
-                setDecorators([approvedObj, ...decorators]);
-                setPendingDecorators(pendingDecorators.filter((x) => x.id !== partner.id));
-              } else if (partnerType === "service_provider") {
-                setServiceProviders([approvedObj, ...serviceProviders]);
-                setPendingServiceProviders(
-                  pendingServiceProviders.filter((x) => x.id !== partner.id)
-                );
-              } else {
-                setMerchants([approvedObj, ...merchants]);
-                setPendingMerchants(pendingMerchants.filter((x) => x.id !== partner.id));
-              }
-              onTriggerToast(`Approved & Published "${displayName}" LIVE to Market!`);
-            }}
-            className={`flex-1 font-black py-2.5 rounded-xl text-xs ${
-              allFiveChecked
-                ? "bg-emerald-400 hover:bg-emerald-300 text-slate-950 cursor-pointer shadow-lg"
-                : "bg-slate-800 text-slate-500 cursor-not-allowed"
-            }`}
-          >
-            {allFiveChecked
-              ? "\u2713 Approve & Publish Partner Live to Public Market"
-              : "Complete All 5 Checklist Items Above to Approve"}
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled={!allFiveChecked}
+          onClick={() => {
+            const approvedObj = {
+              ...partner,
+              name: displayName,
+              status: "Approved",
+              isPublished: true,
+              isPublishedToPublic: true,
+              approvedAt: new Date().toLocaleString()
+            };
+            if (partnerType === "captain") {
+              setRiders([approvedObj, ...riders]);
+              setPendingRiders(pendingRiders.filter((x) => x.id !== partner.id));
+            } else if (partnerType === "decorator") {
+              setDecorators([approvedObj, ...decorators]);
+              setPendingDecorators(pendingDecorators.filter((x) => x.id !== partner.id));
+            } else if (partnerType === "service_provider") {
+              setServiceProviders([approvedObj, ...serviceProviders]);
+              setPendingServiceProviders(
+                pendingServiceProviders.filter((x) => x.id !== partner.id)
+              );
+            } else {
+              setMerchants([approvedObj, ...merchants]);
+              setPendingMerchants(pendingMerchants.filter((x) => x.id !== partner.id));
+            }
+            onTriggerToast(`Approved & Published "${displayName}" LIVE to Public Market!`);
+          }}
+          className={`w-full font-black py-2.5 rounded-xl text-xs ${
+            allFiveChecked
+              ? "bg-emerald-400 hover:bg-emerald-300 text-slate-950 cursor-pointer shadow-lg"
+              : "bg-slate-800 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          {allFiveChecked
+            ? `\u2713 Approve & Publish ${displayName} Live to Market`
+            : "Complete All 5 Checklist Items Above to Approve"}
+        </button>
       </div>
     );
   };
@@ -283,10 +283,10 @@ export default function FounderAdminSuite({
           </div>
           <div>
             <h1 className="text-sm font-black text-white">
-              WE4ALL Founder Master Admin Suite (v2.9.3)
+              WE4ALL Founder Master Admin Suite (v2.9.4)
             </h1>
             <p className="text-[10px] text-emerald-400">
-              Decorator, Function Hall, Service Provider & Merchant Approval Console
+              5-Portal KYC, PDF/Camera Docs & Digital Signature Approval Console
             </p>
           </div>
         </div>
@@ -323,7 +323,18 @@ export default function FounderAdminSuite({
         <main className="lg:col-span-3 space-y-4">
           {founderTab === "approvals" && (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
+              <div className="grid grid-cols-4 gap-1.5 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setApprovalQueueSubTab("captains")}
+                  className={`py-2 rounded-xl font-black cursor-pointer ${
+                    approvalQueueSubTab === "captains"
+                      ? "bg-teal-400 text-slate-950"
+                      : "text-slate-400"
+                  }`}
+                >
+                  5. Captains ({pendingRiders.length})
+                </button>
                 <button
                   type="button"
                   onClick={() => setApprovalQueueSubTab("decorators_halls")}
@@ -333,7 +344,7 @@ export default function FounderAdminSuite({
                       : "text-slate-400"
                   }`}
                 >
-                  Decorators & Halls ({pendingDecorators.length})
+                  4. Decor/Halls ({pendingDecorators.length})
                 </button>
                 <button
                   type="button"
@@ -344,7 +355,7 @@ export default function FounderAdminSuite({
                       : "text-slate-400"
                   }`}
                 >
-                  Service Providers ({pendingServiceProviders.length})
+                  3. Services ({pendingServiceProviders.length})
                 </button>
                 <button
                   type="button"
@@ -355,24 +366,27 @@ export default function FounderAdminSuite({
                       : "text-slate-400"
                   }`}
                 >
-                  Product Merchants ({pendingMerchants.length})
+                  2. Merchants ({pendingMerchants.length})
                 </button>
               </div>
 
+              {approvalQueueSubTab === "captains" && (
+                <div className="bg-slate-900 border-2 border-teal-500/50 rounded-2xl p-4 space-y-3">
+                  <h3 className="font-black text-teal-300 text-sm">
+                    Pending Delivery Captain Registrations ({pendingRiders.length})
+                  </h3>
+                  {pendingRiders.map((r) => renderPartnerApprovalCard(r, "captain"))}
+                </div>
+              )}
+
               {approvalQueueSubTab === "decorators_halls" && (
                 <div className="bg-slate-900 border-2 border-amber-500/50 rounded-2xl p-4 space-y-3">
-                  <h3 className="font-black text-amber-400 text-sm">
-                    Pending Flower Decorator & Function Hall Registrations ({pendingDecorators.length})
-                  </h3>
                   {pendingDecorators.map((d) => renderPartnerApprovalCard(d, "decorator"))}
                 </div>
               )}
 
               {approvalQueueSubTab === "service_providers" && (
                 <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-2xl p-4 space-y-3">
-                  <h3 className="font-black text-indigo-300 text-sm">
-                    Pending Service Provider Registrations ({pendingServiceProviders.length})
-                  </h3>
                   {pendingServiceProviders.map((sp) =>
                     renderPartnerApprovalCard(sp, "service_provider")
                   )}
@@ -381,57 +395,16 @@ export default function FounderAdminSuite({
 
               {approvalQueueSubTab === "merchants" && (
                 <div className="bg-slate-900 border-2 border-emerald-500/50 rounded-2xl p-4 space-y-3">
-                  <h3 className="font-black text-emerald-400 text-sm">
-                    Pending Product Merchant Registrations ({pendingMerchants.length})
-                  </h3>
                   {pendingMerchants.map((m) => renderPartnerApprovalCard(m, "merchant"))}
                 </div>
               )}
             </div>
           )}
 
-          {founderTab === "portfolio_admin" && (
-            <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-3">
-              <h3 className="font-black text-amber-400 text-sm">
-                Master Admin Control: All Decorator & Function Hall Portfolio Albums ({decorPortfolio.length})
-              </h3>
-              {decorPortfolio.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center gap-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-14 h-14 rounded-xl object-cover"
-                    />
-                    <div>
-                      <p className="font-bold text-white">{item.title}</p>
-                      <p className="text-[10px] text-slate-400">
-                        Owner: {item.merchantName} | Material: {item.materialUsed} | Est: Rs.{item.baseEstimate}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDecorPortfolio(decorPortfolio.filter((x) => x.id !== item.id));
-                      onTriggerToast(`Admin deleted portfolio item: ${item.title}`);
-                    }}
-                    className="bg-rose-600 text-white font-bold px-3 py-1.5 rounded-xl cursor-pointer"
-                  >
-                    Admin Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
           {founderTab === "ota_updates" && (
             <div className="bg-slate-900 border-2 border-emerald-400 rounded-2xl p-4 space-y-3">
               <h3 className="font-black text-emerald-400 text-sm">
-                Broadcast In-App OTA Update (Notifies in Bell Icon & Account Section)
+                Broadcast In-App OTA Update (Notifies in Bell Icon & Installs via Account Section Only)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <input
@@ -461,7 +434,7 @@ export default function FounderAdminSuite({
                 }}
                 className="w-full bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
               >
-                \uD83D\uDD14 Push OTA v{otaForm.version} to Bell Icon & Account Section on All Devices
+                \uD83D\uDD14 Push OTA v{otaForm.version} Alert to Bell Icon & Account Section
               </button>
             </div>
           )}
@@ -469,10 +442,11 @@ export default function FounderAdminSuite({
           {founderTab === "flow_tester" && (
             <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-2">
               {[
-                { id: "auth_vault", title: "1. Security Vault & Camera/Gallery Registration" },
-                { id: "portal_decorator", title: "2. Portal 4: Decorator & Function Halls (Calendar, Bids, 35%|85%, Portfolio)" },
-                { id: "portal_service", title: "3. Portal 3: Service Provider (Visits, 1-Hr Slots, Rate Card, Escrow)" },
-                { id: "portal_merchant", title: "4. Portal 2: Product Merchant (Queue, Stock Manual, Bulk, Invoices)" }
+                { id: "auth_vault", title: "1. Security Vault & Delivery Captain Registration (DL/RC PDF + Camera)" },
+                { id: "portal_rider", title: "2. Portal 5: Delivery Captain (Radar, Route Map, Km Rate, 9AM Earnings)" },
+                { id: "portal_decorator", title: "3. Portal 4: Decorator & Halls (Calendar, Bids, 35%|85%, Portfolio)" },
+                { id: "portal_service", title: "4. Portal 3: Service Provider (Visits, 1-Hr Slots, Rate Card, Escrow)" },
+                { id: "portal_merchant", title: "5. Portal 2: Product Merchant (Queue, Stock Manual, Bulk, Invoices)" }
               ].map((f) => (
                 <button
                   key={f.id}

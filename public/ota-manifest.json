@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.9.2",
-  "latestAvailableVersion": "2.9.3",
+  "currentVersion": "2.9.3",
+  "latestAvailableVersion": "2.9.4",
   "updateAvailable": true,
-  "publishedAt": "2026-10-30T08:25:00Z",
+  "publishedAt": "2026-10-30T10:30:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
-  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.3",
-  "releaseNotes": "WE4ALL v2.9.3: Flower Decorator & Function Halls Portal (Role-Gated Hall Calendar & Reverse Bids, 35%|85%|100% Milestone Escrow, High-Res Camera/Gallery Portfolio Stock, In-App Silent Updater & Bell Alerts)."
+  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.4",
+  "releaseNotes": "WE4ALL v2.9.4: Delivery Captain Portal (1. Live Ride/Order Radar, 2. Active Orders 3-Point Route Map, 3. Km Rate Card & Booking Payment Request Desk, 4. Earnings Inventory & 9 AM Auto-Online Duty, DL/RC PDF & Camera KYC, Account-Only In-App Updater)."
 }

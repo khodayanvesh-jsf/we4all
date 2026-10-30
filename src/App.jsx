@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   INITIAL_APP_UPDATE_INFO,
-  GEO_ZONES,
   INITIAL_GEO_ADS,
   INITIAL_CATEGORIES,
   SERVICE_CATEGORIES,
@@ -10,20 +9,17 @@ import {
   INITIAL_DECORATORS,
   INITIAL_PRODUCTS,
   INITIAL_FUNCTION_HALLS,
-  DECORATION_SERVICE_MODULES,
   INITIAL_RIDERS
 } from "./data";
 import { INDIAN_LANGUAGES, getLangText } from "./modules/i18n/indianLanguages";
-import GeoTargetedAdBanner from "./modules/ads/GeoTargetedAdBanner";
 import RoleFooterNav from "./modules/RoleFooterNav";
 import UpiPaymentModal from "./modules/UpiPaymentModal";
-import OrdersHistoryAndInvoice from "./modules/OrdersHistoryAndInvoice";
 import OwnerAccountProfile from "./modules/OwnerAccountProfile";
 import FounderAdminSuite from "./modules/FounderAdminSuite";
 import MerchantPortal from "./modules/MerchantPortal";
 import ServiceProviderPortal from "./modules/ServiceProviderPortal";
 import DecoratorPortal from "./modules/DecoratorPortal";
-import LiveRouteMap from "./modules/LiveRouteMap";
+import RiderCaptainPortal from "./modules/RiderCaptainPortal";
 import {
   saveCloudAndLocalState,
   loadCloudAndLocalState,
@@ -51,8 +47,8 @@ function FounderLogoBadge({ logoUrl }) {
   );
 }
 
-// REQ 12: TOP UPDATE BANNER REMOVED FROM MobilePhoneShell!
-// Updates now appear strictly inside the Notification Bell Icon & Account Section!
+// REQ 12: ZERO TOP UPDATE BANNER IN MobilePhoneShell!
+// Bell icon notifies the user, and update installation lives ONLY inside the Account section!
 function MobilePhoneShell({
   title,
   badge,
@@ -98,7 +94,6 @@ function MobilePhoneShell({
           WE4ALL | {title}
         </span>
         <div className="flex items-center gap-1.5">
-          {/* NOTIFICATION BELL ICON WITH OTA UPDATE DOT IN HEADER */}
           {onOpenNotificationsBell && (
             <button
               type="button"
@@ -181,11 +176,8 @@ function AppContent() {
   const t = getLangText(lang);
   const [brightTheme, setBrightTheme] = useState(true);
 
-  const [founderLogoUrl, setFounderLogoUrl] = useState(
+  const [founderLogoUrl] = useState(
     () => localStorage.getItem("we4all_founder_original_photo") || "/logo.png"
-  );
-  const [apkIconUrl, setApkIconUrl] = useState(
-    () => localStorage.getItem("we4all_apk_launcher_icon") || "/logo.png"
   );
 
   const [deviceBoundUser, setDeviceBoundUser] = useState(() => {
@@ -197,16 +189,16 @@ function AppContent() {
   const [authTab, setAuthTab] = useState("register");
   const [regStep, setRegStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState(
-    deviceBoundUser?.role || savedCloud?.activePortal || "decorator"
+    deviceBoundUser?.role || savedCloud?.activePortal || "rider"
   );
   const [activePortal, setActivePortal] = useState(
-    deviceBoundUser?.role || savedCloud?.activePortal || "decorator"
+    deviceBoundUser?.role || savedCloud?.activePortal || "rider"
   );
   const [personalShoppingFromPartner, setPersonalShoppingFromPartner] = useState(null);
   const [footerTab, setFooterTab] = useState("home");
   const [authError, setAuthError] = useState("");
 
-  // Digital Signature Pad + Camera/Gallery Signature Upload (Req 9)
+  // Digital Signature Pad + Gallery/Camera Signature State (Req 9)
   const sigCanvasRef = useRef(null);
   const [isDrawingSig, setIsDrawingSig] = useState(false);
   const [hasDrawnSignature, setHasDrawnSignature] = useState(false);
@@ -252,7 +244,7 @@ function AppContent() {
     setUploadedSignatureImg("");
   };
 
-  // OTA Update Engine (Bell + Account Only, In-App Silent Update)
+  // OTA Update Engine (Bell Notification + Account Section Installation ONLY)
   const [appUpdateInfo, setAppUpdateInfo] = useState(
     savedCloud?.appUpdateInfo || INITIAL_APP_UPDATE_INFO
   );
@@ -262,35 +254,35 @@ function AppContent() {
   const [notificationsList, setNotificationsList] = useState([
     {
       id: 1,
-      text: "WE4ALL v2.9.3 Update Available: Check Account or tap below to install in-app!",
+      text: "WE4ALL v2.9.4 Update Available in your Account Section!",
       time: "Just now"
     }
   ]);
 
   const handleManualCheckForUpdate = async () => {
     setCheckingUpdate(true);
-    triggerToast("Checking WE4ALL Cloud Server for v2.9.3...");
+    triggerToast("Checking WE4ALL Cloud Server for v2.9.4...");
     const latest = await checkLiveCloudOtaManifest((payload) => {
       if (payload?.appUpdateInfo) setAppUpdateInfo(payload.appUpdateInfo);
     });
     setTimeout(() => {
       setCheckingUpdate(false);
       const targetVer =
-        latest?.latestAvailableVersion || appUpdateInfo?.latestAvailableVersion || "2.9.3";
+        latest?.latestAvailableVersion || appUpdateInfo?.latestAvailableVersion || "2.9.4";
       setAppUpdateInfo((prev) => ({
         ...prev,
         ...(latest || {}),
         latestAvailableVersion: targetVer,
         updateAvailable: true
       }));
-      triggerToast(`Update v${targetVer} Ready in Account & Notification Bell!`);
+      triggerToast(`Update v${targetVer} Ready! Tap 'Download & Install' below.`);
     }, 500);
   };
 
   const handleRunOtaUpdate = () => {
     setNotificationBellOpen(false);
     performZeroLossOtaUpdate(
-      appUpdateInfo.latestAvailableVersion || "2.9.3",
+      appUpdateInfo.latestAvailableVersion || "2.9.4",
       appUpdateInfo.releaseNotes,
       (stage) => setOtaProgress(stage),
       (updatedInfo) => {
@@ -312,16 +304,18 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState(
     deviceBoundUser ||
       savedCloud?.currentUser || {
-        id: 401,
-        fullName: "Padmavathi Royal Flower Decorators",
-        username: "padmavathi_decor",
-        phone: "9848044556",
-        role: "decorator",
-        decoratorSubRole: "flower_decorator",
+        id: 501,
+        fullName: "Raju Local Rider",
+        username: "raju_captain",
+        phone: "9848055112",
+        role: "rider",
+        vehicleClass: "2W Bike Captain (Up to 45kg)",
+        dlNumber: "TS-01-2022009812",
+        rcPlate: "TS-01-EF-4599",
         bankName: "State Bank of India",
         accountNumber: "30984451209",
         ifscCode: "SBIN0000801",
-        upiId: "padmavathidecor@ybl",
+        upiId: "rajucaptain@ybl",
         fastPin: "1234"
       }
   );
@@ -331,15 +325,11 @@ function AppContent() {
 
   const [loginForm, setLoginForm] = useState({ usernameOrPhone: "", password: "" });
   const [regForm, setRegForm] = useState({
-    role: "decorator",
+    role: "rider",
     decoratorSubRole: "flower_decorator",
-    categoryId: "daily_needs",
-    serviceCategoryId: "srv_plumbing",
-    specialization: "Royal Floral Mandap, Reception Stage & Lighting",
-    visitingFee: 99,
-    hourlyRate: 150,
-    hallCapacity: 800,
-    hallDailyRent: 35000,
+    vehicleClass: "2W Bike Captain (Up to 45kg)",
+    dlNumber: "",
+    rcPlate: "",
     phone: "",
     generatedOtp: "",
     otpInput: "",
@@ -381,125 +371,94 @@ function AppContent() {
   const [functionHalls, setFunctionHalls] = useState(
     savedCloud?.functionHalls || INITIAL_FUNCTION_HALLS
   );
-  const [riders] = useState(savedCloud?.riders || INITIAL_RIDERS);
+  const [riders, setRiders] = useState(savedCloud?.riders || INITIAL_RIDERS);
 
-  // Portfolio Stock for Decorators & Function Halls (Synced to Consumer Decor Section)
-  const [decorPortfolio, setDecorPortfolio] = useState(
-    savedCloud?.decorPortfolio && savedCloud.decorPortfolio.length > 0
-      ? savedCloud.decorPortfolio
+  // Live Radar Jobs for Delivery Captain Portal (Tab 1, 2, 3, 4)
+  const [captainRadarJobs, setCaptainRadarJobs] = useState(
+    savedCloud?.captainRadarJobs && savedCloud.captainRadarJobs.length > 0
+      ? savedCloud.captainRadarJobs
       : [
           {
-            id: "pf_101",
-            ownerId: 401,
-            ownerPhone: "9848044556",
-            merchantName: "Padmavathi Royal Flower Decorators",
-            subRole: "flower_decorator",
-            title: "Royal Imported Orchid & Dutch Rose Wedding Mandap",
-            decorType: "Wedding Mandap",
-            materialUsed: "Fresh Bangkok Orchids, Dutch Roses, Warm LED Truss & Velvet",
-            albumName: "2026 Royal Muhurtham Collection",
-            dimensionsSize: "40 ft x 16 ft Stage",
-            baseEstimate: 26500,
-            image:
-              "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop&q=85",
-            isApproved: true
+            id: "RDR-801",
+            rideType: "BIKE_TAXI_PASSENGER",
+            badge: "2W Bike Taxi (Consumer Self Ride)",
+            bookedBy: "Consumer: Rameshwar Reddy (For Self)",
+            pickupPin: "Subhash Nagar Chowk, Adilabad",
+            dropPin: "Adilabad Railway Station",
+            distFromCaptainKm: 0.5,
+            distanceKm: 2.6,
+            captainPayout: 45,
+            secretOtp: "3388",
+            status: "OPEN_ON_RADAR",
+            paymentReqStatus: "PENDING_TRIP_COMPLETION"
           },
           {
-            id: "pf_102",
-            ownerId: 401,
-            ownerPhone: "9848044556",
-            merchantName: "Padmavathi Royal Flower Decorators",
-            subRole: "flower_decorator",
-            title: "Haldi & Mehendi Marigold Floral Canopy",
-            decorType: "Haldi / Mehendi Setup",
-            materialUsed: "Fresh Yellow & Orange Marigolds, Brass Urli & Jhula",
-            albumName: "2026 Festive Haldi Album",
-            dimensionsSize: "24 ft x 12 ft Lawn Setup",
-            baseEstimate: 14500,
-            image:
-              "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&auto=format&fit=crop&q=85",
-            isApproved: true
+            id: "RDR-802",
+            rideType: "P2P_PARCEL_DROP",
+            badge: "P2P Parcel & Lunch Box (Booked for Family)",
+            bookedBy: "Consumer: Kavitha Sharma (For Brother)",
+            pickupPin: "Vidya Nagar H.No 2-11, Adilabad",
+            dropPin: "Collectorate Office, Adilabad",
+            distFromCaptainKm: 0.8,
+            distanceKm: 3.2,
+            captainPayout: 55,
+            secretOtp: "7744",
+            status: "OPEN_ON_RADAR",
+            paymentReqStatus: "PENDING_TRIP_COMPLETION"
           },
           {
-            id: "pf_103",
-            ownerId: 402,
-            ownerPhone: "9848055667",
-            merchantName: "Sri Venkateswara Grand Function Hall",
-            subRole: "function_hall",
-            title: "Grand AC Main Marriage Hall & Dining Lawn",
-            decorType: "AC Banquet & Marriage Hall",
-            materialUsed: "Central AC, Crystal Chandeliers, 800 Banquet Chairs, Valet",
-            albumName: "2026 Hall Interior & Lawn Album",
-            dimensionsSize: "12,000 sq.ft (800 Pax)",
-            baseEstimate: 35000,
-            image:
-              "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&auto=format&fit=crop&q=85",
-            isApproved: true
+            id: "RDR-803",
+            rideType: "MERCHANT_STORE_DISPATCH",
+            badge: "Merchant Kirana Dispatch (14 kg Pack)",
+            bookedBy: "Merchant: Sri Laxmi Supermart",
+            pickupPin: "Sri Laxmi Supermart, Main Bazar",
+            dropPin: "Housing Board Colony, Adilabad",
+            distFromCaptainKm: 0.3,
+            distanceKm: 2.1,
+            captainPayout: 40,
+            secretOtp: "5511",
+            assignedCaptain: "Raju Local Rider",
+            status: "ACCEPTED_BY_CAPTAIN",
+            paymentReqStatus: "ELIGIBLE_FOR_PAYOUT_REQ"
           }
         ]
   );
 
-  // Reverse Bids Queue for Flower Decorators
-  const [decorReverseBids, setDecorReverseBids] = useState(
-    savedCloud?.decorReverseBids && savedCloud.decorReverseBids.length > 0
-      ? savedCloud.decorReverseBids
+  // Pending Delivery Captains Queue for Admin 5-Point Checklist (Req 7 & 8)
+  const [pendingRiders, setPendingRiders] = useState(
+    savedCloud?.pendingRiders && savedCloud.pendingRiders.length > 0
+      ? savedCloud.pendingRiders
       : [
           {
-            id: "BID-7721",
-            customerName: "Rajeshwar Reddy (Adilabad)",
-            eventDate: "2026-11-05",
-            venueName: "Sri Venkateswara Function Hall, Adilabad",
-            selectedDesigns: [
-              "Royal Imported Orchid & Dutch Rose Wedding Mandap",
-              "Haldi & Mehendi Marigold Floral Canopy"
-            ],
-            estimatedBudget: 41000,
-            lowestBidSoFar: 38500,
-            mySubmittedBid: null,
-            status: "OPEN_FOR_REVERSE_BIDS"
+            id: 991,
+            captainName: "Salman Khan Captain",
+            vehicleClass: "2W Bike Captain (Up to 45kg)",
+            dlNumber: "TS-01-2023004411",
+            rcPlate: "TS-01-GH-8821",
+            phone: "9848033221",
+            govId: "9988-7766-5544 [Verified]",
+            area: "Station Road, Adilabad",
+            upiId: "salmancaptain@ybl",
+            bankName: "State Bank of India",
+            accountNumber: "30985544332",
+            ifscCode: "SBIN0000801",
+            kycDocName: "Driving_License_RC_Fitness_Adilabad.pdf",
+            workImageUrl:
+              "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=300&auto=format&fit=crop&q=80",
+            tcAccepted: true,
+            acceptedAt: "2026-10-30 09:00 AM",
+            digitalSignatureText: "Salman Khan (Digitally Signed)",
+            status: "Pending_Admin_Approval",
+            isPublishedToPublic: false
           }
         ]
   );
 
-  // 35% | 85% | 100% Milestone Escrow Bookings for Decorators & Function Halls
+  const [decorPortfolio, setDecorPortfolio] = useState(savedCloud?.decorPortfolio || []);
+  const [decorReverseBids, setDecorReverseBids] = useState(savedCloud?.decorReverseBids || []);
   const [decorEscrowBookings, setDecorEscrowBookings] = useState(
-    savedCloud?.decorEscrowBookings && savedCloud.decorEscrowBookings.length > 0
-      ? savedCloud.decorEscrowBookings
-      : [
-          {
-            id: "ESC-5091",
-            ownerId: 401,
-            subRole: "flower_decorator",
-            merchantName: "Padmavathi Royal Flower Decorators",
-            customerName: "Vikram Rathod (Adilabad)",
-            venueAddress: "Subhash Nagar Function Hall, Adilabad",
-            eventDate: "2026-11-05",
-            packageTitle: "Royal Imported Orchid & Dutch Rose Wedding Mandap (40x16 ft)",
-            totalContractAmount: 26500,
-            stage35Paid: true,
-            stage85Paid: false,
-            stage100Paid: false,
-            milestoneStatus: "35_PERCENT_ADVANCE_RELEASED"
-          },
-          {
-            id: "ESC-6012",
-            ownerId: 402,
-            subRole: "function_hall",
-            merchantName: "Sri Venkateswara Grand Function Hall",
-            customerName: "Anand Rao (Adilabad)",
-            venueAddress: "Adilabad Bypass Road",
-            eventDate: "2026-11-08",
-            packageTitle: "Full-Day AC Hall + Dining Lawn (800 Pax)",
-            totalContractAmount: 35000,
-            stage35Paid: true,
-            stage85Paid: false,
-            stage100Paid: false,
-            milestoneStatus: "35_PERCENT_ADVANCE_RELEASED"
-          }
-        ]
+    savedCloud?.decorEscrowBookings || []
   );
-
-  // Pending Queues for Admin 5-Point Approval Checklist
   const [pendingMerchants, setPendingMerchants] = useState(
     savedCloud?.pendingMerchants || []
   );
@@ -507,42 +466,13 @@ function AppContent() {
     savedCloud?.pendingServiceProviders || []
   );
   const [pendingDecorators, setPendingDecorators] = useState(
-    savedCloud?.pendingDecorators && savedCloud.pendingDecorators.length > 0
-      ? savedCloud.pendingDecorators
-      : [
-          {
-            id: 981,
-            decoratorSubRole: "flower_decorator",
-            businessName: "Mayuri Fresh Floral & Stage Creations",
-            providerName: "Mayuri Fresh Floral & Stage Creations",
-            specialization: "Imported Orchid Mandaps, LED Walkways & Car Decor",
-            phone: "9848066778",
-            govId: "6655-4433-2211 [Verified]",
-            area: "Cinema Road, Adilabad",
-            upiId: "mayurifloral@ybl",
-            bankName: "State Bank of India",
-            accountNumber: "30981122990",
-            ifscCode: "SBIN0000801",
-            kycDocName: "Decorator_Trade_License_Adilabad.pdf",
-            workImageUrl:
-              "https://images.unsplash.com/photo-1519741497674-611481863552?w=300&auto=format&fit=crop&q=80",
-            tcAccepted: true,
-            acceptedAt: "2026-10-30 08:15 AM",
-            digitalSignatureText: "Mayuri Verma (Digitally Signed)",
-            status: "Pending_Admin_Approval",
-            isPublishedToPublic: false
-          }
-        ]
+    savedCloud?.pendingDecorators || []
   );
-
   const [pendingSubCategories, setPendingSubCategories] = useState(
     savedCloud?.pendingSubCategories || []
   );
-  const [monetizationConfig, setMonetizationConfig] = useState(
-    savedCloud?.monetizationConfig || { globalPlatformFee: 0, serviceBookingSurcharge: 0 }
-  );
 
-  const [splitScreens, setSplitScreens] = useState([
+  const [splitScreens] = useState([
     { id: 1, role: "customer" },
     { id: 2, role: "merchant" },
     { id: 3, role: "service_provider" },
@@ -555,14 +485,18 @@ function AppContent() {
   ]);
   const activeAddressObj = addressBook[0];
 
-  const [customerHomeSubTab, setCustomerHomeSubTab] = useState("events");
-  const [selectedCategory, setSelectedCategory] = useState("daily_needs");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedVariantMap, setSelectedVariantMap] = useState({});
-  const [merchantCart, setMerchantCart] = useState(savedCloud?.merchantCart || []);
-  const [serviceCart, setServiceCart] = useState(savedCloud?.serviceCart || []);
-  const [decorCart, setDecorCart] = useState(savedCloud?.decorCart || []);
-  const [taxiCart] = useState([]);
+  const [customerHomeSubTab, setCustomerHomeSubTab] = useState("taxi");
+  const [taxiBookingForm, setTaxiBookingForm] = useState({
+    rideMode: "BIKE_TAXI_PASSENGER",
+    forWhom: "For Myself",
+    pickupPin: "Subhash Nagar, Adilabad",
+    dropPin: "Collectorate Chowk, Adilabad",
+    distanceKm: 2.8
+  });
+
+  const [merchantCart] = useState([]);
+  const [serviceCart] = useState([]);
+  const [decorCart] = useState([]);
   const [orders, setOrders] = useState(savedCloud?.orders || []);
   const [serviceBookings, setServiceBookings] = useState(savedCloud?.serviceBookings || []);
 
@@ -577,6 +511,9 @@ function AppContent() {
       merchants,
       serviceProviders,
       decorators,
+      riders,
+      captainRadarJobs,
+      pendingRiders,
       decorPortfolio,
       decorReverseBids,
       decorEscrowBookings,
@@ -587,10 +524,6 @@ function AppContent() {
       pendingServiceProviders,
       pendingDecorators,
       pendingSubCategories,
-      monetizationConfig,
-      merchantCart,
-      serviceCart,
-      decorCart,
       orders,
       serviceBookings
     });
@@ -604,6 +537,9 @@ function AppContent() {
     merchants,
     serviceProviders,
     decorators,
+    riders,
+    captainRadarJobs,
+    pendingRiders,
     decorPortfolio,
     decorReverseBids,
     decorEscrowBookings,
@@ -614,10 +550,6 @@ function AppContent() {
     pendingServiceProviders,
     pendingDecorators,
     pendingSubCategories,
-    monetizationConfig,
-    merchantCart,
-    serviceCart,
-    decorCart,
     orders,
     serviceBookings
   ]);
@@ -625,10 +557,8 @@ function AppContent() {
   useEffect(() => {
     return subscribeToRealtimeUpdates((remoteState) => {
       if (remoteState.orders) setOrders(remoteState.orders);
-      if (remoteState.serviceBookings) setServiceBookings(remoteState.serviceBookings);
-      if (remoteState.decorPortfolio) setDecorPortfolio(remoteState.decorPortfolio);
-      if (remoteState.decorReverseBids) setDecorReverseBids(remoteState.decorReverseBids);
-      if (remoteState.decorEscrowBookings) setDecorEscrowBookings(remoteState.decorEscrowBookings);
+      if (remoteState.captainRadarJobs) setCaptainRadarJobs(remoteState.captainRadarJobs);
+      if (remoteState.pendingRiders) setPendingRiders(remoteState.pendingRiders);
       if (remoteState.appUpdateInfo) {
         setAppUpdateInfo((prev) => {
           const incomingVer = remoteState.appUpdateInfo.latestAvailableVersion;
@@ -636,9 +566,8 @@ function AppContent() {
             setNotificationsList((n) => [
               {
                 id: Date.now(),
-                text: `OTA Update v${incomingVer} is ready! Tap to install in-app.`,
-                time: "Just now",
-                isOtaUpdate: true
+                text: `OTA Update v${incomingVer} is ready! Open your Account Section to install in-app.`,
+                time: "Just now"
               },
               ...n
             ]);
@@ -650,18 +579,15 @@ function AppContent() {
   }, []);
 
   const totalCartCount =
-    merchantCart.reduce((s, i) => s + i.qty, 0) +
-    serviceCart.length +
-    decorCart.length +
-    taxiCart.length;
+    merchantCart.length + serviceCart.length + decorCart.length;
 
   // ==========================================================================
-  // REQ 1, 7, 9: 3-STEP REGISTRATION WITH CAMERA/GALLERY DOCS & SIGNATURE
+  // REQ 1, 7, 9: 3-STEP REGISTRATION WITH DL/RC PDF & CAMERA + SIGNATURE
   // ==========================================================================
   const renderAuthVault = () => (
     <MobilePhoneShell
       title="Security & KYC Vault"
-      badge="v2.9.3"
+      badge="v2.9.4"
       activePortal={activePortal}
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -710,7 +636,7 @@ function AppContent() {
             <option value="merchant">2. Product Merchant Portal (Supermart / Kirana)</option>
             <option value="service_provider">3. Service Provider Portal (1-Hr Slots & Escrow)</option>
             <option value="decorator">4. Flower Decorator & Function Halls Portal</option>
-            <option value="rider">5. Delivery Captain & Taxi Radar</option>
+            <option value="rider">5. Delivery Captain Portal (Delivery, Taxi & P2P)</option>
           </select>
 
           <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl">
@@ -835,7 +761,7 @@ function AppContent() {
           <div className="bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-3.5 space-y-3">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <span className="font-black text-amber-400 text-xs">
-                3-Step KYC, Camera/Gallery Docs & Digital Sign ({selectedRole.toUpperCase()})
+                3-Step KYC, PDF/Camera Docs & Digital Sign ({selectedRole.toUpperCase()})
               </span>
               <span className="bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
                 Step {regStep} of 3
@@ -844,39 +770,26 @@ function AppContent() {
 
             {regStep === 1 && (
               <div className="space-y-2.5">
-                {selectedRole === "decorator" && (
+                {selectedRole === "rider" && (
                   <div className="space-y-1">
-                    <label className="text-[10px] text-amber-300 font-black block">
-                      Select Your Portal 4 Merchant Sub-Type:
+                    <label className="text-[10px] text-teal-300 font-black block">
+                      Select Delivery Captain Vehicle Class:
                     </label>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setRegForm({ ...regForm, decoratorSubRole: "flower_decorator" })
-                        }
-                        className={`py-2 rounded-xl font-black text-[10px] border cursor-pointer ${
-                          regForm.decoratorSubRole === "flower_decorator"
-                            ? "bg-pink-500 border-pink-300 text-white"
-                            : "bg-slate-950 border-slate-800 text-slate-400"
-                        }`}
-                      >
-                        \uD83C\uDF38 Flower Decorator
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setRegForm({ ...regForm, decoratorSubRole: "function_hall" })
-                        }
-                        className={`py-2 rounded-xl font-black text-[10px] border cursor-pointer ${
-                          regForm.decoratorSubRole === "function_hall"
-                            ? "bg-purple-500 border-purple-300 text-white"
-                            : "bg-slate-950 border-slate-800 text-slate-400"
-                        }`}
-                      >
-                        \uD83C\uDFDB\uFE0F Function Hall Merchant
-                      </button>
-                    </div>
+                    <select
+                      value={regForm.vehicleClass}
+                      onChange={(e) => setRegForm({ ...regForm, vehicleClass: e.target.value })}
+                      className="w-full bg-slate-950 border border-teal-400/60 rounded-xl p-2 text-white font-bold"
+                    >
+                      <option value="2W Bike Captain (Up to 45kg)">
+                        2W Bike Taxi, Parcel & Store Delivery (Up to 45kg)
+                      </option>
+                      <option value="3W Cargo & Passenger Auto (Up to 300kg)">
+                        3W Auto Passenger & Cargo Captain (Up to 300kg)
+                      </option>
+                      <option value="4W Mini Truck / Heavy Transport (Over 300kg)">
+                        4W Mini Truck / Heavy Transport Captain (Over 300kg)
+                      </option>
+                    </select>
                   </div>
                 )}
 
@@ -928,19 +841,39 @@ function AppContent() {
             {regStep === 2 && (
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-300 font-bold">
-                  Step 2/3: Business KYC, Bank/UPI & Required Docs (Gallery / PDF / Camera)
+                  Step 2/3: KYC, DL/RC Details, Bank/UPI & Required Docs (PDF / Gallery / Camera)
                 </p>
                 <input
                   type="text"
                   value={regForm.fullName}
                   onChange={(e) => setRegForm({ ...regForm, fullName: e.target.value })}
                   placeholder={
-                    regForm.decoratorSubRole === "function_hall"
-                      ? "Function Hall Legal Name (e.g. Sri Venkateswara Hall)"
-                      : "Flower Decorator Business Name"
+                    selectedRole === "rider"
+                      ? "Delivery Captain Full Legal Name"
+                      : "Full Business / Partner Legal Name"
                   }
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
+
+                {selectedRole === "rider" && (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                      type="text"
+                      value={regForm.dlNumber}
+                      onChange={(e) => setRegForm({ ...regForm, dlNumber: e.target.value })}
+                      placeholder="Driving License (DL) No."
+                      className="bg-slate-950 border border-teal-500/50 rounded-xl p-2 text-white"
+                    />
+                    <input
+                      type="text"
+                      value={regForm.rcPlate}
+                      onChange={(e) => setRegForm({ ...regForm, rcPlate: e.target.value })}
+                      placeholder="Vehicle Plate (TS-01-EF-4599)"
+                      className="bg-slate-950 border border-teal-500/50 rounded-xl p-2 text-white"
+                    />
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-1.5">
                   <input
                     type="text"
@@ -954,20 +887,20 @@ function AppContent() {
                     type="text"
                     value={regForm.upiId}
                     onChange={(e) => setRegForm({ ...regForm, upiId: e.target.value })}
-                    placeholder="Escrow UPI ID (e.g. hall@ybl)"
+                    placeholder="Instant Payout UPI ID"
                     className="bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                   />
                 </div>
 
-                {/* REQ 1: UPLOAD DOCS AS PDF/IMAGE OR CAPTURE VIA MOBILE CAMERA */}
+                {/* REQ 1: UPLOAD DL/RC/KYC DOCS AS PDF, PHONE GALLERY IMAGE OR CAMERA */}
                 <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-400/40 space-y-2">
                   <p className="text-[10px] font-black text-amber-300">
-                    1. Required KYC / License Doc (PDF / Gallery Image / Camera):
+                    1. Upload Driving License / RC / KYC Doc (PDF, Gallery Image or Camera):
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
                     <label className="bg-slate-900 border border-emerald-500/50 rounded-xl p-2 text-center cursor-pointer block">
                       <span className="text-[9px] font-bold text-emerald-300 block">
-                        \uD83D\uDCC4 Upload PDF / Gallery Doc
+                        \uD83D\uDCC4 Upload PDF / Phone Image
                       </span>
                       <input
                         type="file"
@@ -976,7 +909,7 @@ function AppContent() {
                           const f = e.target.files?.[0];
                           if (!f) return;
                           setRegForm({ ...regForm, kycDocName: f.name });
-                          triggerToast(`Attached KYC Doc: ${f.name}`);
+                          triggerToast(`Attached Document: ${f.name}`);
                         }}
                         className="hidden"
                       />
@@ -993,20 +926,20 @@ function AppContent() {
                           const f = e.target.files?.[0];
                           if (!f) return;
                           setRegForm({ ...regForm, kycDocName: `Camera_${f.name}` });
-                          triggerToast(`Captured KYC Doc via Camera!`);
+                          triggerToast("Captured DL/RC Document via Mobile Camera!");
                         }}
                         className="hidden"
                       />
                     </label>
                   </div>
 
-                  <p className="text-[10px] font-black text-indigo-300 pt-1">
-                    2. Platform Portfolio / Hall High-Res Photo (Gallery or Camera):
+                  <p className="text-[10px] font-black text-teal-300 pt-1">
+                    2. Vehicle / Captain Photo (Phone Gallery or Mobile Camera):
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <label className="bg-slate-900 border border-indigo-400/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[9px] font-bold text-indigo-300 block">
-                        \uD83D\uDDBC\uFE0F Select from Phone Gallery
+                    <label className="bg-slate-900 border border-teal-400/50 rounded-xl p-2 text-center cursor-pointer block">
+                      <span className="text-[9px] font-bold text-teal-300 block">
+                        \uD83D\uDDBC\uFE0F Select from Gallery
                       </span>
                       <input
                         type="file"
@@ -1021,15 +954,15 @@ function AppContent() {
                               workImageName: f.name,
                               workImageUrl: String(reader.result || "")
                             });
-                            triggerToast(`Selected Gallery Photo: ${f.name}`);
+                            triggerToast(`Loaded Gallery Photo: ${f.name}`);
                           };
                           reader.readAsDataURL(f);
                         }}
                         className="hidden"
                       />
                     </label>
-                    <label className="bg-slate-900 border border-pink-400/50 rounded-xl p-2 text-center cursor-pointer block">
-                      <span className="text-[9px] font-bold text-pink-300 block">
+                    <label className="bg-slate-900 border border-indigo-400/50 rounded-xl p-2 text-center cursor-pointer block">
+                      <span className="text-[9px] font-bold text-indigo-300 block">
                         \uD83D\uDCF8 Take Picture with Camera
                       </span>
                       <input
@@ -1046,7 +979,7 @@ function AppContent() {
                               workImageName: `Cam_${f.name}`,
                               workImageUrl: String(reader.result || "")
                             });
-                            triggerToast(`Captured High-Res Work Photo via Camera!`);
+                            triggerToast("Captured Vehicle/Captain Photo via Camera!");
                           };
                           reader.readAsDataURL(f);
                         }}
@@ -1068,7 +1001,7 @@ function AppContent() {
                     type="button"
                     onClick={() => {
                       if (!regForm.fullName.trim()) {
-                        setAuthError("Please enter Full Legal / Business Name.");
+                        setAuthError("Please enter Full Legal Name.");
                         return;
                       }
                       setAuthError("");
@@ -1082,7 +1015,7 @@ function AppContent() {
               </div>
             )}
 
-            {/* REQ 9: STEP 3 DIGITAL SIGNATURE PAD OR GALLERY/CAMERA SIGNATURE IMAGE */}
+            {/* REQ 9: STEP 3 DIGITAL SIGNATURE PAD OR GALLERY/CAMERA SIGNATURE */}
             {regStep === 3 && (
               <div className="space-y-2.5">
                 <p className="text-[11px] text-amber-300 font-black">
@@ -1176,7 +1109,7 @@ function AppContent() {
                     className="mt-0.5"
                   />
                   <span className="text-[10px] text-emerald-200 font-bold">
-                    I accept the WE4ALL Platform Terms & Conditions (35%|85%|100% Escrow Consort Rules) with my signature above.
+                    I accept the WE4ALL Platform Terms & Conditions (including 09:00 AM Default Online Duty & Km Rate Consort Rules) with my signature above.
                   </span>
                 </label>
 
@@ -1213,28 +1146,41 @@ function AppContent() {
                         id: Date.now(),
                         fullName: regForm.fullName.trim(),
                         username: regForm.fullName.trim(),
-                        phone: regForm.phone.trim() || "9848044556",
+                        phone: regForm.phone.trim() || "9848055112",
                         govId: `${regForm.govId || "8899-1122"} [Verified]`,
                         role: selectedRole,
+                        vehicleClass: regForm.vehicleClass,
+                        dlNumber: regForm.dlNumber || "TS-01-2023009911",
+                        rcPlate: regForm.rcPlate || "TS-01-EF-4599",
                         decoratorSubRole: regForm.decoratorSubRole || "flower_decorator",
-                        upiId: regForm.upiId || "partner@ybl",
+                        upiId: regForm.upiId || "captain@ybl",
                         bankName: regForm.bankName,
                         accountNumber: regForm.accountNumber || "30984451209",
                         ifscCode: regForm.ifscCode || "SBIN0000801",
                         fastPin: regForm.fastPin || "1234",
                         tcAccepted: true,
                         acceptedAt: new Date().toLocaleString(),
-                        kycDocName: regForm.kycDocName || "KYC_Verified.pdf",
+                        kycDocName: regForm.kycDocName || "DL_RC_Verified.pdf",
                         workImageUrl:
                           regForm.workImageUrl ||
-                          "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&auto=format&fit=crop&q=80",
+                          "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=300&auto=format&fit=crop&q=80",
                         digitalSignatureDataUrl: finalSig,
                         digitalSignatureText:
                           regForm.digitalSignatureText.trim() || regForm.fullName.trim()
                       };
 
-                      // REQ 7: Save to Server in Pending Admin Approval Queue
-                      if (selectedRole === "decorator") {
+                      // REQ 7: Save New Registration to Server in Pending Admin Queue!
+                      if (selectedRole === "rider") {
+                        setPendingRiders([
+                          {
+                            ...newUser,
+                            captainName: newUser.fullName,
+                            status: "Pending_Admin_Approval",
+                            isPublishedToPublic: false
+                          },
+                          ...pendingRiders
+                        ]);
+                      } else if (selectedRole === "decorator") {
                         setPendingDecorators([
                           {
                             ...newUser,
@@ -1272,12 +1218,7 @@ function AppContent() {
                       setDeviceBoundUser(newUser);
                       localStorage.setItem("we4all_device_bound_user_v4", JSON.stringify(newUser));
                       setActivePortal(selectedRole);
-                      setFooterTab(
-                        selectedRole === "decorator" &&
-                          newUser.decoratorSubRole === "flower_decorator"
-                          ? "bids"
-                          : "home"
-                      );
+                      setFooterTab("home");
                       setOnboardingStep("app");
                       triggerToast(
                         `Registered ${newUser.fullName} on Server! Sent to Admin for 5-Point Checklist Approval.`
@@ -1297,7 +1238,7 @@ function AppContent() {
   );
 
   // ==========================================================================
-  // PORTAL 1: CUSTOMER SUPER-APP (EVENTS TAB SHOWS HIGH-RES DECORATOR PORTFOLIO)
+  // PORTAL 1: CUSTOMER SUPER-APP (CAN PUBLISH RIDES/PARCELS FOR SELF OR OTHERS)
   // ==========================================================================
   const renderCustomerPortal = () => (
     <MobilePhoneShell
@@ -1374,114 +1315,82 @@ function AppContent() {
                 customerHomeSubTab === "taxi" ? "bg-teal-400 text-slate-950" : "text-slate-300"
               }`}
             >
-              {t.taxi}
+              5. Taxi & P2P
             </button>
           </div>
 
-          {customerHomeSubTab === "events" && (
-            <div className="space-y-2.5 text-xs">
-              <div className="bg-slate-900 text-white p-3 rounded-2xl border border-amber-500/40 space-y-2">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-black text-amber-400 text-xs">
-                      High-Resolution Decorator & Function Hall Portfolio
-                    </h3>
-                    <p className="text-[10px] text-slate-300">
-                      Select designs into your Decor Cart and launch a Reverse Bid to get the lowest quote!
-                    </p>
-                  </div>
-                  {decorCart.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newRfq = {
-                          id: `BID-${Math.floor(1000 + Math.random() * 9000)}`,
-                          customerName: currentUser.fullName,
-                          eventDate: "2026-11-15",
-                          venueName: activeAddressObj.fullAddress,
-                          selectedDesigns: decorCart.map((c) => c.title),
-                          estimatedBudget: decorCart.reduce(
-                            (s, c) => s + Number(c.baseEstimate || 20000),
-                            0
-                          ),
-                          lowestBidSoFar: decorCart.reduce(
-                            (s, c) => s + Number(c.baseEstimate || 20000),
-                            0
-                          ),
-                          status: "OPEN_FOR_REVERSE_BIDS"
-                        };
-                        setDecorReverseBids([newRfq, ...decorReverseBids]);
-                        setDecorCart([]);
-                        triggerToast(
-                          `Launched Reverse Bid #${newRfq.id} to all Flower Decorators!`
-                        );
-                      }}
-                      className="bg-emerald-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[10px] cursor-pointer shrink-0"
-                    >
-                      Launch Bid ({decorCart.length}) &rarr;
-                    </button>
-                  )}
-                </div>
-
-                {decorPortfolio.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex gap-2.5 items-center"
-                  >
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-16 h-16 rounded-xl object-cover border border-amber-400/50 shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[9px] text-amber-300 font-black">
-                        {item.albumName} &bull; {item.decorType}
-                      </span>
-                      <h4 className="font-bold text-white text-xs truncate">{item.title}</h4>
-                      <p className="text-[10px] text-slate-400 truncate">
-                        Material: {item.materialUsed} | Size: {item.dimensionsSize}
-                      </p>
-                      <p className="text-[10px] text-emerald-400 font-bold">
-                        By {item.merchantName} &bull; Approx Rs.
-                        {Number(item.baseEstimate).toLocaleString("en-IN")}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDecorCart([...decorCart, item]);
-                        triggerToast(`Added "${item.title}" to Decor Cart for Reverse Bidding!`);
-                      }}
-                      className="bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-[9px] cursor-pointer shrink-0"
-                    >
-                      + Decor Cart
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {customerHomeSubTab === "stores" && (
-            <div className="space-y-2">
-              {products.slice(0, 6).map((prod) => (
-                <div
-                  key={prod.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-2.5 flex justify-between items-center text-slate-900"
+          {customerHomeSubTab === "taxi" && (
+            <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-2.5 text-xs text-white">
+              <h3 className="font-black text-teal-300">
+                Book Bike Taxi, 3W Auto or P2P Parcel (For Yourself or Another Person)
+              </h3>
+              <div className="grid grid-cols-2 gap-1.5">
+                <select
+                  value={taxiBookingForm.rideMode}
+                  onChange={(e) =>
+                    setTaxiBookingForm({ ...taxiBookingForm, rideMode: e.target.value })
+                  }
+                  className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white font-bold text-[10px]"
                 >
-                  <div>
-                    <p className="font-bold text-xs">{prod.subCategoryBrand}</p>
-                    <p className="text-[10px] text-emerald-600 font-bold">{prod.shopName}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => triggerToast(`Added ${prod.subCategoryBrand} to Cart!`)}
-                    className="bg-emerald-600 text-white font-black px-3 py-1 rounded-lg text-[10px] cursor-pointer"
-                  >
-                    + Add
-                  </button>
-                </div>
-              ))}
+                  <option value="BIKE_TAXI_PASSENGER">2W Bike Taxi</option>
+                  <option value="AUTO_3W_RIDE">3W Auto Ride</option>
+                  <option value="P2P_PARCEL_DROP">P2P Parcel / Tiffin Drop</option>
+                </select>
+                <select
+                  value={taxiBookingForm.forWhom}
+                  onChange={(e) =>
+                    setTaxiBookingForm({ ...taxiBookingForm, forWhom: e.target.value })
+                  }
+                  className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-amber-300 font-bold text-[10px]"
+                >
+                  <option value="For Self">Booking For: Myself</option>
+                  <option value="For Family / Friend">Booking For: Family / Another Person</option>
+                </select>
+              </div>
+              <input
+                type="text"
+                value={taxiBookingForm.pickupPin}
+                onChange={(e) =>
+                  setTaxiBookingForm({ ...taxiBookingForm, pickupPin: e.target.value })
+                }
+                placeholder="Pickup Location"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+              />
+              <input
+                type="text"
+                value={taxiBookingForm.dropPin}
+                onChange={(e) =>
+                  setTaxiBookingForm({ ...taxiBookingForm, dropPin: e.target.value })
+                }
+                placeholder="Drop Location"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const newRadarRide = {
+                    id: `RDR-${Math.floor(1000 + Math.random() * 9000)}`,
+                    rideType: taxiBookingForm.rideMode,
+                    badge: `${taxiBookingForm.rideMode.replace(/_/g, " ")} (${taxiBookingForm.forWhom})`,
+                    bookedBy: `Consumer: ${currentUser.fullName} (${taxiBookingForm.forWhom})`,
+                    pickupPin: taxiBookingForm.pickupPin,
+                    dropPin: taxiBookingForm.dropPin,
+                    distFromCaptainKm: 0.7,
+                    distanceKm: taxiBookingForm.distanceKm,
+                    captainPayout: taxiBookingForm.rideMode === "AUTO_3W_RIDE" ? 75 : 45,
+                    secretOtp: String(Math.floor(1000 + Math.random() * 9000)),
+                    status: "OPEN_ON_RADAR",
+                    paymentReqStatus: "PENDING_TRIP_COMPLETION"
+                  };
+                  setCaptainRadarJobs([newRadarRide, ...captainRadarJobs]);
+                  triggerToast(
+                    `Published Ride #${newRadarRide.id} live to Delivery Captain Radar!`
+                  );
+                }}
+                className="w-full bg-teal-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow"
+              >
+                Publish Ride / Parcel Live to Captain Radar &rarr;
+              </button>
             </div>
           )}
         </div>
@@ -1628,13 +1537,10 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
-  // ==========================================================================
-  // PORTAL 4: COMPLETE FLOWER DECORATOR & FUNCTION HALLS PORTAL
-  // ==========================================================================
   const renderDecoratorPortal = () => (
     <MobilePhoneShell
       title="4. Decorator & Halls"
-      badge="v2.9.3 Suite"
+      badge="Decor Suite"
       activePortal="decorator"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
@@ -1647,15 +1553,6 @@ function AppContent() {
       notificationsCount={notificationsList.length}
       onOpenNotificationsBell={() => setNotificationBellOpen(true)}
     >
-      {mobileToast && (
-        <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
-          <span>{mobileToast}</span>
-          <button type="button" onClick={() => setMobileToast("")} className="font-black">
-            X
-          </button>
-        </div>
-      )}
-
       <DecoratorPortal
         footerTab={footerTab}
         setFooterTab={setFooterTab}
@@ -1674,7 +1571,6 @@ function AppContent() {
           setPersonalShoppingFromPartner("decorator");
           setActivePortal("customer");
           setFooterTab("home");
-          triggerToast("Switched to Personal Shopping Mode!");
         }}
         onTriggerToast={triggerToast}
         renderAccountTab={() => (
@@ -1682,11 +1578,7 @@ function AppContent() {
             currentUser={currentUser}
             setCurrentUser={setCurrentUser}
             activePortal={activePortal}
-            setActivePortal={(nextPortal) => {
-              if (nextPortal === "customer") setPersonalShoppingFromPartner("decorator");
-              setActivePortal(nextPortal);
-              setFooterTab("home");
-            }}
+            setActivePortal={setActivePortal}
             activeAddressObj={activeAddressObj}
             accountSecurity={accountSecurity}
             setAccountSecurity={setAccountSecurity}
@@ -1705,15 +1597,18 @@ function AppContent() {
     </MobilePhoneShell>
   );
 
+  // ==========================================================================
+  // PORTAL 5: COMPLETE DELIVERY CAPTAIN PORTAL (RADAR, ROUTE MAP, KM RATE, EARNINGS)
+  // ==========================================================================
   const renderRiderPortal = () => (
     <MobilePhoneShell
       title="5. Delivery Captain"
-      badge="Live Map"
+      badge="v2.9.4 Suite"
       activePortal="rider"
       footerTab={footerTab}
       setFooterTab={setFooterTab}
       totalCartCount={totalCartCount}
-      totalOrdersCount={orders.length}
+      totalOrdersCount={captainRadarJobs.length}
       brightTheme={brightTheme}
       lang={lang}
       setLang={setLang}
@@ -1721,32 +1616,56 @@ function AppContent() {
       notificationsCount={notificationsList.length}
       onOpenNotificationsBell={() => setNotificationBellOpen(true)}
     >
-      {footerTab === "account" ? (
-        <OwnerAccountProfile
-          currentUser={currentUser}
-          setCurrentUser={setCurrentUser}
-          activePortal={activePortal}
-          setActivePortal={setActivePortal}
-          activeAddressObj={activeAddressObj}
-          accountSecurity={accountSecurity}
-          setAccountSecurity={setAccountSecurity}
-          onLockApp={() => setOnboardingStep("auth")}
-          brightTheme={brightTheme}
-          setBrightTheme={setBrightTheme}
-          appUpdateInfo={appUpdateInfo}
-          onCheckForUpdate={handleManualCheckForUpdate}
-          checkingUpdate={checkingUpdate}
-          onRunOtaUpdate={handleRunOtaUpdate}
-          otaProgress={otaProgress}
-          onTriggerToast={triggerToast}
-        />
-      ) : (
-        <div className="space-y-3 text-xs text-white">
-          <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800">
-            <p className="font-bold text-emerald-400">Delivery Captain Radar Ready</p>
-          </div>
+      {mobileToast && (
+        <div className="bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl flex justify-between shadow">
+          <span>{mobileToast}</span>
+          <button type="button" onClick={() => setMobileToast("")} className="font-black">
+            X
+          </button>
         </div>
       )}
+
+      <RiderCaptainPortal
+        footerTab={footerTab}
+        setFooterTab={setFooterTab}
+        currentUser={currentUser}
+        orders={orders}
+        setOrders={setOrders}
+        captainRadarJobs={captainRadarJobs}
+        setCaptainRadarJobs={setCaptainRadarJobs}
+        pendingRiders={pendingRiders}
+        onSwitchToPersonalShop={() => {
+          setPersonalShoppingFromPartner("rider");
+          setActivePortal("customer");
+          setFooterTab("home");
+          triggerToast("Switched to Personal Shopping Mode!");
+        }}
+        onTriggerToast={triggerToast}
+        renderAccountTab={() => (
+          <OwnerAccountProfile
+            currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
+            activePortal={activePortal}
+            setActivePortal={(nextPortal) => {
+              if (nextPortal === "customer") setPersonalShoppingFromPartner("rider");
+              setActivePortal(nextPortal);
+              setFooterTab("home");
+            }}
+            activeAddressObj={activeAddressObj}
+            accountSecurity={accountSecurity}
+            setAccountSecurity={setAccountSecurity}
+            onLockApp={() => setOnboardingStep("auth")}
+            brightTheme={brightTheme}
+            setBrightTheme={setBrightTheme}
+            appUpdateInfo={appUpdateInfo}
+            onCheckForUpdate={handleManualCheckForUpdate}
+            checkingUpdate={checkingUpdate}
+            onRunOtaUpdate={handleRunOtaUpdate}
+            otaProgress={otaProgress}
+            onTriggerToast={triggerToast}
+          />
+        )}
+      />
     </MobilePhoneShell>
   );
 
@@ -1841,34 +1760,31 @@ function AppContent() {
         ) : (
           <FounderAdminSuite
             founderLogoUrl={founderLogoUrl}
-            apkIconUrl={apkIconUrl}
-            geoAds={geoAds}
-            categories={categories}
             merchants={merchants}
             setMerchants={setMerchants}
             serviceProviders={serviceProviders}
             setServiceProviders={setServiceProviders}
             decorators={decorators}
             setDecorators={setDecorators}
+            riders={riders}
+            setRiders={setRiders}
             decorPortfolio={decorPortfolio}
             setDecorPortfolio={setDecorPortfolio}
-            orders={orders}
-            serviceBookings={serviceBookings}
             pendingMerchants={pendingMerchants}
             setPendingMerchants={setPendingMerchants}
             pendingServiceProviders={pendingServiceProviders}
             setPendingServiceProviders={setPendingServiceProviders}
             pendingDecorators={pendingDecorators}
             setPendingDecorators={setPendingDecorators}
-            monetizationConfig={monetizationConfig}
-            setMonetizationConfig={setMonetizationConfig}
+            pendingRiders={pendingRiders}
+            setPendingRiders={setPendingRiders}
             splitScreens={splitScreens}
             appUpdateInfo={appUpdateInfo}
             setAppUpdateInfo={setAppUpdateInfo}
             onBroadcastOtaPushNotification={(nextInfo) => {
               saveCloudAndLocalState({ appUpdateInfo: nextInfo });
               triggerToast(
-                `OTA v${nextInfo.latestAvailableVersion} pushed to Notification Bell & Account on all devices!`
+                `OTA v${nextInfo.latestAvailableVersion} pushed! Available in Bell Alert & Account Section.`
               );
             }}
             onLaunchMultiPhoneView={() => {
@@ -1884,7 +1800,8 @@ function AppContent() {
               }
               setOnboardingStep("app");
               setFooterTab("home");
-              if (flowId === "portal_decorator") setActivePortal("decorator");
+              if (flowId === "portal_rider") setActivePortal("rider");
+              else if (flowId === "portal_decorator") setActivePortal("decorator");
               else if (flowId === "portal_service") setActivePortal("service_provider");
               else if (flowId === "portal_merchant") setActivePortal("merchant");
             }}
@@ -1921,13 +1838,13 @@ function AppContent() {
         </main>
       )}
 
-      {/* REQ 12: NOTIFICATION BELL DRAWER WITH IN-APP OTA UPDATE INSTALLER */}
+      {/* REQ 12: NOTIFICATION BELL ALERT DRAWER (ROUTES TO ACCOUNT SECTION FOR UPDATE) */}
       {notificationBellOpen && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border-2 border-amber-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <h3 className="font-black text-amber-400">
-                \uD83D\uDD14 Notifications & In-App OTA Updates
+                \uD83D\uDD14 Platform Notifications
               </h3>
               <button
                 type="button"
@@ -1939,34 +1856,23 @@ function AppContent() {
             </div>
 
             <div className="bg-slate-950 p-3 rounded-2xl border border-emerald-500/50 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="font-black text-emerald-400">
-                  WE4ALL OTA v{appUpdateInfo?.latestAvailableVersion || "2.9.3"}
-                </span>
-                <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded text-[9px] font-black">
-                  IN-APP INSTALLER
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-300">{appUpdateInfo?.releaseNotes}</p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleRunOtaUpdate}
-                  className="flex-1 bg-emerald-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
-                >
-                  Install Update In-App Now
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotificationBellOpen(false);
-                    setFooterTab("account");
-                  }}
-                  className="bg-slate-800 text-amber-300 font-bold px-3 py-2 rounded-xl cursor-pointer"
-                >
-                  Open Account
-                </button>
-              </div>
+              <p className="font-black text-emerald-400">
+                WE4ALL OTA v{appUpdateInfo?.latestAvailableVersion || "2.9.4"} Available
+              </p>
+              <p className="text-[10px] text-slate-300">
+                Updates are managed exclusively in your Account section for all portals.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setNotificationBellOpen(false);
+                  setOnboardingStep("app");
+                  setFooterTab("account");
+                }}
+                className="w-full bg-amber-400 text-slate-950 font-black py-2 rounded-xl cursor-pointer"
+              >
+                Go to Account Section to Update &rarr;
+              </button>
             </div>
 
             <div className="max-h-48 overflow-y-auto space-y-1.5">
