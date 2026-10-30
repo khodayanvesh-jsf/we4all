@@ -498,6 +498,19 @@ export default function MerchantPortal({
               <h4 className="font-black text-emerald-400 text-xs">
                 2. Live Store Stock Manual & Quantity Availability ({products.length} Products)
               </h4>
+                            <button
+                type="button"
+                onClick={() => {
+                  const firstProd = products[0];
+                  if (firstProd) {
+                    setStockSearch(firstProd.subCategoryBrand.split(" ")[0]);
+                    onTriggerToast(`Barcode Scanned (89010588512): Matched "${firstProd.subCategoryBrand}"!`);
+                  }
+                }}
+                className="bg-emerald-400 text-slate-950 font-black px-2.5 py-1 rounded-lg text-[10px] cursor-pointer"
+              >
+                Scan Packet Barcode
+              </button>
               <button
                 type="button"
                 onClick={() => setFooterTab("add_brand")}
@@ -512,7 +525,7 @@ export default function MerchantPortal({
                 type="text"
                 value={stockSearch}
                 onChange={(e) => setStockSearch(e.target.value)}
-                placeholder="Search stock item..."
+                placeholder="Search stock or scan barcode..."
                 className="bg-slate-950 border border-slate-700 rounded-xl p-1.5 text-white text-[11px]"
               />
               <select

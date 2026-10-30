@@ -16,6 +16,7 @@ import {
 } from "./data";
 import { INDIAN_LANGUAGES, getLangText } from "./modules/i18n/indianLanguages";
 import GeoTargetedAdBanner from "./modules/ads/GeoTargetedAdBanner";
+import { TownMandiTicker, ParchaAndVoiceOrderBox, TownLandmarkPresetBar } from "./modules/Tier2TownSuite";
 import RoleFooterNav from "./modules/RoleFooterNav";
 import UpiPaymentModal from "./modules/UpiPaymentModal";
 import OrdersHistoryAndInvoice from "./modules/OrdersHistoryAndInvoice";
@@ -335,7 +336,7 @@ function AppContent() {
     savedCloud?.appUpdateInfo || {
       ...(INITIAL_APP_UPDATE_INFO || {}),
       currentVersion: "2.9.5",
-      latestAvailableVersion: "2.9.6",
+      latestAvailableVersion: "2.9.7",
       updateAvailable: true,
       releaseNotes:
         "WE4ALL v2.9.6: Fixed Captain OTP Verification, Universal Error Diagnostic Popup Modal, 5-Language App-Wide Localization & Persistent Biometric Session."
@@ -360,7 +361,7 @@ function AppContent() {
       const targetVer =
         latest?.latestAvailableVersion ||
         appUpdateInfo?.latestAvailableVersion ||
-        "2.9.6";
+        "2.9.7";
       setAppUpdateInfo((prev) => ({
         ...prev,
         ...(latest || {}),
@@ -373,7 +374,7 @@ function AppContent() {
 
   const handleRunOtaUpdate = () => {
     performZeroLossOtaUpdate(
-      appUpdateInfo.latestAvailableVersion || "2.9.6",
+      appUpdateInfo.latestAvailableVersion || "2.9.7",
       appUpdateInfo.releaseNotes,
       (stage) => setOtaProgress(stage),
       (updatedInfo) => {
@@ -1677,6 +1678,17 @@ function AppContent() {
 
             {customerHomeSubTab === "taxi" && (
               <div className="bg-slate-900 p-3.5 rounded-2xl border border-teal-500/40 space-y-2.5 text-xs text-white">
+                <TownLandmarkPresetBar
+                  onApplyLandmark={(lm) => {
+                    setCustomerBookingForm({
+                      ...customerBookingForm,
+                      pickupPin: lm.pickup,
+                      dropPin: lm.drop,
+                      distanceKm: lm.km
+                    });
+                    triggerToast(`Applied Preset: ${lm.label} (${lm.km} km)`);
+                  }}
+                />
                 <h3 className="font-black text-teal-300">
                   Taxi &amp; P2P Parcel Dispatcher (T&amp;C Weight-Gated Vehicle Chooser)
                 </h3>
@@ -2567,7 +2579,18 @@ function AppContent() {
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-teal-400 rounded-3xl max-w-sm w-full p-4 space-y-3 text-xs text-white">
             <div className="flex justify-between items-center">
-              <h3 className="font-black text-teal-300">
+              <TownLandmarkPresetBar
+                  onApplyLandmark={(lm) => {
+                    setCustomerBookingForm({
+                      ...customerBookingForm,
+                      pickupPin: lm.pickup,
+                      dropPin: lm.drop,
+                      distanceKm: lm.km
+                    });
+                    triggerToast(`Applied Preset: ${lm.label} (${lm.km} km)`);
+                  }}
+                />
+                <h3 className="font-black text-teal-300">
                 Add New Address (OTP Verified)
               </h3>
               <button
