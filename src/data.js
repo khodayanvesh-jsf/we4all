@@ -241,3 +241,11 @@ INITIAL_APP_UPDATE_INFO.currentVersion = "2.9.4";
 INITIAL_APP_UPDATE_INFO.latestAvailableVersion = "2.9.5";
 INITIAL_APP_UPDATE_INFO.updateAvailable = true;
 INITIAL_APP_UPDATE_INFO.releaseNotes = "WE4ALL v2.9.5: Mandatory Captain Vehicle Type & RC/DL Registration, Customer T&C Weight-Gated Vehicle Selector, Strict 2W/3W/4W Order Allocation with Zero Cross-Interference, and Account-Only In-App Updater.";
+
+// ============================================================================
+// v2.9.6 OVERRIDES: FULL CONSUMER SHOPPING CONSOLE RESTORED + ALL 5 PORTALS
+// ============================================================================
+INITIAL_APP_UPDATE_INFO.currentVersion = "2.9.5";
+INITIAL_APP_UPDATE_INFO.latestAvailableVersion = "2.9.6";
+INITIAL_APP_UPDATE_INFO.updateAvailable = true;
+INITIAL_APP_UPDATE_INFO.releaseNotes = "WE4ALL v2.9.6: Restored complete Consumer Shopping Console (Local Stores, Categories, Shop Price Comparison, 1-Hr Services, Multi-Merchant Carts with T&C Vehicle Chooser & Orders) alongside all 5 Partner Portals.";

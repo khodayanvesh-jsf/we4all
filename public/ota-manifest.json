@@ -1,9 +1,9 @@
 {
-  "currentVersion": "2.9.4",
-  "latestAvailableVersion": "2.9.5",
+  "currentVersion": "2.9.5",
+  "latestAvailableVersion": "2.9.6",
   "updateAvailable": true,
-  "publishedAt": "2026-10-30T10:45:00Z",
+  "publishedAt": "2026-10-30T11:50:00Z",
   "liveServerUrl": "https://we-4-all-super-app.vercel.app",
-  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.5",
-  "releaseNotes": "WE4ALL v2.9.5: Mandatory Captain Vehicle Type & RC/DL Registration, Customer T&C Weight-Gated Vehicle Selector, Strict 2W/3W/4W Order Allocation with Zero Cross-Interference, and Account-Only In-App Updater."
+  "apkDownloadUrl": "https://we-4-all-super-app.vercel.app/WE4ALL.apk?v=2.9.6",
+  "releaseNotes": "WE4ALL v2.9.6: Restored complete Consumer Shopping Console (Local Stores, Categories, Shop Price Comparison, 1-Hr Services, Multi-Merchant Carts with T&C Vehicle Chooser & Orders) alongside all 5 Partner Portals."
 }
